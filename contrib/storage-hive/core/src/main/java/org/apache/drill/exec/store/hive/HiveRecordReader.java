@@ -109,6 +109,7 @@ public class HiveRecordReader extends AbstractRecordReader {
   private int skipFooterLines = 0;
   private Queue<Object> queue = Lists.newLinkedList();
   private List<Object> valueList;
+  private boolean readerContinuance = false;
 
   protected static final int TARGET_RECORD_COUNT = 4000;
 
@@ -230,6 +231,7 @@ public class HiveRecordReader extends AbstractRecordReader {
       }
       key = reader.createKey();
       valueList = initializeValueList(reader, skipFooterLines);
+
     }
   }
 
@@ -319,12 +321,12 @@ public class HiveRecordReader extends AbstractRecordReader {
     try {
       int modCount = 0;
       int actualCount = 0;
-      boolean readerContinuance = reader.getPos() != 0;
 
       if (readerContinuance) {
-        valueList = initializeValueList(reader, skipFooterLines);
+       valueList = initializeValueList(reader, skipFooterLines);
       } else {
         queue.clear();
+        readerContinuance = true;
       }
 
       for (int recordCount = 0; recordCount < TARGET_RECORD_COUNT; recordCount++) {
@@ -349,6 +351,9 @@ public class HiveRecordReader extends AbstractRecordReader {
       }
 
       setValueCountAndPopulatePartitionVectors(actualCount);
+      if (actualCount == 0) {
+        readerContinuance = false;
+      }
       return actualCount;
     } catch (IOException | SerDeException e) {
       throw new DrillRuntimeException(e);
