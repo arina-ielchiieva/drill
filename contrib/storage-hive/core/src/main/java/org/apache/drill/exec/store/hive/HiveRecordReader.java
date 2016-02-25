@@ -110,6 +110,7 @@ public class HiveRecordReader extends AbstractRecordReader {
   private Queue<Object> queue = Lists.newLinkedList();
   private List<Object> valueList;
   private boolean readerContinuance = false;
+  private int mod = -1;
 
   protected static final int TARGET_RECORD_COUNT = 4000;
 
@@ -319,19 +320,20 @@ public class HiveRecordReader extends AbstractRecordReader {
     }
 
     try {
-      int modCount = 0;
+      int modCount = mod + 1;
       int actualCount = 0;
 
       if (readerContinuance) {
-       valueList = initializeValueList(reader, skipFooterLines);
+       //valueList = initializeValueList(reader, skipFooterLines);
       } else {
         queue.clear();
         readerContinuance = true;
       }
 
       for (int recordCount = 0; recordCount < TARGET_RECORD_COUNT; recordCount++) {
-        int mod = modCount % valueList.size();
+        mod = modCount % valueList.size();
         Object value = valueList.get(mod);
+        //Object value = reader.createValue();
         if (reader.next(key, value)) {
           if (readerContinuance || recordCount >= skipHeaderLines) {
             queue.add(value);

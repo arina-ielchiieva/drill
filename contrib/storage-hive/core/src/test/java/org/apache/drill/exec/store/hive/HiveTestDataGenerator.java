@@ -466,17 +466,44 @@ public class HiveTestDataGenerator {
     //executeQuery(hiveDriver, "INSERT OVERWRITE TABLE kv_sh SELECT * FROM kv");
 
     // Create tables with skip header and footer table property
-    executeQuery(hiveDriver, createTableWithHeaderFooterProperties("default.kv_small_skip_header_footer_lines", "1", "1"));
-    executeQuery(hiveDriver, generateTestDataWithHeadersAndFooters("default.kv_small_skip_header_footer_lines", 5, 1, 1));
+    //executeQuery(hiveDriver, createTableWithHeaderFooterProperties("default.kv_small_skip_header_footer_lines", "1", "1"));
+    //executeQuery(hiveDriver, generateTestDataWithHeadersAndFooters("default.kv_small_skip_header_footer_lines", 5, 1, 1));
 
-    executeQuery(hiveDriver, createTableWithHeaderFooterProperties("default.kv_more_than_4000_skip_header_footer_lines", "2", "2"));
-    executeQuery(hiveDriver, generateTestDataWithHeadersAndFooters("default.kv_more_than_4000_skip_header_footer_lines", 5000, 2, 2));
+    executeQuery(hiveDriver, createTableWithHeaderFooterProperties("default.kv_more_than_4000_skip_header_footer_lines", "0", "0"));
+   // executeQuery(hiveDriver, generateTestDataWithHeadersAndFooters("default.kv_more_than_4000_skip_header_footer_lines", 50055, 0, 0));
+    //insertData("default.kv_more_than_4000_skip_header_footer_lines", 5005500, hiveDriver);
+    executeQuery(hiveDriver, "load data local inpath '/home/osboxes/files/hive_5005500.csv' into table kv_more_than_4000_skip_header_footer_lines");
 
-    executeQuery(hiveDriver, createTableWithHeaderFooterProperties("default.kv_incorrect_skip_header", "A", "1"));
-    executeQuery(hiveDriver, generateTestDataWithHeadersAndFooters("default.kv_incorrect_skip_header", 5, 1, 1));
+    //executeQuery(hiveDriver, createTableWithHeaderFooterProperties("default.kv_5005500_text", "0", "0"));
 
-    executeQuery(hiveDriver, createTableWithHeaderFooterProperties("default.kv_incorrect_skip_footer", "1", "A"));
-    executeQuery(hiveDriver, generateTestDataWithHeadersAndFooters("default.kv_incorrect_skip_footer", 5, 1, 1));
+    executeQuery(hiveDriver, "CREATE table default.kv_5005500_text (key STRING, value STRING) " +
+        "STORED AS rcfile");
+    executeQuery(hiveDriver, "insert into default.kv_5005500_text select * from default.kv_more_than_4000_skip_header_footer_lines");
+    executeQuery(hiveDriver, "CREATE table default.kv_5005500_rc (key STRING, value STRING) " +
+        "ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.columnar.ColumnarSerDe' " +
+        "STORED AS " +
+        "INPUTFORMAT 'org.apache.hadoop.hive.ql.io.RCFileInputFormat' " +
+        "OUTPUTFORMAT 'org.apache.hadoop.hive.ql.io.RCFileOutputFormat'");
+    executeQuery(hiveDriver, "insert into default.kv_5005500_rc select * from default.kv_more_than_4000_skip_header_footer_lines limit 5000");
+
+    // INSERT INTO TABLE db1.avro SELECT * FROM default.kv
+
+    //executeQuery(hiveDriver, createTableWithHeaderFooterProperties("default.kv_incorrect_skip_header", "A", "1"));
+    //executeQuery(hiveDriver, generateTestDataWithHeadersAndFooters("default.kv_incorrect_skip_header", 5, 1, 1));
+
+    //executeQuery(hiveDriver, createTableWithHeaderFooterProperties("default.kv_incorrect_skip_footer", "1", "A"));
+    //executeQuery(hiveDriver, generateTestDataWithHeadersAndFooters("default.kv_incorrect_skip_footer", 5, 1, 1));
+
+    executeQuery(hiveDriver, "create table default.kv_rc (key string, value string) stored as textfile");
+    executeQuery(hiveDriver, "load data local inpath '/home/osboxes/git_repo/drill-test-framework/framework/resources/Datasources/hive_storage/kv1.txt' into table kv_rc");
+    executeQuery(hiveDriver, "CREATE table default.columnTable_Bigdata (key STRING, value STRING) " +
+        "ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.columnar.ColumnarSerDe' " +
+        "STORED AS " +
+        "INPUTFORMAT 'org.apache.hadoop.hive.ql.io.RCFileInputFormat' " +
+        "OUTPUTFORMAT 'org.apache.hadoop.hive.ql.io.RCFileOutputFormat'");
+
+    executeQuery(hiveDriver, "FROM (FROM default.kv_rc MAP kv_rc.key,kv_rc.value USING 'python /home/osboxes/git_repo/drill-test-framework/framework/resources/Datasources/hive_storage/dumpdata_script.py' AS (key,value) WHERE kv_rc.key = 10) subq " +
+        "INSERT OVERWRITE TABLE default.columnTable_Bigdata SELECT subq.key, subq.value");
 
     ss.close();
   }
@@ -537,20 +564,40 @@ public class HiveTestDataGenerator {
 
   private String createTableWithHeaderFooterProperties(String tableName, String headerValue, String footerValue) {
     return "create table " + tableName +
-          " (key int, value string) row format delimited fields terminated by ',' stored as textfile " +
-          "tblproperties(" + "'skip.header.line.count'='" + headerValue + "',"
-          + "'skip.footer.line.count'='" + footerValue + "'" + ")";
+          " (key int, value string) row format delimited fields terminated by ',' stored as textfile " ;
+        //+
+         // "tblproperties(" + "'skip.header.line.count'='" + headerValue + "',"
+         // + "'skip.footer.line.count'='" + footerValue + "'" +
+   // ")";
   }
 
   private String generateTestDataWithHeadersAndFooters(String tableName, int rowCount, int headerLines, int footerLines) {
     StringBuilder sb = new StringBuilder();
     sb.append("insert into table ").append(tableName).append(" (key, value) values ");
-    sb.append(StringUtils.repeat("('key_header', 'value_header')", ",", headerLines));
-    for (int i  = 1; i <= rowCount; i++) {
+    //sb.append(StringUtils.repeat("('key_header', 'value_header')", ",", headerLines));
+    sb.append("(").append(1).append(",").append("'key_").append(1).append("')");
+    for (int i  = 2; i <= rowCount; i++) {
         sb.append(",(").append(i).append(",").append("'key_").append(i).append("')");
     }
-    sb.append(StringUtils.repeat(",('key_footer', 'value_footer')", footerLines));
+   // sb.append(StringUtils.repeat(",('key_footer', 'value_footer')", footerLines));
 
     return sb.toString();
+  }
+
+  private void insertData (String tableName, int rowCount, Driver hiveDriver) {
+/*    StringBuilder sb = new StringBuilder();
+    for (int i  = 1; i <= rowCount; i++) {
+      sb.append("insert into table ").append(tableName).append(" (key, value) values ");
+      sb.append("(").append(i).append(",").append("'key_").append(i).append("')");
+      executeQuery(hiveDriver, sb.toString());
+      sb.setLength(0);
+    }*/
+    for (int i = 0; i < rowCount; i = i + 10000) {
+      String s = generateTestDataWithHeadersAndFooters(tableName,10000, 0, 0);
+      executeQuery(hiveDriver, s);
+    }
+
+    String s = generateTestDataWithHeadersAndFooters(tableName,4500, 0, 0);
+    executeQuery(hiveDriver, s);
   }
 }

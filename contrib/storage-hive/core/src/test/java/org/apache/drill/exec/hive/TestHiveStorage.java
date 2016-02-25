@@ -415,7 +415,7 @@ public class TestHiveStorage extends HiveTestBase {
 
   @Test // DRILL-3688
   public void readingFromTableWithHeaderFooterSkipProperties() throws Exception {
-   testBuilder()
+/*   testBuilder()
         .sqlQuery("select key, `value` from hive.kv_small_skip_header_footer_lines order by key asc")
         .ordered()
         .baselineColumns("key", "value")
@@ -431,17 +431,34 @@ public class TestHiveStorage extends HiveTestBase {
         .unOrdered()
         .baselineColumns("cnt")
         .baselineValues(5L)
-        .go();
+        .go();*/
 
-    testBuilder()
+/*    testBuilder()
         .sqlQuery("select key, `value` from hive.kv_more_than_4000_skip_header_footer_lines order by key desc limit 1")
         .unOrdered()
         .baselineColumns("key", "value")
         .baselineValues(5000, "key_5000")
-        .go();
+        .go();*/
 
+  /*  System.out.println("Checking hive.kv_more_than_4000_skip_header_footer_lines");
     testBuilder()
-        .sqlQuery("select count(1) as cnt from hive.kv_more_than_4000_skip_header_footer_lines")
+        .sqlQuery("select count(key) as cnt from hive.kv_more_than_4000_skip_header_footer_lines")
+        .unOrdered()
+        .baselineColumns("cnt")
+        .baselineValues(5005500L)
+        .go();
+*/
+/*    System.out.println("Checking hive.kv_5005500_text");
+    testBuilder()
+        .sqlQuery("select count(key) as cnt from hive.kv_5005500_text")
+        .unOrdered()
+        .baselineColumns("cnt")
+        .baselineValues(5005500L)
+        .go();*/
+
+    System.out.println("Checking hive.kv_5005500_rc");
+    testBuilder()
+        .sqlQuery("select count(key) as cnt from hive.kv_5005500_rc")
         .unOrdered()
         .baselineColumns("cnt")
         .baselineValues(5000L)
@@ -465,6 +482,16 @@ public class TestHiveStorage extends HiveTestBase {
         assertThat(e.getMessage(), containsString(String.format(exceptionMessage, entry.getValue())));
       }
     }
+  }
+
+  @Test
+  public void testHiveRcCount() throws Exception {
+    testBuilder()
+        .sqlQuery("select count(`key`) as cnt from hive.columntable_bigdata")
+        .unOrdered()
+        .baselineColumns("cnt")
+        .baselineValues(5005500L)
+        .go();
   }
 
   @AfterClass

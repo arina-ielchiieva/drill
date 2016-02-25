@@ -1195,4 +1195,20 @@ public class TestExampleQueries extends BaseTestQuery {
         .run();
   }
 
+  @Test
+  public void testParquetTable() throws Exception {
+    test("use dfs_test.tmp");
+    test("create table region partition by (r_bool) as select r.*, case when substr(r_name, 1,1) = 'A' then true else false end r_bool from dfs" +
+        ".`/home/osboxes/git_repo/drill-test-framework/framework/resources/Datasources/Tpch0.01/parquet/region.parquet` r order by r_regionkey");
+
+    testBuilder()
+        .sqlQuery("select * from region where r_bool is true")
+        .ordered()
+        .baselineColumns("r_regionkey", "r_name", "r_comment", "r_bool")
+        .baselineValues(0, "AFRICA", "lar deposits. blithely final packages cajole. regular waters are final requests. regular accounts are according to ", true)
+        .baselineValues(1, "AMERICA", "hs use ironic, even requests. s", true)
+        .baselineValues(2, "ASIA", "ges. thinly even pinto beans ca", true)
+        .go();
+  }
+
 }
