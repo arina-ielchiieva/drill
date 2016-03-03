@@ -17,8 +17,10 @@
  */
 package org.apache.drill;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.drill.exec.expr.fn.impl.DateUtility;
 import org.apache.drill.exec.planner.physical.PlannerSettings;
+import org.apache.drill.exec.util.TSI;
 import org.joda.time.DateTime;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -26,6 +28,8 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 
 public class TestFunctionsQuery extends BaseTestQuery {
 
@@ -910,39 +914,59 @@ public class TestFunctionsQuery extends BaseTestQuery {
 
   @Test
   public void testTimestampAdd() throws Exception {
-    String query = "select " +
-        "timestampadd(SQL_TSI_FRAC_SECOND, 2, timestamp '2015-03-30 20:49:59.000') as col1, " +
-        "timestampadd(SQL_TSI_SECOND, 2, timestamp '2015-03-30 20:49:59.000') as col2 " +
-        "from (values(1))";
+    String query = "select timestampadd(%s, 2, timestamp '2015-03-30 20:49:59.000') as ts from (values(1))";
+    Map<TSI, DateTime> results = ImmutableMap.<TSI, DateTime>builder()
+        .put(TSI.MICROSECOND, DateUtility.formatTimeStamp.parseDateTime("2015-03-30 20:49:59.002"))
+        .put(TSI.SECOND, DateUtility.formatTimeStamp.parseDateTime("2015-03-30 20:50:01.000"))
+        .put(TSI.MINUTE, DateUtility.formatTimeStamp.parseDateTime("2015-03-30 20:51:59.000"))
+        .put(TSI.HOUR, DateUtility.formatTimeStamp.parseDateTime("2015-03-30 22:49:59.000"))
+        .put(TSI.DAY, DateUtility.formatTimeStamp.parseDateTime("2015-04-01 20:49:59.000"))
+        .put(TSI.WEEK, DateUtility.formatTimeStamp.parseDateTime("2015-04-13 20:49:59.000"))
+        .put(TSI.MONTH, DateUtility.formatTimeStamp.parseDateTime("2015-05-30 20:49:59.000"))
+        .put(TSI.QUARTER, DateUtility.formatTimeStamp.parseDateTime("2015-09-30 20:49:59.000"))
+        .put(TSI.YEAR, DateUtility.formatTimeStamp.parseDateTime("2017-03-30 20:49:59.000"))
+        .build();
 
-    DateTime dateTime1 = DateUtility.formatTimeStamp.parseDateTime("2015-03-30 20:49:59.002");
-    DateTime dateTime2 = DateUtility.formatTimeStamp.parseDateTime("2015-03-30 20:50:01.000");
-
-    testBuilder()
-        .sqlQuery(query)
-        .unOrdered()
-        .baselineColumns("col1", "col2")
-        .baselineValues(dateTime1, dateTime2)
-        .go();
-
-
-      //test("SELECT DATE_ADD(date '2015-05-15', interval '3' year) FROM (VALUES(1))");
-      //test("SELECT INTERVAL '13' month FROM (VALUES(1))");
+    for (Map.Entry<TSI, DateTime> entry : results.entrySet()) {
+      for (String name : entry.getKey().getNames()) {
+        testBuilder()
+            .sqlQuery(String.format(query, name))
+            .unOrdered()
+            .baselineColumns("ts")
+            .baselineValues(entry.getValue())
+            .go();
+      }
+    }
   }
 
   @Test
   public void testTimestampDiff() throws Exception {
     String query = "select " +
-        "timestampdiff(SQL_TSI_MINUTE, timestamp '2015-03-30 20:55:59.000', timestamp '2015-03-30 20:49:59.000') as col1, " +
-        "timestampdiff(SQL_TSI_MONTH, timestamp '2016-03-30 20:49:59.000', timestamp '2015-03-30 20:49:59.000') as col2 " +
+        "timestampdiff(%s, timestamp '2017-03-30 22:50:59.050', timestamp '2015-09-10 20:49:42.000') as diff " +
         "from (values(1))";
+    Map<TSI, Long> results = ImmutableMap.<TSI, Long>builder()
+        .put(TSI.MICROSECOND, 48996077050L)
+        .put(TSI.SECOND, 48996077L)
+        .put(TSI.MINUTE, 816601L)
+        .put(TSI.HOUR, 13610L)
+        .put(TSI.DAY, 567L)
+        .put(TSI.WEEK, 81L)
+        .put(TSI.MONTH, 18L)
+        .put(TSI.QUARTER, 6L)
+        .put(TSI.YEAR, 1L)
+        .build();
 
-    testBuilder()
-        .sqlQuery(query)
-        .unOrdered()
-        .baselineColumns("col1", "col2")
-        .baselineValues(6L, 12L)
-        .go();
+    for (Map.Entry<TSI, Long> entry : results.entrySet()) {
+      for (String name : entry.getKey().getNames()) {
+        testBuilder()
+            .sqlQuery(String.format(query, name))
+            .unOrdered()
+            .baselineColumns("diff")
+            .baselineValues(entry.getValue())
+            .go();
+      }
+    }
+
   }
 
 }

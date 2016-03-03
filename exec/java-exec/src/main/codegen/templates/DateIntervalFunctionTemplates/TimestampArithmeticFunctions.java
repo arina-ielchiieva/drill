@@ -39,12 +39,11 @@
 public class ${className} {
 
 <#macro intervalBlock interval, tsi>
-    try {
     String stringValue = org.apache.drill.exec.expr.fn.impl.StringFunctionHelpers.toStringFromUTF8(${interval}.start, ${interval}.end, ${interval}.buffer);
-    ${tsi} = org.apache.drill.exec.util.TSI.valueOf(stringValue);
-    } catch (IllegalArgumentException e) {
-    throw new IllegalArgumentException("Incorrect interval timestamp value. Should be one of the following: "
-    + java.util.Arrays.toString(org.apache.drill.exec.util.TSI.values()));
+    ${tsi} = org.apache.drill.exec.util.TSI.getByName(stringValue);
+    if (tsi == null) {
+    throw new IllegalArgumentException("Incorrect interval timestamp value. Expected one of the following: "
+    + org.apache.drill.exec.util.TSI.getAllNames());
     }
 </#macro>
 
