@@ -17,12 +17,18 @@
  */
 package org.apache.drill.exec.sql;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
+import com.google.common.io.Resources;
 import org.apache.drill.BaseTestQuery;
 import org.apache.drill.TestBuilder;
+import org.apache.drill.exec.store.dfs.FileSystemConfig;
 import org.junit.Test;
 
 import java.util.List;
+
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 
 /**
  * Contains tests for
@@ -32,6 +38,9 @@ import java.util.List;
  * -- SHOW FILES
  */
 public class TestInfoSchema extends BaseTestQuery {
+
+  private static final ObjectMapper mapper = new ObjectMapper().enable(INDENT_OUTPUT);
+
   @Test
   public void selectFromAllTables() throws Exception{
     test("select * from INFORMATION_SCHEMA.SCHEMATA");
@@ -337,4 +346,46 @@ public class TestInfoSchema extends BaseTestQuery {
     test("USE dfs_test.`default`");
     test("SHOW FILES FROM `/tmp`");
   }
+
+  @Test
+  public void describeSchemaSyntax() throws Exception {
+    test("describe schema dfs_test");
+    test("describe schema dfs_test.`default`");
+    test("describe database dfs_test.`default`");
+  }
+
+  @Test
+  public void describeSchemaOutput() throws Exception {
+    String properties = Resources.toString(Resources.getResource("describe_schema_output.json"), Charsets.UTF_8).replace("\r", "");
+    testBuilder()
+        .sqlQuery("describe schema dfs_test")
+        .unOrdered()
+        .baselineColumns("properties")
+        .baselineValues(properties)
+        .go();
+
+    testBuilder()
+        .sqlQuery("describe schema dfs_test")
+        .unOrdered()
+        .sqlBaselineQuery("describe schema dfs_test.`default`")
+        .go();
+
+    final FileSystemConfig testConfig = (FileSystemConfig) bits[0].getContext().getStorage().getPlugin("dfs_test").getConfig();
+    final String tmpSchemaLocation = testConfig.workspaces.get("tmp").getLocation();
+    properties = properties.replace("\"writable\" : false", String.format("\"writable\" : %s", true));
+    properties = properties.replace("\"location\" : \"/\"", String.format("\"location\" : \"%s\"", tmpSchemaLocation));
+
+    testBuilder()
+        .sqlQuery("describe schema dfs_test.tmp")
+        .unOrdered()
+        .baselineColumns("properties")
+        .baselineValues(properties)
+        .go();
+  }
+
+  @Test
+  public void describeSchemaInvalid() throws Exception {
+    errorMsgTestHelper("describe schema invalid.schema", "Invalid schema name [invalid.schema]");
+  }
+
 }
