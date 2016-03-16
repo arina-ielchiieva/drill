@@ -17,12 +17,16 @@
  */
 package org.apache.drill.exec.sql;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import org.apache.drill.BaseTestQuery;
 import org.apache.drill.TestBuilder;
+import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.junit.Test;
 
 import java.util.List;
+
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 
 /**
  * Contains tests for
@@ -32,6 +36,9 @@ import java.util.List;
  * -- SHOW FILES
  */
 public class TestInfoSchema extends BaseTestQuery {
+
+  private static final ObjectMapper mapper = new ObjectMapper().enable(INDENT_OUTPUT);
+
   @Test
   public void selectFromAllTables() throws Exception{
     test("select * from INFORMATION_SCHEMA.SCHEMATA");
@@ -337,4 +344,59 @@ public class TestInfoSchema extends BaseTestQuery {
     test("USE dfs_test.`default`");
     test("SHOW FILES FROM `/tmp`");
   }
+
+  @Test
+  public void describeSchemaSyntax() throws Exception {
+    test("describe schema dfs_test");
+    test("describe schema dfs_test.`default`");
+    test("describe database dfs_test.`default`");
+  }
+
+  @Test
+  public void describeSchemaDfsTmp() throws Exception {
+    String properties = mapper.writeValueAsString(bits[0].getContext().getStorage().getPlugin("dfs_test").getConfig());
+    testBuilder()
+        .sqlQuery("describe schema dfs_test.tmp")
+        .unOrdered()
+        .baselineColumns("name", "physical_location", "properties")
+        .baselineValues("dfs_test.tmp", "file:///" + getDfsTestTmpSchemaLocation().replaceAll("^/", ""), properties)
+        .go();
+  }
+
+  @Test
+  public void describeSchemaCp() throws Exception {
+    String properties = mapper.writeValueAsString(bits[0].getContext().getStorage().getPlugin("cp").getConfig());
+    testBuilder()
+        .sqlQuery("describe schema cp.`default`")
+        .unOrdered()
+        .baselineColumns("name", "physical_location", "properties")
+        .baselineValues("cp.default", "classpath:///", properties)
+        .go();
+  }
+
+  @Test
+  public void describeSchemaInformationUnavailable() throws Exception {
+    StoragePluginRegistry storage = bits[0].getContext().getStorage();
+    String properties = mapper.writeValueAsString(storage.getPlugin("INFORMATION_SCHEMA").getConfig());
+    testBuilder()
+        .sqlQuery("describe schema INFORMATION_SCHEMA")
+        .unOrdered()
+        .baselineColumns("name", "physical_location", "properties")
+        .baselineValues("INFORMATION_SCHEMA", "<INFORMATION UNAVAILABLE>", properties)
+        .go();
+
+    properties = mapper.writeValueAsString(storage.getPlugin("sys").getConfig());
+    testBuilder()
+        .sqlQuery("describe schema sys")
+        .unOrdered()
+        .baselineColumns("name", "physical_location", "properties")
+        .baselineValues("sys", "<INFORMATION UNAVAILABLE>", properties)
+        .go();
+  }
+
+  @Test
+  public void describeSchemaInvalid() throws Exception {
+    errorMsgTestHelper("describe schema invalid.schema", "Invalid schema name [invalid.schema]");
+  }
+
 }

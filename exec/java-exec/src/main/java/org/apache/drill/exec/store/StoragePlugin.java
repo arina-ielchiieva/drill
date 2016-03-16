@@ -81,4 +81,12 @@ public interface StoragePlugin extends SchemaFactory, AutoCloseable {
    */
   public void start() throws IOException;
 
+  /**
+   * Get schema physical location.
+   *
+   * @param name schema name
+   * @return schema physical location
+   */
+  public String getPhysicalLocation(String name);
+
 }

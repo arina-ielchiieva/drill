@@ -177,4 +177,13 @@ public class FileSystemPlugin extends AbstractStoragePlugin{
   public Configuration getFsConf() {
     return fsConf;
   }
+
+  @Override
+  public String getPhysicalLocation(String name) {
+    if (config.workspaces == null || config.workspaces.get(name) == null) {
+      return config.connection;
+    }
+    return config.connection + config.workspaces.get(name).getLocation().replaceAll("^/", "");
+  }
+
 }

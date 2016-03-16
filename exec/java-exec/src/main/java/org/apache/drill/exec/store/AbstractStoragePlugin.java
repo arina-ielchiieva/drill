@@ -109,6 +109,11 @@ public abstract class AbstractStoragePlugin implements StoragePlugin{
   }
 
   @Override
+  public String getPhysicalLocation(String name) {
+    return "<INFORMATION UNAVAILABLE>";
+  }
+
+  @Override
   public void start() throws IOException {
   }
 
