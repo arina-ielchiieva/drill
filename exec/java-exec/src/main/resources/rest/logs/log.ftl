@@ -19,8 +19,13 @@
 </div>
 </div>
 <h3>${model.getName()}</h3>
+<a href="/log/download/${model.getName()}">
+    <div style="height:100%;width:100%;white-space:pre-line">${model.getName()}</div>
+</a>
 <pre>
-    ${model.getText()}
+    <#list model.getLines() as line>
+        ${line}
+    </#list>
 </pre>
 </div>
 <#--<script>

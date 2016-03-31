@@ -22,6 +22,7 @@ package org.apache.drill.exec.server.rest;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
+import com.google.common.collect.EvictingQueue;
 import com.google.common.collect.Lists;
 import com.google.common.io.Files;
 import org.apache.commons.io.input.ReversedLinesFileReader;
@@ -35,18 +36,28 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
+import java.io.FileReader;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.text.SimpleDateFormat;
+import java.util.ArrayDeque;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
+import java.util.Deque;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Queue;
 
 import static org.apache.drill.exec.server.rest.auth.DrillUserPrincipal.ADMIN_ROLE;
 
@@ -123,13 +134,51 @@ public class LogsResources {
     });
 
     if (files.length == 0) {
-      throw new RuntimeException(name + " doesn't exist");
+      throw new RuntimeException(name + " doesn't exist"); //todo which exception to throw
     }
 
     File file = files[0];
-    String text = Files.toString(file, Charsets.UTF_8); //todo utf-8 ???
-    return new LogContent(file.getName(), text);
+    //String text = Files.toString(file, Charsets.UTF_8); //todo utf-8 ???
+
+    try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+      Map<String, String> cache = new LinkedHashMap<String, String>(10, .75f, true) { //todo should be from config
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+          return size() > 10; //todo should be from config
+        }
+      };
+
+      String line;
+      while ((line = br.readLine()) != null) {
+        cache.put(line, null);
+      }
+
+      return new LogContent(file.getName(), cache.keySet());
+    }
   }
+
+  @GET
+  @Path("/log/download/{name}")
+  @Produces(MediaType.TEXT_PLAIN)
+  public Response getFullLog(@PathParam("name") final String name) {
+    File folder = new File(System.getenv("DRILL_LOG_DIR"));
+    File[] files = folder.listFiles(new FilenameFilter() {
+      @Override
+      public boolean accept(File dir, String fileName) {
+        return fileName.equals(name);
+      }
+    });
+
+    if (files.length == 0) {
+      throw new RuntimeException(name + " doesn't exist"); //todo which exception to throw
+    }
+
+    File file = files[0];
+    Response.ResponseBuilder response = Response.ok(file);
+    response.header("Content-Disposition", String.format("attachment;filename\"%s\"", name));
+    return response.build();
+  }
+
 
   @XmlRootElement
   public class Log {
@@ -162,18 +211,18 @@ public class LogsResources {
   @XmlRootElement
   public class LogContent {
     private String name;
-    private String text;
+    private Collection<String> lines;
 
     @JsonCreator
-    public LogContent (String name, String text) {
+    public LogContent (String name, Collection<String> lines) {
       this.name = name;
-      this.text = text;
+      this.lines = lines;
     }
 
     public String getName() {
       return name;
     }
 
-    public String getText() { return text;}
+    public Collection<String> getLines() { return lines;}
   }
 }
