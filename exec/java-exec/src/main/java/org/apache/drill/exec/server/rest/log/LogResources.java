@@ -17,7 +17,7 @@
  * limitations under the License.
  * ****************************************************************************
  */
-package org.apache.drill.exec.server.rest;
+package org.apache.drill.exec.server.rest.log;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,7 +28,10 @@ import com.google.common.collect.Sets;
 import com.google.common.io.Files;
 import org.apache.commons.io.input.ReversedLinesFileReader;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
+import org.apache.drill.exec.server.rest.DrillRestServer;
+import org.apache.drill.exec.server.rest.ViewableWithPermissions;
 import org.apache.drill.exec.store.StoragePluginRegistry;
+import org.apache.drill.exec.work.WorkManager;
 import org.glassfish.jersey.server.mvc.Viewable;
 
 import javax.annotation.security.RolesAllowed;
@@ -48,26 +51,19 @@ import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.text.SimpleDateFormat;
-import java.util.ArrayDeque;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.Deque;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
 
 import static org.apache.drill.exec.server.rest.auth.DrillUserPrincipal.ADMIN_ROLE;
 
 @Path("/")
 @RolesAllowed(ADMIN_ROLE)
-public class LogsResources {
+public class LogResources {
 
   @Inject DrillRestServer.UserAuthEnabled authEnabled;
   @Inject SecurityContext sc;
@@ -165,17 +161,21 @@ public class LogsResources {
 
 
   @XmlRootElement
-  public class Log {
+  public static class Log {
     public final SimpleDateFormat format = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
 
     private String name;
-    private long size;
+    private String size;
     private Date lastModified;
+
+    public Log() {
+
+    }
 
     @JsonCreator
     public Log (String name, long size, long lastModified) {
       this.name = name;
-      this.size = size;
+      this.size = (size / 1024) + " KB";
       this.lastModified = new Date(lastModified);
     }
 
@@ -184,16 +184,28 @@ public class LogsResources {
     }
 
     public String getSize() {
-      return (size / 1024) + " KB";
+      return size;
     }
 
     public String getLastModified() {
       return format.format(lastModified);
     }
+
+    public void setName(String name) {
+      this.name = name;
+    }
+
+    public void setLastModified(Date lastModified) {
+      this.lastModified = lastModified;
+    }
+
+    public void setSize(String size) {
+      this.size = size;
+    }
   }
 
   @XmlRootElement
-  public class LogContent {
+  public static class LogContent {
     private String name;
     private Collection<String> lines;
     private int maxSize;

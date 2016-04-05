@@ -21,6 +21,8 @@ import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.server.rest.auth.AuthDynamicFeature;
 import org.apache.drill.exec.server.rest.auth.DrillUserPrincipal;
 import org.apache.drill.exec.server.rest.auth.DrillUserPrincipal.AnonDrillUserPrincipal;
+import org.apache.drill.exec.server.rest.log.ClusterLogResources;
+import org.apache.drill.exec.server.rest.log.LogResources;
 import org.apache.drill.exec.server.rest.profile.ProfileResources;
 import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.apache.drill.exec.store.sys.PersistentStoreProvider;
@@ -55,7 +57,8 @@ public class DrillRestServer extends ResourceConfig {
     register(QueryResources.class);
     register(MetricsResources.class);
     register(ThreadsResources.class);
-    register(LogsResources.class);
+    register(ClusterLogResources.class);
+    register(LogResources.class);
     register(FreemarkerMvcFeature.class);
     register(MultiPartFeature.class);
     property(ServerProperties.METAINF_SERVICES_LOOKUP_DISABLE, true);

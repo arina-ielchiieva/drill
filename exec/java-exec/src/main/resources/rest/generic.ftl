@@ -65,7 +65,7 @@
               <li><a href="/threads">Threads</a></li>
               </#if>
               <#if showLogs == true>
-                  <li><a href="/logs">Logs</a></li>
+                  <li><a href="/cluster/logs">Logs</a></li>
               </#if>
             </ul>
             </#if>

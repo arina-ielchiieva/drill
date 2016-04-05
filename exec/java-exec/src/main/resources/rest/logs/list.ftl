@@ -18,6 +18,13 @@
 <div class="page-header">
 </div>
 
+    <#list groups?keys as groupKey>
+    ${groupKey}
+        <#list groups.get(groupKey) as item>
+        ${item}
+        </#list>
+    </#list>
+
 <#if (model?size > 0)>
 <div class="table-responsive">
     <table class="table table-hover">
@@ -25,22 +32,28 @@
             <td>Name</td>
             <td>Size</td>
             <td>Last Modified</td>
+            <td>Location</td>
             </thead>
         <tbody>
-            <#list model as log>
-            <tr>
-                <td>
-                    <a href="/log/${log.getName()}">
-                        <div style="height:100%;width:100%;white-space:pre-line">${log.getName()}</div>
-                    </a>
-                </td>
-                <td>
-                    <div style="height:100%;width:100%;white-space:pre-line">${log.getSize()}</div>
-                </td>
-                <td>
-                    <div style="height:100%;width:100%;white-space:pre-line">${log.getLastModified()}</div>
-                </td>
-            </tr>
+            <#list model?keys as loc>
+                <#list model[loc] as log>
+                <tr>
+                    <td>
+                        <a href="/log/${log.getName()}">
+                            <div style="height:100%;width:100%;white-space:pre-line">${log.getName()}</div>
+                        </a>
+                    </td>
+                    <td>
+                        <div style="height:100%;width:100%;white-space:pre-line">${log.getSize()}</div>
+                    </td>
+                    <td>
+                        <div style="height:100%;width:100%;white-space:pre-line">${log.getLastModified()}</div>
+                    </td>
+                    <td>
+                        <div style="height:100%;width:100%;white-space:pre-line">${loc}</div>
+                    </td>
+                </tr>
+                </#list>
             </#list>
         </tbody>
     </table>
