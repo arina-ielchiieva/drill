@@ -32,8 +32,10 @@ import org.apache.drill.exec.coord.zk.ZKClusterCoordinator;
 import org.apache.drill.exec.exception.DrillbitStartupException;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
 import org.apache.drill.exec.server.options.OptionManager;
+import org.apache.drill.exec.server.options.OptionValidator;
 import org.apache.drill.exec.server.options.OptionValue;
 import org.apache.drill.exec.server.options.OptionValue.OptionType;
+import org.apache.drill.exec.server.options.SystemOptionManager;
 import org.apache.drill.exec.server.rest.WebServer;
 import org.apache.drill.exec.service.ServiceEngine;
 import org.apache.drill.exec.store.StoragePluginRegistry;
@@ -117,6 +119,7 @@ public class Drillbit implements AutoCloseable {
     drillbitContext.getOptionManager().init();
     javaPropertiesToSystemOptions();
     registrationHandle = coord.register(md);
+    checkAndUpdateClusterVersionOption(drillbitContext.getOptionManager(), md);
     webServer.start();
 
     Runtime.getRuntime().addShutdownHook(new ShutdownThread(this, new StackTrace()));
@@ -203,6 +206,21 @@ public class Drillbit implements AutoCloseable {
       final OptionValue optionValue = OptionValue.createOption(
           defaultValue.kind, OptionType.SYSTEM, optionName, optionString);
       optionManager.setOption(optionValue);
+    }
+  }
+
+  /**
+   * If cluster version is the same as default, update option to current drillbit version.
+   */
+  private void checkAndUpdateClusterVersionOption(OptionManager optionManager, DrillbitEndpoint drillbitEndpoint) {
+    OptionValue versionOption = optionManager.getOption(ExecConstants.CLUSTER_VERSION);
+    OptionValidator validator = SystemOptionManager.getValidator(ExecConstants.CLUSTER_VERSION);
+    if (versionOption.equals(validator.getDefault())) {
+      optionManager.setOption(OptionValue.createOption(
+          versionOption.kind,
+          versionOption.type,
+          versionOption.name,
+          drillbitEndpoint.getVersion()));
     }
   }
 

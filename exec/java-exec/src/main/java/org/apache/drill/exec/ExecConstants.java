@@ -17,6 +17,7 @@
  */
 package org.apache.drill.exec;
 
+import org.apache.drill.common.util.DrillVersionInfo;
 import org.apache.drill.exec.physical.impl.common.HashTable;
 import org.apache.drill.exec.rpc.user.InboundImpersonationManager;
 import org.apache.drill.exec.server.options.OptionValidator;
@@ -299,5 +300,11 @@ public interface ExecConstants {
   String IMPERSONATION_POLICIES_KEY = "exec.impersonation.inbound_policies";
   StringValidator IMPERSONATION_POLICY_VALIDATOR =
       new InboundImpersonationManager.InboundImpersonationPolicyValidator(IMPERSONATION_POLICIES_KEY, "[]");
+
+  /**
+   * Option whose value is representing Drill cluster version
+   */
+  String CLUSTER_VERSION = "drill.exec.cluster.version";
+  StringValidator CLUSTER_VERSION_VALIDATOR = new AdminOptionValidator(CLUSTER_VERSION, "");
 
 }

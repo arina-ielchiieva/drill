@@ -17,17 +17,56 @@
   <a href="/queries">back</a><br/>
   <div class="page-header">
   </div>
-  <div class="table-responsive">
-    <table class="table table-hover">
-      <tbody>
-        <#list model as stat>
-          <tr>
-            <td style="border:none;"><b>${stat.getName()}</b></td>
-            <td style="border:none; font-family: Courier;">${stat.getValue()}</td>
-          </tr>
-        </#list>
-      </tbody>
-    </table>
+
+  <#list model.getDrillbits() as drillbit>
+    <#if !drillbit.isVersionMatch()>
+      <div id="message" class="alert alert-danger alert-dismissable">
+        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+        <strong>Drillbits in the cluster have different versions.</strong>
+      </div>
+      <#break>
+    </#if>
+  </#list>
+
+  <div class="row">
+    <div class="col-md-6">
+      <h3>General Info</h3>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <tbody>
+            <#assign props = model.getProps()>
+            <#list props?keys as key>
+              <tr>
+                <td style="border:none;"><b>${key}</b></td>
+                <td style="border:none; font-family: Courier;">${props[key]}</td>
+              </tr>
+            </#list>
+          </tbody>
+        </table>
+      </div>
+  </div>
+  <div class="col-md-6">
+    <h3>List of Drillbits</h3>
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <tbody>
+          <#assign i = 1>
+          <#list model.getDrillbits() as drillbit>
+            <tr>
+              <td style="border:none;"><b>Drillbit # ${i}</b></td>
+              <td style="border:none; font-family: Courier;">${drillbit.getAddress()} ${drillbit.isInitialized()}</td>
+              <td style="border:none;">
+                <span class="label <#if drillbit.isVersionMatch()>label-success<#else>label-danger</#if>">
+                  <#if (drillbit.getVersion())?has_content>${drillbit.getVersion()}<#else>Undefined</#if>
+                </span>
+              </td>
+              <#assign i = i + 1>
+            </tr>
+          </#list>
+        </tbody>
+       </table>
+      </div>
+    </div>
   </div>
 </#macro>
 
