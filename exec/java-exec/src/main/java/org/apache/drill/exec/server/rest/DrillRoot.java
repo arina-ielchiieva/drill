@@ -17,7 +17,9 @@
  */
 package org.apache.drill.exec.server.rest;
 
-import java.util.List;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
 
 import javax.annotation.security.PermitAll;
 import javax.inject.Inject;
@@ -28,14 +30,16 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.SecurityContext;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import org.apache.drill.common.config.DrillConfig;
+import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.proto.CoordinationProtos;
 import org.apache.drill.exec.server.rest.DrillRestServer.UserAuthEnabled;
 import org.apache.drill.exec.work.WorkManager;
 import org.glassfish.jersey.server.mvc.Viewable;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.google.common.collect.Lists;
 
 @Path("/")
 @PermitAll
@@ -55,44 +59,89 @@ public class DrillRoot {
   @GET
   @Path("/stats.json")
   @Produces(MediaType.APPLICATION_JSON)
-  public List<Stat> getStatsJSON() {
-    List<Stat> stats = Lists.newLinkedList();
-    stats.add(new Stat("Number of Drill Bits", work.getContext().getBits().size()));
-    int number = 0;
-    for (CoordinationProtos.DrillbitEndpoint bit : work.getContext().getBits()) {
-      String initialized = bit.isInitialized() ? " initialized" : " not initialized";
-      stats.add(new Stat("Bit #" + number, bit.getAddress() + initialized));
-      ++number;
-    }
-    stats.add(new Stat("Data Port Address", work.getContext().getEndpoint().getAddress() +
-      ":" + work.getContext().getEndpoint().getDataPort()));
-    stats.add(new Stat("User Port Address", work.getContext().getEndpoint().getAddress() +
-      ":" + work.getContext().getEndpoint().getUserPort()));
-    stats.add(new Stat("Control Port Address", work.getContext().getEndpoint().getAddress() +
-      ":" + work.getContext().getEndpoint().getControlPort()));
-    stats.add(new Stat("Maximum Direct Memory", DrillConfig.getMaxDirectMemory()));
+  public Stats getStatsJSON() {
+    final String version = work.getContext().getOptionManager().getOption(ExecConstants.CLUSTER_VERSION).string_val;
 
-    return stats;
+    final Map<String, Object> props = Maps.newLinkedHashMap();
+    props.put("Cluster Version", version);
+    props.put("Number of Drillbits", work.getContext().getBits().size());
+    CoordinationProtos.DrillbitEndpoint currentEndpoint = work.getContext().getEndpoint();
+    final String address = currentEndpoint.getAddress();
+    props.put("Data Port Address", address + ":" + currentEndpoint.getDataPort());
+    props.put("User Port Address", address + ":" + currentEndpoint.getUserPort());
+    props.put("Control Port Address", address + ":" + currentEndpoint.getControlPort());
+    props.put("Maximum Direct Memory", DrillConfig.getMaxDirectMemory());
+
+    return new Stats(props, collectDrillbits(version));
+  }
+
+  private Collection<DrillbitInfo> collectDrillbits(String version) {
+    Set<DrillbitInfo> drillbits = Sets.newTreeSet();
+    for (CoordinationProtos.DrillbitEndpoint endpoint : work.getContext().getBits()) {
+      boolean versionMatch = version.equals(endpoint.getVersion());
+      DrillbitInfo drillbit = new DrillbitInfo(endpoint.getAddress(), endpoint.isInitialized(), endpoint.getVersion(), versionMatch);
+      drillbits.add(drillbit);
+    }
+    return drillbits;
   }
 
   @XmlRootElement
-  public class Stat {
-    private String name;
-    private Object value;
+  public static class Stats {
+    private final Map<String, Object> props;
+    private final Collection<DrillbitInfo> drillbits;
 
     @JsonCreator
-    public Stat(String name, Object value) {
-      this.name = name;
-      this.value = value;
+    public Stats(Map<String, Object> props, Collection<DrillbitInfo> drillbits) {
+      this.props = props;
+      this.drillbits = drillbits;
     }
 
-    public String getName() {
-      return name;
+    public Map<String, Object> getProps() {
+      return props;
     }
 
-    public Object getValue() {
-      return value;
+    public Collection<DrillbitInfo> getDrillbits() {
+      return drillbits;
     }
-
   }
+
+  public static class DrillbitInfo implements Comparable<DrillbitInfo> {
+    private final String address;
+    private final boolean initialized;
+    private final String version;
+    private final boolean versionMatch;
+
+    @JsonCreator
+    public DrillbitInfo(String address, boolean initialized, String version, boolean versionMatch) {
+      this.address = address;
+      this.initialized = initialized;
+      this.version = version;
+      this.versionMatch = versionMatch;
+    }
+
+    public String getAddress() {
+      return address;
+    }
+
+    public String isInitialized() {
+      return initialized ? "initialized" : "not initialized";
+    }
+
+    public String getVersion() {
+      return version;
+    }
+
+    public boolean isVersionMatch() {
+      return versionMatch;
+    }
+
+    @Override
+    public int compareTo(DrillbitInfo o) {
+      if (this.isVersionMatch() == o.isVersionMatch()) {
+        return this.address.compareTo(o.address);
+      }
+      return versionMatch ? 1 : -1;
+    }
+  }
+
 }

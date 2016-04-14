@@ -36,7 +36,6 @@ import org.apache.drill.exec.compile.ClassTransformer;
 import org.apache.drill.exec.compile.QueryClassLoader;
 import org.apache.drill.exec.planner.physical.PlannerSettings;
 import org.apache.drill.exec.server.options.OptionValue.OptionType;
-import org.apache.drill.exec.server.options.TypeValidators.BooleanValidator;
 import org.apache.drill.exec.store.sys.PersistentStore;
 import org.apache.drill.exec.store.sys.PersistentStoreConfig;
 import org.apache.drill.exec.store.sys.PersistentStoreProvider;
@@ -161,7 +160,8 @@ public class SystemOptionManager extends BaseOptionManager implements AutoClosea
       ExecConstants.IMPLICIT_FILEPATH_COLUMN_LABEL_VALIDATOR,
       ExecConstants.CODE_GEN_EXP_IN_METHOD_SIZE_VALIDATOR,
       ExecConstants.CREATE_PREPARE_STATEMENT_TIMEOUT_MILLIS_VALIDATOR,
-      ExecConstants.DYNAMIC_UDF_SUPPORT_ENABLED_VALIDATOR
+      ExecConstants.DYNAMIC_UDF_SUPPORT_ENABLED_VALIDATOR,
+      ExecConstants.CLUSTER_VERSION_VALIDATOR
     };
     final Map<String, OptionValidator> tmp = new HashMap<>();
     for (final OptionValidator validator : validators) {
