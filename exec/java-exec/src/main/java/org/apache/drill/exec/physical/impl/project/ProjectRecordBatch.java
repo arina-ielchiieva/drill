@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 
+import com.google.common.base.Enums;
 import org.apache.commons.collections.map.CaseInsensitiveMap;
 import org.apache.drill.common.expression.ConvertExpression;
 import org.apache.drill.common.expression.ErrorCollector;
@@ -60,6 +61,7 @@ import org.apache.drill.exec.record.TransferPair;
 import org.apache.drill.exec.record.TypedFieldId;
 import org.apache.drill.exec.record.VectorContainer;
 import org.apache.drill.exec.record.VectorWrapper;
+import org.apache.drill.exec.store.VirtualColumnExplorer;
 import org.apache.drill.exec.vector.AllocationHelper;
 import org.apache.drill.exec.vector.FixedWidthVector;
 import org.apache.drill.exec.vector.ValueVector;
@@ -72,7 +74,6 @@ import com.google.common.collect.Maps;
 
 public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ProjectRecordBatch.class);
-
   private Projector projector;
   private List<ValueVector> allocationVectors;
   private List<ComplexWriter> complexWriters;
@@ -324,6 +325,11 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
               if (name == EMPTY_STRING) {
                 continue;
               }
+
+              if (Enums.getIfPresent(VirtualColumnExplorer.ImplicitFileColumns.class, vvIn.getField().getName().toUpperCase()).isPresent()) {
+                continue;
+              }
+
               final FieldReference ref = new FieldReference(name);
               final ValueVector vvOut = container.addOrGet(MaterializedField.create(ref.getAsNamePart().getName(), vvIn.getField().getType()), callBack);
               final TransferPair tp = vvIn.makeTransferPair(vvOut);
@@ -339,6 +345,10 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
               }
               final String name = result.outputNames.get(k++);  // get the renamed column names
               if (name == EMPTY_STRING) {
+                continue;
+              }
+
+              if (Enums.getIfPresent(VirtualColumnExplorer.ImplicitFileColumns.class, vvIn.getField().getName().toUpperCase()).isPresent()) {
                 continue;
               }
 
