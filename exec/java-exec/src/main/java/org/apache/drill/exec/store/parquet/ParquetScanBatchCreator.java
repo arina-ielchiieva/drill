@@ -165,7 +165,7 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
     }
 
     ScanBatch s =
-        new ScanBatch(rowGroupScan, context, oContext, readers.iterator(), partitionColumns, selectedPartitionColumns);
+        new ScanBatch(rowGroupScan, context, oContext, readers.iterator(), partitionColumns, selectedPartitionColumns, new HashMap<String, String>());
 
 
     return s;

@@ -163,4 +163,61 @@ public class TestDirectoryExplorerUDFs extends PlanTestBase {
       test("set `planner.enable_constant_folding` = true;");
     }
   }
+
+  @Test
+  public void testStarDirN() throws Exception {
+
+    JsonStringArrayList<Text> list = new JsonStringArrayList<>();
+
+    list.add(new Text("1"));
+    list.add(new Text("1990"));
+    list.add(new Text("Q1"));
+
+    testBuilder()
+        .sqlQuery("select * from dfs.`F:\\drill\\files\\dirN`")
+        .unOrdered()
+        .baselineColumns("columns", "dir0")
+        .baselineValues(list, "1990")
+        .go();
+  }
+
+  @Test
+  public void testColumnDirN() throws Exception {
+
+    testBuilder()
+        .sqlQuery("select dir0 from dfs.`F:\\drill\\files\\dirN`")
+        .unOrdered()
+        .baselineColumns("dir0")
+        .baselineValues("1990")
+        .go();
+  }
+
+  @Test
+  public void testFilenameColumn() throws Exception {
+
+    testBuilder()
+        .sqlQuery("select filename from dfs.`F:\\drill\\files\\dirN\\1990\\1990_Q1_1.csv`")
+        .unOrdered()
+        .baselineColumns("filename")
+        .baselineValues("1990_Q1_1.csv")
+        .go();
+  }
+
+  @Test
+  public void testFullPath() throws Exception {
+
+    JsonStringArrayList<Text> list = new JsonStringArrayList<>();
+
+    list.add(new Text("1"));
+    list.add(new Text("1990"));
+    list.add(new Text("Q1"));
+
+    testBuilder()
+        .sqlQuery("select * from dfs.`F:\\drill\\files\\dirN\\1990\\1990_Q1_1.csv`")
+        .unOrdered()
+        .baselineColumns("columns")
+        .baselineValues(list)
+        .go();
+  }
+
 }

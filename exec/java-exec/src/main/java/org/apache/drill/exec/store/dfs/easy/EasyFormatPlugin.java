@@ -18,7 +18,9 @@
 package org.apache.drill.exec.store.dfs.easy;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -51,6 +53,7 @@ import org.apache.drill.exec.store.dfs.DrillFileSystem;
 import org.apache.drill.exec.store.dfs.FileSelection;
 import org.apache.drill.exec.store.dfs.FormatMatcher;
 import org.apache.drill.exec.store.dfs.FormatPlugin;
+import org.apache.drill.exec.store.easy.text.compliant.CompliantTextRecordReader;
 import org.apache.drill.exec.store.schedule.CompleteFileWork;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -132,6 +135,7 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
     List<String[]> partitionColumns = Lists.newArrayList();
     List<Integer> selectedPartitionColumns = Lists.newArrayList();
     boolean selectAllColumns = false;
+    Map<String, String> implicitColumns = new HashMap<>();
 
     if (columns == null || columns.size() == 0 || AbstractRecordReader.isStarQuery(columns)) {
       selectAllColumns = true;
@@ -142,6 +146,8 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
         Matcher m = pattern.matcher(column.getAsUnescapedPath());
         if (m.matches()) {
           selectedPartitionColumns.add(Integer.parseInt(column.getAsUnescapedPath().toString().substring(partitionDesignator.length())));
+        } else if ("filename".equals(column.getAsUnescapedPath().toLowerCase())) {
+          implicitColumns.put("filename", "");
         } else {
           newColumns.add(column);
         }
@@ -169,7 +175,8 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
     }
 
     for(FileWork work : scan.getWorkUnits()){
-      readers.add(getRecordReader(context, dfs, work, scan.getColumns(), scan.getUserName()));
+      RecordReader recordReader = getRecordReader(context, dfs, work, scan.getColumns(), scan.getUserName());
+      readers.add(recordReader);
       if (scan.getSelectionRoot() != null) {
         String[] r = Path.getPathWithoutSchemeAndAuthority(new Path(scan.getSelectionRoot())).toString().split("/");
         String[] p = Path.getPathWithoutSchemeAndAuthority(new Path(work.getPath())).toString().split("/");
@@ -180,6 +187,8 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
         } else {
           partitionColumns.add(new String[] {});
         }
+        //implicit columns
+        implicitColumns.put("filename", p[p.length - 1]);
       } else {
         partitionColumns.add(new String[] {});
       }
@@ -191,7 +200,7 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
       }
     }
 
-    return new ScanBatch(scan, context, oContext, readers.iterator(), partitionColumns, selectedPartitionColumns);
+    return new ScanBatch(scan, context, oContext, readers.iterator(), partitionColumns, selectedPartitionColumns, implicitColumns);
   }
 
   public abstract RecordWriter getRecordWriter(FragmentContext context, EasyWriter writer) throws IOException;
