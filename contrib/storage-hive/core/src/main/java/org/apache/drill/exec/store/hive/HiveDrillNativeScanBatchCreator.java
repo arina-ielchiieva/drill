@@ -18,6 +18,7 @@
 package org.apache.drill.exec.store.hive;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,7 @@ import org.apache.drill.exec.physical.impl.ScanBatch;
 import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.store.AbstractRecordReader;
 import org.apache.drill.exec.store.RecordReader;
+import org.apache.drill.exec.store.dfs.easy.EasyFormatPlugin;
 import org.apache.drill.exec.store.parquet.ParquetDirectByteBufferAllocator;
 import org.apache.drill.exec.store.parquet.columnreaders.ParquetRecordReader;
 import org.apache.drill.exec.util.ImpersonationUtil;
@@ -149,7 +151,9 @@ public class HiveDrillNativeScanBatchCreator implements BatchCreator<HiveDrillNa
         ImpersonationUtil.createProxyUgi(config.getUserName(), context.getQueryUserName())));
     }
 
-    return new ScanBatch(config, context, oContext, readers.iterator(), partitionColumns, selectedPartitionColumns, new HashMap<String, String>());
+    return new ScanBatch(config, context, oContext, readers.iterator(), partitionColumns, selectedPartitionColumns,
+        Collections.<EasyFormatPlugin.ImplicitColumnsHolder> emptyList(),
+        Collections.<EasyFormatPlugin.ImplicitColumns> emptyList());
   }
 
   /**

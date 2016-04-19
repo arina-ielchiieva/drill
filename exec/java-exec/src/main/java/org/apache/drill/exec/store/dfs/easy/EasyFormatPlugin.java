@@ -18,6 +18,7 @@
 package org.apache.drill.exec.store.dfs.easy;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.google.common.io.Files;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
@@ -135,7 +137,8 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
     List<String[]> partitionColumns = Lists.newArrayList();
     List<Integer> selectedPartitionColumns = Lists.newArrayList();
     boolean selectAllColumns = false;
-    Map<String, String> implicitColumns = new HashMap<>();
+    List<ImplicitColumnsHolder> implicitColumns = Lists.newArrayList();
+    List<ImplicitColumns> selectedImplicitColumns = Lists.newArrayList();
 
     if (columns == null || columns.size() == 0 || AbstractRecordReader.isStarQuery(columns)) {
       selectAllColumns = true;
@@ -145,11 +148,13 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
       for (SchemaPath column : columns) {
         Matcher m = pattern.matcher(column.getAsUnescapedPath());
         if (m.matches()) {
-          selectedPartitionColumns.add(Integer.parseInt(column.getAsUnescapedPath().toString().substring(partitionDesignator.length())));
-        } else if ("filename".equals(column.getAsUnescapedPath().toLowerCase())) {
-          implicitColumns.put("filename", "");
+          selectedPartitionColumns.add(Integer.parseInt(column.getAsUnescapedPath().substring(partitionDesignator.length())));
         } else {
-          newColumns.add(column);
+          try {
+            selectedImplicitColumns.add(ImplicitColumns.valueOf(column.getAsUnescapedPath().toUpperCase()));
+          } catch (IllegalArgumentException e) {
+            newColumns.add(column);
+          }
         }
       }
 
@@ -179,7 +184,8 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
       readers.add(recordReader);
       if (scan.getSelectionRoot() != null) {
         String[] r = Path.getPathWithoutSchemeAndAuthority(new Path(scan.getSelectionRoot())).toString().split("/");
-        String[] p = Path.getPathWithoutSchemeAndAuthority(new Path(work.getPath())).toString().split("/");
+        Path path = Path.getPathWithoutSchemeAndAuthority(new Path(work.getPath()));
+        String[] p = path.toString().split("/");
         if (p.length > r.length) {
           String[] q = ArrayUtils.subarray(p, r.length, p.length - 1);
           partitionColumns.add(q);
@@ -188,9 +194,10 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
           partitionColumns.add(new String[] {});
         }
         //implicit columns
-        implicitColumns.put("filename", p[p.length - 1]);
+        implicitColumns.add(new ImplicitColumnsHolder(path));
       } else {
         partitionColumns.add(new String[] {});
+        implicitColumns.add(new ImplicitColumnsHolder());
       }
     }
 
@@ -198,9 +205,11 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
       for (int i = 0; i < numParts; i++) {
         selectedPartitionColumns.add(i);
       }
+      // selectedImplicitColumns.addAll(Arrays.asList(ImplicitColumns.values()));
     }
 
-    return new ScanBatch(scan, context, oContext, readers.iterator(), partitionColumns, selectedPartitionColumns, implicitColumns);
+    return new ScanBatch(scan, context, oContext, readers.iterator(), partitionColumns, selectedPartitionColumns,
+        implicitColumns, selectedImplicitColumns);
   }
 
   public abstract RecordWriter getRecordWriter(FragmentContext context, EasyWriter writer) throws IOException;
@@ -272,5 +281,51 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
 
   public abstract int getReaderOperatorType();
   public abstract int getWriterOperatorType();
+
+  public static class ImplicitColumnsHolder {
+    public String fqn;
+    public String dirname;
+    public String basename;
+    public String suffix;
+
+    public ImplicitColumnsHolder(Path path) {
+      this.fqn = path.toString();
+      this.dirname = path.getParent().toString();
+      this.basename = path.getName();
+      this.suffix = Files.getFileExtension(basename); //todo think about using guava for all cases
+    }
+
+    public ImplicitColumnsHolder() {
+    }
+  }
+
+  public enum ImplicitColumns {
+    FQN {
+      @Override
+      public String getValue(ImplicitColumnsHolder holder) {
+        return holder.fqn;
+      }
+    },
+    DIRNAME {
+      @Override
+      public String getValue(ImplicitColumnsHolder holder) {
+        return holder.dirname;
+      }
+    },
+    BASENAME {
+      @Override
+      public String getValue(ImplicitColumnsHolder holder) {
+        return holder.basename;
+      }
+    },
+    SUFFIX {
+      @Override
+      public String getValue(ImplicitColumnsHolder holder) {
+        return holder.suffix;
+      }
+    };
+
+    public abstract String getValue(ImplicitColumnsHolder holder);
+  }
 
 }

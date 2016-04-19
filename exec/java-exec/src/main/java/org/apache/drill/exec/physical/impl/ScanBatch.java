@@ -49,6 +49,7 @@ import org.apache.drill.exec.record.selection.SelectionVector2;
 import org.apache.drill.exec.record.selection.SelectionVector4;
 import org.apache.drill.exec.server.options.OptionValue;
 import org.apache.drill.exec.store.RecordReader;
+import org.apache.drill.exec.store.dfs.easy.EasyFormatPlugin;
 import org.apache.drill.exec.store.easy.text.compliant.CompliantTextRecordReader;
 import org.apache.drill.exec.testing.ControlsInjector;
 import org.apache.drill.exec.testing.ControlsInjectorFactory;
@@ -91,14 +92,17 @@ public class ScanBatch implements CloseableRecordBatch {
   private boolean done = false;
   private SchemaChangeCallBack callBack = new SchemaChangeCallBack();
   private boolean hasReadNonEmptyFile = false;
-  private Map<String, String> implicitColumns;
+  private Iterator<EasyFormatPlugin.ImplicitColumnsHolder> implicitColumns;
+  private EasyFormatPlugin.ImplicitColumnsHolder implicitValues;
+  private List<EasyFormatPlugin.ImplicitColumns> selectedImplicitColumns;
 
 
   public ScanBatch(PhysicalOperator subScanConfig, FragmentContext context,
                    OperatorContext oContext, Iterator<RecordReader> readers,
                    List<String[]> partitionColumns,
                    List<Integer> selectedPartitionColumns,
-                   Map<String, String> implicitColumns) throws ExecutionSetupException {
+                   List<EasyFormatPlugin.ImplicitColumnsHolder> implicitColumns,
+                   List<EasyFormatPlugin.ImplicitColumns> selectedImplicitColumns) throws ExecutionSetupException {
     this.context = context;
     this.readers = readers;
     if (!readers.hasNext()) {
@@ -126,7 +130,9 @@ public class ScanBatch implements CloseableRecordBatch {
     this.partitionColumns = partitionColumns.iterator();
     partitionValues = this.partitionColumns.hasNext() ? this.partitionColumns.next() : null;
     this.selectedPartitionColumns = selectedPartitionColumns;
-    this.implicitColumns = implicitColumns;
+    this.implicitColumns = implicitColumns.iterator();
+    this.implicitValues = this.implicitColumns.hasNext() ? this.implicitColumns.next() : null;
+    this.selectedImplicitColumns = selectedImplicitColumns;
 
     // TODO Remove null check after DRILL-2097 is resolved. That JIRA refers to test cases that do not initialize
     // options; so labelValue = null.
@@ -142,7 +148,9 @@ public class ScanBatch implements CloseableRecordBatch {
       throws ExecutionSetupException {
     this(subScanConfig, context,
         context.newOperatorContext(subScanConfig),
-        readers, Collections.<String[]> emptyList(), Collections.<Integer> emptyList(), new HashMap<String, String>());
+        readers, Collections.<String[]> emptyList(), Collections.<Integer> emptyList(),
+        Collections.<EasyFormatPlugin.ImplicitColumnsHolder> emptyList(),
+        Collections.<EasyFormatPlugin.ImplicitColumns> emptyList());
   }
 
   @Override
@@ -229,6 +237,7 @@ public class ScanBatch implements CloseableRecordBatch {
           currentReader.close();
           currentReader = readers.next();
           partitionValues = partitionColumns.hasNext() ? partitionColumns.next() : null;
+          implicitValues = implicitColumns.hasNext() ? implicitColumns.next() : null;
           currentReader.setup(oContext, mutator);
           try {
             currentReader.allocate(fieldVectorMap);
@@ -327,10 +336,9 @@ public class ScanBatch implements CloseableRecordBatch {
         }
       }
       implicitVectors = Lists.newArrayList();
-      for (Map.Entry<String, String> entry : implicitColumns.entrySet()) {
+      for (EasyFormatPlugin.ImplicitColumns column : selectedImplicitColumns) {
         final MaterializedField field =
-            MaterializedField.create(SchemaPath.getSimplePath(entry.getKey()).getAsUnescapedPath(),
-                Types.optional(MinorType.VARCHAR));
+            MaterializedField.create(column.toString().toLowerCase(), Types.optional(MinorType.VARCHAR));
         final ValueVector v = mutator.addField(field, NullableVarCharVector.class);
         implicitVectors.add(v);
       }
@@ -340,12 +348,10 @@ public class ScanBatch implements CloseableRecordBatch {
   }
 
   private void populateImplicitColumns() {
-    int i = 0;
-    //todo incorrect but will work for one implicit column
-    for (Map.Entry<String, String> entry : implicitColumns.entrySet()) {
-      final NullableVarCharVector v = (NullableVarCharVector) implicitVectors.get(i);
-      if (implicitColumns.entrySet().size() > i) {
-        final String val = entry.getValue();
+    for (int index = 0; index < selectedImplicitColumns.size(); index++) {
+      final NullableVarCharVector v = (NullableVarCharVector) implicitVectors.get(index);
+      String val = selectedImplicitColumns.get(index).getValue(implicitValues);
+      if (val != null) {
         AllocationHelper.allocate(v, recordCount, val.length());
         final byte[] bytes = val.getBytes();
         for (int j = 0; j < recordCount; j++) {
@@ -356,7 +362,6 @@ public class ScanBatch implements CloseableRecordBatch {
         AllocationHelper.allocate(v, recordCount, 0);
         v.getMutator().setValueCount(recordCount);
       }
-      i++;
     }
   }
 

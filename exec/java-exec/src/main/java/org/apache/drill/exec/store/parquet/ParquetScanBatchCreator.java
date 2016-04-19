@@ -18,6 +18,7 @@
 package org.apache.drill.exec.store.parquet;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,7 @@ import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.store.AbstractRecordReader;
 import org.apache.drill.exec.store.RecordReader;
 import org.apache.drill.exec.store.dfs.DrillFileSystem;
+import org.apache.drill.exec.store.dfs.easy.EasyFormatPlugin;
 import org.apache.drill.exec.store.parquet.columnreaders.ParquetRecordReader;
 import org.apache.drill.exec.store.parquet2.DrillParquetReader;
 import org.apache.hadoop.conf.Configuration;
@@ -165,7 +167,9 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
     }
 
     ScanBatch s =
-        new ScanBatch(rowGroupScan, context, oContext, readers.iterator(), partitionColumns, selectedPartitionColumns, new HashMap<String, String>());
+        new ScanBatch(rowGroupScan, context, oContext, readers.iterator(), partitionColumns, selectedPartitionColumns,
+            Collections.<EasyFormatPlugin.ImplicitColumnsHolder> emptyList(),
+            Collections.<EasyFormatPlugin.ImplicitColumns> emptyList());
 
 
     return s;
