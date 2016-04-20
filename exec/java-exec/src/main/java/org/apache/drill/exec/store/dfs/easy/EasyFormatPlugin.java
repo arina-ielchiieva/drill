@@ -18,15 +18,13 @@
 package org.apache.drill.exec.store.dfs.easy;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.google.common.io.Files;
+import com.google.common.collect.Maps;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
@@ -55,7 +53,6 @@ import org.apache.drill.exec.store.dfs.DrillFileSystem;
 import org.apache.drill.exec.store.dfs.FileSelection;
 import org.apache.drill.exec.store.dfs.FormatMatcher;
 import org.apache.drill.exec.store.dfs.FormatPlugin;
-import org.apache.drill.exec.store.easy.text.compliant.CompliantTextRecordReader;
 import org.apache.drill.exec.store.schedule.CompleteFileWork;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -132,13 +129,14 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
   CloseableRecordBatch getReaderBatch(FragmentContext context, EasySubScan scan) throws ExecutionSetupException {
     String partitionDesignator = context.getOptions()
       .getOption(ExecConstants.FILESYSTEM_PARTITION_COLUMN_LABEL).string_val;
+    String fileNameColumnLabel = context.getOptions()
+        .getOption(ExecConstants.FILE_NAME_COLUMN_LABEL).string_val;
     List<SchemaPath> columns = scan.getColumns();
     List<RecordReader> readers = Lists.newArrayList();
-    List<String[]> partitionColumns = Lists.newArrayList();
     List<Integer> selectedPartitionColumns = Lists.newArrayList();
+    List<Map<String, String>> virtualColumns = Lists.newLinkedList();
     boolean selectAllColumns = false;
-    List<ImplicitColumnsHolder> implicitColumns = Lists.newArrayList();
-    List<ImplicitColumns> selectedImplicitColumns = Lists.newArrayList();
+    boolean selectFileName = false;
 
     if (columns == null || columns.size() == 0 || AbstractRecordReader.isStarQuery(columns)) {
       selectAllColumns = true;
@@ -149,12 +147,11 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
         Matcher m = pattern.matcher(column.getAsUnescapedPath());
         if (m.matches()) {
           selectedPartitionColumns.add(Integer.parseInt(column.getAsUnescapedPath().substring(partitionDesignator.length())));
+        }
+        else if (fileNameColumnLabel.equals(column.getAsUnescapedPath().toLowerCase())) {
+          selectFileName = true;
         } else {
-          try {
-            selectedImplicitColumns.add(ImplicitColumns.valueOf(column.getAsUnescapedPath().toUpperCase()));
-          } catch (IllegalArgumentException e) {
-            newColumns.add(column);
-          }
+          newColumns.add(column);
         }
       }
 
@@ -170,7 +167,6 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
       scan = newScan;
     }
 
-    int numParts = 0;
     OperatorContext oContext = context.newOperatorContext(scan);
     final DrillFileSystem dfs;
     try {
@@ -179,37 +175,52 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
       throw new ExecutionSetupException(String.format("Failed to create FileSystem: %s", e.getMessage()), e);
     }
 
+    Path selectionRoot;
+    String[] root = null;
+    if (scan.getSelectionRoot() != null) {
+      selectionRoot = Path.getPathWithoutSchemeAndAuthority(new Path(scan.getSelectionRoot()));
+      root = selectionRoot.toString().split("/");
+    }
+
+    Map<String, String> mapWithMaxSize = Maps.newLinkedHashMap();
     for(FileWork work : scan.getWorkUnits()){
       RecordReader recordReader = getRecordReader(context, dfs, work, scan.getColumns(), scan.getUserName());
       readers.add(recordReader);
-      if (scan.getSelectionRoot() != null) {
-        String[] r = Path.getPathWithoutSchemeAndAuthority(new Path(scan.getSelectionRoot())).toString().split("/");
+      Map<String, String> virtualValues = Maps.newLinkedHashMap();
+      if (root != null) {
         Path path = Path.getPathWithoutSchemeAndAuthority(new Path(work.getPath()));
         String[] p = path.toString().split("/");
-        if (p.length > r.length) {
-          String[] q = ArrayUtils.subarray(p, r.length, p.length - 1);
-          partitionColumns.add(q);
-          numParts = Math.max(numParts, q.length);
-        } else {
-          partitionColumns.add(new String[] {});
+        if (p.length > root.length) {
+          String[] q = ArrayUtils.subarray(p, root.length, p.length - 1);
+          for (int a = 0; a < q.length; a++) {
+            if (selectAllColumns || selectedPartitionColumns.contains(a)) {
+              virtualValues.put(partitionDesignator + a, q[a]);
+            }
+          }
         }
-        //implicit columns
-        implicitColumns.add(new ImplicitColumnsHolder(path));
-      } else {
-        partitionColumns.add(new String[] {});
-        implicitColumns.add(new ImplicitColumnsHolder());
+        if ((selectAllColumns && virtualValues.size() > 0) || selectFileName) {
+          virtualValues.put(fileNameColumnLabel, path.getName());
+        }
+        if (mapWithMaxSize.size() < virtualValues.size()) {
+          mapWithMaxSize = virtualValues;
+        }
+      }
+      virtualColumns.add(virtualValues);
+    }
+
+    // add missing virtual columns
+    for (Map<String, String> map : virtualColumns) {
+      if (map.size() != mapWithMaxSize.size()) {
+        for (Map.Entry<String, String> entry : mapWithMaxSize.entrySet()) {
+          String key = entry.getKey();
+          if (!map.containsKey(key)) {
+            map.put(key, null);
+          }
+        }
       }
     }
 
-    if (selectAllColumns) {
-      for (int i = 0; i < numParts; i++) {
-        selectedPartitionColumns.add(i);
-      }
-      // selectedImplicitColumns.addAll(Arrays.asList(ImplicitColumns.values()));
-    }
-
-    return new ScanBatch(scan, context, oContext, readers.iterator(), partitionColumns, selectedPartitionColumns,
-        implicitColumns, selectedImplicitColumns);
+    return new ScanBatch(scan, context, oContext, readers.iterator(), virtualColumns);
   }
 
   public abstract RecordWriter getRecordWriter(FragmentContext context, EasyWriter writer) throws IOException;
@@ -281,51 +292,5 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
 
   public abstract int getReaderOperatorType();
   public abstract int getWriterOperatorType();
-
-  public static class ImplicitColumnsHolder {
-    public String fqn;
-    public String dirname;
-    public String basename;
-    public String suffix;
-
-    public ImplicitColumnsHolder(Path path) {
-      this.fqn = path.toString();
-      this.dirname = path.getParent().toString();
-      this.basename = path.getName();
-      this.suffix = Files.getFileExtension(basename); //todo think about using guava for all cases
-    }
-
-    public ImplicitColumnsHolder() {
-    }
-  }
-
-  public enum ImplicitColumns {
-    FQN {
-      @Override
-      public String getValue(ImplicitColumnsHolder holder) {
-        return holder.fqn;
-      }
-    },
-    DIRNAME {
-      @Override
-      public String getValue(ImplicitColumnsHolder holder) {
-        return holder.dirname;
-      }
-    },
-    BASENAME {
-      @Override
-      public String getValue(ImplicitColumnsHolder holder) {
-        return holder.basename;
-      }
-    },
-    SUFFIX {
-      @Override
-      public String getValue(ImplicitColumnsHolder holder) {
-        return holder.suffix;
-      }
-    };
-
-    public abstract String getValue(ImplicitColumnsHolder holder);
-  }
 
 }

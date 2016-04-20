@@ -18,8 +18,6 @@
 package org.apache.drill.exec.store.parquet;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -27,20 +25,19 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.Maps;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.ops.OperatorContext;
-import org.apache.drill.exec.physical.base.GroupScan;
 import org.apache.drill.exec.physical.impl.BatchCreator;
 import org.apache.drill.exec.physical.impl.ScanBatch;
 import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.store.AbstractRecordReader;
 import org.apache.drill.exec.store.RecordReader;
 import org.apache.drill.exec.store.dfs.DrillFileSystem;
-import org.apache.drill.exec.store.dfs.easy.EasyFormatPlugin;
 import org.apache.drill.exec.store.parquet.columnreaders.ParquetRecordReader;
 import org.apache.drill.exec.store.parquet2.DrillParquetReader;
 import org.apache.hadoop.conf.Configuration;
@@ -69,13 +66,16 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
     Preconditions.checkArgument(children.isEmpty());
     String partitionDesignator = context.getOptions()
       .getOption(ExecConstants.FILESYSTEM_PARTITION_COLUMN_LABEL).string_val;
+    String fileNameColumnLabel = context.getOptions()
+        .getOption(ExecConstants.FILE_NAME_COLUMN_LABEL).string_val;
     List<SchemaPath> columns = rowGroupScan.getColumns();
     List<RecordReader> readers = Lists.newArrayList();
     OperatorContext oContext = context.newOperatorContext(rowGroupScan);
 
-    List<String[]> partitionColumns = Lists.newArrayList();
     List<Integer> selectedPartitionColumns = Lists.newArrayList();
     boolean selectAllColumns = AbstractRecordReader.isStarQuery(columns);
+    List<Map<String, String>> virtualColumns = Lists.newLinkedList();
+    boolean selectFileName = false;
 
     List<SchemaPath> newColumns = columns;
     if (!selectAllColumns) {
@@ -84,7 +84,9 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
       for (SchemaPath column : columns) {
         Matcher m = pattern.matcher(column.getAsUnescapedPath());
         if (m.matches()) {
-          selectedPartitionColumns.add(Integer.parseInt(column.getAsUnescapedPath().toString().substring(partitionDesignator.length())));
+          selectedPartitionColumns.add(Integer.parseInt(column.getAsUnescapedPath().substring(partitionDesignator.length())));
+        } else if (fileNameColumnLabel.equals(column.getAsUnescapedPath().toLowerCase())) {
+          selectFileName = true;
         } else {
           newColumns.add(column);
         }
@@ -108,8 +110,8 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
     conf.setBoolean(ENABLE_TIME_READ_COUNTER, false);
 
     // keep footers in a map to avoid re-reading them
-    Map<String, ParquetMetadata> footers = new HashMap<String, ParquetMetadata>();
-    int numParts = 0;
+    Map<String, ParquetMetadata> footers = Maps.newHashMap();
+    Map<String, String> mapWithMaxSize = Maps.newLinkedHashMap();
     for(RowGroupReadEntry e : rowGroupScan.getRowGroupReadEntries()){
       /*
       Here we could store a map from file names to footers, to prevent re-reading the footer for each row group in a file
@@ -142,37 +144,45 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
           ParquetMetadata footer = footers.get(e.getPath());
           readers.add(new DrillParquetReader(context, footer, e, newColumns, fs));
         }
+        Map<String, String> virtualValues = Maps.newLinkedHashMap();
         if (rowGroupScan.getSelectionRoot() != null) {
           String[] r = Path.getPathWithoutSchemeAndAuthority(new Path(rowGroupScan.getSelectionRoot())).toString().split("/");
-          String[] p = Path.getPathWithoutSchemeAndAuthority(new Path(e.getPath())).toString().split("/");
+          Path path = Path.getPathWithoutSchemeAndAuthority(new Path(e.getPath()));
+          String[] p = path.toString().split("/");
           if (p.length > r.length) {
             String[] q = ArrayUtils.subarray(p, r.length, p.length - 1);
-            partitionColumns.add(q);
-            numParts = Math.max(numParts, q.length);
-          } else {
-            partitionColumns.add(new String[] {});
+            for (int a = 0; a < q.length; a++) {
+              if (selectAllColumns || selectedPartitionColumns.contains(a)) {
+                virtualValues.put(partitionDesignator + a, q[a]);
+              }
+            }
           }
-        } else {
-          partitionColumns.add(new String[] {});
+          if ((selectAllColumns && virtualValues.size() > 0) || selectFileName) {
+            virtualValues.put(fileNameColumnLabel, path.getName());
+          }
+          if (mapWithMaxSize.size() < virtualValues.size()) {
+            mapWithMaxSize = virtualValues;
+          }
         }
+        virtualColumns.add(virtualValues);
       } catch (IOException e1) {
         throw new ExecutionSetupException(e1);
       }
     }
 
-    if (selectAllColumns) {
-      for (int i = 0; i < numParts; i++) {
-        selectedPartitionColumns.add(i);
+    // add missing virtual columns
+    for (Map<String, String> map : virtualColumns) {
+      if (map.size() != mapWithMaxSize.size()) {
+        for (Map.Entry<String, String> entry : mapWithMaxSize.entrySet()) {
+          String key = entry.getKey();
+          if (!map.containsKey(key)) {
+            map.put(key, null);
+          }
+        }
       }
     }
 
-    ScanBatch s =
-        new ScanBatch(rowGroupScan, context, oContext, readers.iterator(), partitionColumns, selectedPartitionColumns,
-            Collections.<EasyFormatPlugin.ImplicitColumnsHolder> emptyList(),
-            Collections.<EasyFormatPlugin.ImplicitColumns> emptyList());
-
-
-    return s;
+    return new ScanBatch(rowGroupScan, context, oContext, readers.iterator(), virtualColumns);
   }
 
   private static boolean isComplex(ParquetMetadata footer) {

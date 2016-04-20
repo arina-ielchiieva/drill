@@ -114,11 +114,12 @@ public class TestDirectoryExplorerUDFs extends PlanTestBase {
     list.add(new Text("2"));
     list.add(new Text("3"));
 
+    String expectedName = tests.get(0).expectedFolderName;
     testBuilder()
         .sqlQuery(String.format(query, tests.get(0).funcName))
         .unOrdered()
-        .baselineColumns("columns", "dir0")
-        .baselineValues(list, tests.get(0).expectedFolderName)
+        .baselineColumns("columns", "filename", "dir0")
+        .baselineValues(list, expectedName + ".csv", expectedName)
         .go();
   }
 
@@ -162,113 +163,6 @@ public class TestDirectoryExplorerUDFs extends PlanTestBase {
     } finally {
       test("set `planner.enable_constant_folding` = true;");
     }
-  }
-
-  @Test
-  public void testStarDirN() throws Exception {
-
-    JsonStringArrayList<Text> list = new JsonStringArrayList<>();
-
-    list.add(new Text("1"));
-    list.add(new Text("1990"));
-    list.add(new Text("Q1"));
-
-    testBuilder()
-        .sqlQuery("select * from dfs.`F:\\drill\\files\\dirN`")
-        .unOrdered()
-        .baselineColumns("columns", "dir0")
-        .baselineValues(list, "1990")
-        .go();
-  }
-
-  @Test
-  public void testColumnDirN() throws Exception {
-
-    testBuilder()
-        .sqlQuery("select dir0 from dfs.`F:\\drill\\files\\dirN`")
-        .unOrdered()
-        .baselineColumns("dir0")
-        .baselineValues("1990")
-        .go();
-  }
-
-  @Test
-  public void testFilenameColumn() throws Exception {
-
-/*    testBuilder()
-        .sqlQuery("select filename from dfs.`F:\\drill\\files\\dirN\\1990\\1990_Q1_1.csv`")
-        .unOrdered()
-        .baselineColumns("filename")
-        .baselineValues("1990_Q1_1.csv")
-        .go();*/
-
-    testBuilder()
-        .sqlQuery("select basename from dfs.`F:\\drill\\files\\dirN\\1990` order by basename")
-        .ordered()
-        .baselineColumns("basename")
-        .baselineValues("1990_Q1_1.csv")
-        .baselineValues("1990_Q1_2.csv")
-        .baselineValues("1990_Q1_3.csv")
-        .go();
-  }
-
-  @Test
-  public void testFullPath() throws Exception {
-
-    JsonStringArrayList<Text> list = new JsonStringArrayList<>();
-
-    list.add(new Text("1"));
-    list.add(new Text("1990"));
-    list.add(new Text("Q1"));
-
-    testBuilder()
-        .sqlQuery("select * from dfs.`F:\\drill\\files\\dirN\\1990\\1990_Q1_1.csv`")
-        .unOrdered()
-        .baselineColumns("columns")
-        .baselineValues(list)
-        .go();
-  }
-
-  @Test
-  public void testBasenameInWhereClause() throws Exception {
-    // currently NumberFormatException
-    JsonStringArrayList<Text> list = new JsonStringArrayList<>();
-
-    list.add(new Text("1"));
-    list.add(new Text("1990"));
-    list.add(new Text("Q1"));
-    testBuilder()
-        .sqlQuery("select * from dfs.`F:\\drill\\files\\dirN` where basename = '1990_Q1_1.csv'")
-        .unOrdered()
-        .baselineColumns("columns")
-        .baselineValues(list)
-        .go();
-  }
-
-  @Test
-  public void testNullsWithStarClause() throws Exception {
-    JsonStringArrayList<Text> list = new JsonStringArrayList<>();
-
-    list.add(new Text("1"));
-    list.add(new Text("1990"));
-    list.add(new Text("Q1"));
-
-    testBuilder()
-        .sqlQuery("select t.*, t.basename from dfs.`F:\\drill\\files\\dirN\\1990\\1990_Q1_1.csv` t")
-        .unOrdered()
-        .baselineColumns("columns", "basename")
-        .baselineValues(list, null)
-        .go();
-  }
-
-  @Test
-  public void testBasenameFqn() throws Exception {
-    testBuilder()
-        .sqlQuery("select fqn from dfs.`F:\\drill\\files\\dirN\\1990` where basename = '1990_Q1_1.csv'")
-        .unOrdered()
-        .baselineColumns("fqn")
-        .baselineValues("F:/drill/files/dirN/1990/1990_Q1_1.csv")
-        .go();
   }
 
 }

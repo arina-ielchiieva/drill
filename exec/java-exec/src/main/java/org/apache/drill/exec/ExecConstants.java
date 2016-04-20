@@ -148,6 +148,9 @@ public interface ExecConstants {
   String FILESYSTEM_PARTITION_COLUMN_LABEL = "drill.exec.storage.file.partition.column.label";
   OptionValidator FILESYSTEM_PARTITION_COLUMN_LABEL_VALIDATOR = new StringValidator(FILESYSTEM_PARTITION_COLUMN_LABEL, "dir");
 
+  String FILE_NAME_COLUMN_LABEL = "drill.exec.storage.file.name.column.label";
+  OptionValidator FILE_NAME_COLUMN_LABEL_VALIDATOR = new StringValidator(FILE_NAME_COLUMN_LABEL, "filename");
+
   String JSON_READ_NUMBERS_AS_DOUBLE = "store.json.read_numbers_as_double";
   OptionValidator JSON_READ_NUMBERS_AS_DOUBLE_VALIDATOR = new BooleanValidator(JSON_READ_NUMBERS_AS_DOUBLE, false);
 

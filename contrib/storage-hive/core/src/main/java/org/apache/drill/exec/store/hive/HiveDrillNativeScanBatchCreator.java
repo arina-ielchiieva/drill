@@ -70,17 +70,15 @@ public class HiveDrillNativeScanBatchCreator implements BatchCreator<HiveDrillNa
     final List<SchemaPath> columns = config.getColumns();
     final String partitionDesignator = context.getOptions()
         .getOption(ExecConstants.FILESYSTEM_PARTITION_COLUMN_LABEL).string_val;
+    List<Map<String, String>> virtualColumns = Lists.newLinkedList();
+    boolean starQuery = AbstractRecordReader.isStarQuery(columns);
 
     final boolean hasPartitions = (partitions != null && partitions.size() > 0);
 
     final List<String[]> partitionColumns = Lists.newArrayList();
     final List<Integer> selectedPartitionColumns = Lists.newArrayList();
     List<SchemaPath> newColumns = columns;
-    if (AbstractRecordReader.isStarQuery(columns)) {
-      for (int i = 0; i < table.getPartitionKeys().size(); i++) {
-        selectedPartitionColumns.add(i);
-      }
-    } else {
+    if (!starQuery) {
       // Separate out the partition and non-partition columns. Non-partition columns are passed directly to the
       // ParquetRecordReader. Partition columns are passed to ScanBatch.
       newColumns = Lists.newArrayList();
@@ -89,7 +87,7 @@ public class HiveDrillNativeScanBatchCreator implements BatchCreator<HiveDrillNa
         Matcher m = pattern.matcher(column.getAsUnescapedPath());
         if (m.matches()) {
           selectedPartitionColumns.add(
-              Integer.parseInt(column.getAsUnescapedPath().toString().substring(partitionDesignator.length())));
+              Integer.parseInt(column.getAsUnescapedPath().substring(partitionDesignator.length())));
         } else {
           newColumns.add(column);
         }
@@ -106,6 +104,7 @@ public class HiveDrillNativeScanBatchCreator implements BatchCreator<HiveDrillNa
     // TODO: In future we can get this cache from Metadata cached on filesystem.
     final Map<String, ParquetMetadata> footerCache = Maps.newHashMap();
 
+    Map<String, String> mapWithMaxSize = Maps.newLinkedHashMap();
     try {
       for (InputSplit split : splits) {
         final FileSplit fileSplit = (FileSplit) split;
@@ -131,17 +130,35 @@ public class HiveDrillNativeScanBatchCreator implements BatchCreator<HiveDrillNa
                   parquetMetadata,
                   newColumns)
           );
+          Map<String, String> virtualValues = Maps.newLinkedHashMap();
 
           if (hasPartitions) {
-            Partition p = partitions.get(currentPartitionIndex);
-            partitionColumns.add(p.getValues().toArray(new String[0]));
+            List<String> values = partitions.get(currentPartitionIndex).getValues();
+            for (int i = 0; i < values.size(); i++) {
+              if (starQuery || selectedPartitionColumns.contains(i)) {
+                virtualValues.put(partitionDesignator + i, values.get(i));
+              }
+            }
           }
+          virtualColumns.add(virtualValues);
         }
         currentPartitionIndex++;
       }
     } catch (final IOException|RuntimeException e) {
       AutoCloseables.close(e, readers);
       throw new ExecutionSetupException("Failed to create RecordReaders. " + e.getMessage(), e);
+    }
+
+    // add missing virtual columns
+    for (Map<String, String> map : virtualColumns) {
+      if (map.size() != mapWithMaxSize.size()) {
+        for (Map.Entry<String, String> entry : mapWithMaxSize.entrySet()) {
+          String key = entry.getKey();
+          if (!map.containsKey(key)) {
+            map.put(key, null);
+          }
+        }
+      }
     }
 
     // If there are no readers created (which is possible when the table is empty or no row groups are matched),
@@ -151,9 +168,7 @@ public class HiveDrillNativeScanBatchCreator implements BatchCreator<HiveDrillNa
         ImpersonationUtil.createProxyUgi(config.getUserName(), context.getQueryUserName())));
     }
 
-    return new ScanBatch(config, context, oContext, readers.iterator(), partitionColumns, selectedPartitionColumns,
-        Collections.<EasyFormatPlugin.ImplicitColumnsHolder> emptyList(),
-        Collections.<EasyFormatPlugin.ImplicitColumns> emptyList());
+    return new ScanBatch(config, context, oContext, readers.iterator(), virtualColumns);
   }
 
   /**
