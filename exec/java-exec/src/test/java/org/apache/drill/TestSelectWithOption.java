@@ -25,6 +25,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 import org.apache.drill.exec.store.dfs.WorkspaceSchemaFactory;
+import org.apache.drill.exec.util.JsonStringArrayList;
+import org.apache.drill.exec.util.Text;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -222,4 +224,116 @@ public class TestSelectWithOption extends BaseTestQuery {
       test("use sys");
     }
   }
+
+  @Test
+  public void testLineDelimiter() throws Exception {
+
+    JsonStringArrayList<Text> value1 = new JsonStringArrayList<>();
+
+    value1.add(new Text("1"));
+    value1.add(new Text("1990"));
+    value1.add(new Text("Q3"));
+
+    JsonStringArrayList<Text> value2 = new JsonStringArrayList<>();
+
+    value2.add(new Text("2"));
+    value2.add(new Text("1990"));
+    value2.add(new Text("Q3"));
+
+    JsonStringArrayList<Text> value3 = new JsonStringArrayList<>();
+
+    value3.add(new Text("3"));
+    value3.add(new Text("1990"));
+    value3.add(new Text("Q3"));
+
+    testBuilder()
+        .sqlQuery("select columns from table(dfs.`F:\\drill\\files\\dirN\\1990\\1990_Q1_3.csv`(type=>'text',lineDelimiter=>'\r\n',fieldDelimiter=>','))")
+        .unOrdered()
+        .baselineColumns("columns")
+        .baselineValues(value1)
+        .baselineValues(value2)
+        .baselineValues(value3)
+        .go();
+  }
+
+  @Test
+  public void testLineDelimiterMulti() throws Exception {
+
+    JsonStringArrayList<Text> value1 = new JsonStringArrayList<>();
+    value1.add(new Text("1"));
+    value1.add(new Text(""));
+
+    JsonStringArrayList<Text> value2 = new JsonStringArrayList<>();
+    value2.add(new Text("2"));
+    value2.add(new Text(""));
+
+    JsonStringArrayList<Text> value3 = new JsonStringArrayList<>();
+    value3.add(new Text("3"));
+    value3.add(new Text(""));
+
+    JsonStringArrayList<Text> values = new JsonStringArrayList<>();
+    values.add(new Text("90"));
+    values.add(new Text("Q3\r"));
+
+    testBuilder()
+        .sqlQuery("select columns from table(dfs.`F:\\drill\\files\\dirN\\1990\\1990_Q1_3.csv`(type=>'text',lineDelimiter=>'19',fieldDelimiter=>','))")
+        .unOrdered()
+        .baselineColumns("columns")
+        .baselineValues(value1)
+        .baselineValues(values)
+        .baselineValues(value2)
+        .baselineValues(values)
+        .baselineValues(value3)
+        .baselineValues(values)
+        .go();
+  }
+
+  @Test
+  public void testLineDelimiterMultiWithNewLineInTheEnd() throws Exception {
+
+    JsonStringArrayList<Text> value1 = new JsonStringArrayList<>();
+    value1.add(new Text("1"));
+    value1.add(new Text("1990"));
+    value1.add(new Text("Q"));
+
+    JsonStringArrayList<Text> value2 = new JsonStringArrayList<>();
+    value2.add(new Text("2"));
+    value2.add(new Text("1990"));
+    value2.add(new Text("Q"));
+
+    JsonStringArrayList<Text> value3 = new JsonStringArrayList<>();
+    value3.add(new Text("3"));
+    value3.add(new Text("1990"));
+    value3.add(new Text("Q"));
+
+    testBuilder()
+        .sqlQuery("select columns from table(dfs.`F:\\drill\\files\\dirN\\1990\\1990_Q1_4.csv`(type=>'text',lineDelimiter=>'4\r\n',fieldDelimiter=>','))")
+        .unOrdered()
+        .baselineColumns("columns")
+        .baselineValues(value1)
+        .baselineValues(value2)
+        .baselineValues(value3)
+        .go();
+  }
+
+  @Test
+  public void testLineDelimiterMultiCorrect() throws Exception {
+
+    JsonStringArrayList<Text> value1 = new JsonStringArrayList<>();
+    value1.add(new Text("1"));
+    value1.add(new Text("1"));
+
+    JsonStringArrayList<Text> values = new JsonStringArrayList<>();
+    values.add(new Text("0"));
+    values.add(new Text("Q5\r"));
+
+    testBuilder()
+        .sqlQuery("select columns from table(dfs.`F:\\drill\\files\\dirN\\1990\\1990_Q1_5.csv`(type=>'text',lineDelimiter=>'99',fieldDelimiter=>','))")
+        .unOrdered()
+        .baselineColumns("columns")
+        .baselineValues(value1)
+        .baselineValues(values)
+        .go();
+  }
+
 }
