@@ -26,6 +26,7 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.google.common.base.Functions;
 import org.apache.drill.common.AutoCloseables;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
@@ -150,16 +151,11 @@ public class HiveDrillNativeScanBatchCreator implements BatchCreator<HiveDrillNa
     }
 
     // add missing virtual columns
+    mapWithMaxSize = Maps.transformValues(mapWithMaxSize, Functions.constant((String) null));
     for (Map<String, String> map : virtualColumns) {
-      if (map.size() != mapWithMaxSize.size()) {
-        for (Map.Entry<String, String> entry : mapWithMaxSize.entrySet()) {
-          String key = entry.getKey();
-          if (!map.containsKey(key)) {
-            map.put(key, null);
-          }
-        }
-      }
+      map.putAll(Maps.difference(map, mapWithMaxSize).entriesOnlyOnRight());
     }
+
 
     // If there are no readers created (which is possible when the table is empty or no row groups are matched),
     // create an empty RecordReader to output the schema

@@ -114,12 +114,11 @@ public class TestDirectoryExplorerUDFs extends PlanTestBase {
     list.add(new Text("2"));
     list.add(new Text("3"));
 
-    String expectedName = tests.get(0).expectedFolderName;
     testBuilder()
         .sqlQuery(String.format(query, tests.get(0).funcName))
         .unOrdered()
-        .baselineColumns("columns", "filename", "dir0")
-        .baselineValues(list, expectedName + ".csv", expectedName)
+        .baselineColumns("columns", "dir0")
+        .baselineValues(list, tests.get(0).expectedFolderName)
         .go();
   }
 
@@ -163,6 +162,154 @@ public class TestDirectoryExplorerUDFs extends PlanTestBase {
     } finally {
       test("set `planner.enable_constant_folding` = true;");
     }
+  }
+
+/*
+  @Test
+  public void testFilenameColumnCalledExplicitly() throws Exception {
+
+    JsonStringArrayList<Text> list = new JsonStringArrayList<>();
+
+    list.add(new Text("1"));
+    list.add(new Text("1990"));
+    list.add(new Text("Q1"));
+
+    testBuilder()
+        .sqlQuery("select columns, filename from dfs.`F:\\drill\\files\\dirN\\1990\\1990_Q1_1.csv`")
+        .ordered()
+        .baselineColumns("columns", "filename")
+        .baselineValues(list, "1990_Q1_1.csv")
+        .go();
+  }
+
+  @Test
+  public void testFilenameColumnWithStarClause() throws Exception {
+
+    JsonStringArrayList<Text> list = new JsonStringArrayList<>();
+
+    list.add(new Text("1"));
+    list.add(new Text("1990"));
+    list.add(new Text("Q1"));
+
+    testBuilder()
+        .sqlQuery("select * from dfs.`F:\\drill\\files\\dirN\\1990\\1990_Q1_1.csv`")
+        .ordered()
+        .baselineColumns("columns")
+        .baselineValues(list)
+        .go();
+  }
+
+  @Test
+  public void testFilenameColumnWithWhereClause() throws Exception {
+
+    JsonStringArrayList<Text> list = new JsonStringArrayList<>();
+
+    list.add(new Text("1"));
+    list.add(new Text("1990"));
+    list.add(new Text("Q1"));
+
+    testBuilder()
+        .sqlQuery("select columns from dfs.`F:\\drill\\files\\dirN\\1990` where filename = '1990_Q1_1.csv'")
+        .ordered()
+        .baselineColumns("columns")
+        .baselineValues(list)
+        .go();
+  }
+
+  @Test
+  public void testFilenameColumnWithStarSelectAndExplicitCall() throws Exception {
+
+    JsonStringArrayList<Text> list = new JsonStringArrayList<>();
+
+    list.add(new Text("arina"));
+    list.add(new Text("javan"));
+
+    testBuilder()
+        .sqlQuery("select *, filename from dfs.`/home/osboxes/files/Q1`")
+        .ordered()
+        .baselineColumns("columns", "filename")
+        .baselineValues(list, "Q1.csv")
+        .go();
+  }
+
+  @Test
+  public void testFilenameColumnOnly() throws Exception {
+
+    testBuilder()
+        .sqlQuery("select filename from dfs.`/home/osboxes/files/Q1/Q2`")
+        .ordered()
+        .baselineColumns("filename")
+        .baselineValues("Q1.csv")
+        .go();
+  }
+
+  @Test
+  public void testFilenameColumnOnlyWithDirN() throws Exception {
+
+    testBuilder()
+        .sqlQuery("select filename, dir0 from dfs.`/home/osboxes/files/Q1`")
+        .ordered()
+        .baselineColumns("filename", "dir0")
+        .baselineValues("Q1.csv", "Q1")
+        .go();
+  }
+
+  @Test
+  public void testDirNOnly() throws Exception {
+
+    testBuilder()
+        .sqlQuery("select dir0 from dfs.`/home/osboxes/files/Q1`")
+        .ordered()
+        .baselineColumns("dir0")
+        .baselineValues("Q2")
+        .go();
+  }
+
+  @Test
+  public void testImplicitColumns() throws Exception {
+
+    testBuilder()
+        .sqlQuery("select filename, fqn, dirname, suffix from dfs.`/home/osboxes/files/Q1` order by filename")
+        .ordered()
+        .baselineColumns("filename", "fqn", "dirname", "suffix")
+        .baselineValues("Q1.csv", "/home/osboxes/files/Q1/Q1.csv", "/home/osboxes/files/Q1", "csv")
+        .baselineValues("Q2.csv", "/home/osboxes/files/Q1/Q2/Q2.csv", "/home/osboxes/files/Q1/Q2", "csv")
+        .go();
+  }*/
+
+  @Test
+  public void testParquet() throws Exception {
+    // cp.`tpch/customer.parquet`
+    test("select c_custkey, filename from cp.`tpch/customer.parquet`");
+  }
+
+  @Test
+  public void testImplicitColumns() throws Exception {
+
+    testBuilder()
+        .sqlQuery("select FILENAME, fqn, dirname, suffix from dfs.`/home/osboxes/files/Q1` order by filename")
+        .ordered()
+        .baselineColumns("FILENAME", "fqn", "dirname", "suffix")
+        .baselineValues("Q1.csv", "/home/osboxes/files/Q1/Q1.csv", "/home/osboxes/files/Q1", "csv")
+        .baselineValues("Q2.csv", "/home/osboxes/files/Q1/Q2/Q2.csv", "/home/osboxes/files/Q1/Q2", "csv")
+        .go();
+  }
+
+  @Test
+  public void testFilenameColumnWithWhereClause() throws Exception {
+
+    JsonStringArrayList<Text> list = new JsonStringArrayList<>();
+
+    list.add(new Text("arina"));
+    list.add(new Text("javan"));
+    list.add(new Text("Q1"));
+
+    testBuilder()
+        .sqlQuery("select * from dfs.`/home/osboxes/files/Q1` where filename = 'Q1.csv'")
+        .ordered()
+        .baselineColumns("columns", "dir0")
+        .baselineValues(list, null)
+        .go();
   }
 
 }

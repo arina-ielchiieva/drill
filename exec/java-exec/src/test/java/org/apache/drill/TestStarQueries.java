@@ -406,9 +406,9 @@ public class TestStarQueries extends BaseTestQuery{
     testBuilder()
     .sqlQuery(query)
     .ordered()
-    .baselineColumns("filename", "dir0", "dir1", "o_clerk", "o_comment", "o_custkey", "o_orderdate", "o_orderkey",  "o_orderpriority", "o_orderstatus", "o_shippriority",
+    .baselineColumns("dir0", "dir1", "o_clerk", "o_comment", "o_custkey", "o_orderdate", "o_orderkey",  "o_orderpriority", "o_orderstatus", "o_shippriority",
         "o_totalprice")
-    .baselineValues("orders_94_q1.parquet", "1994", "Q1", "Clerk#000000743", "y pending requests integrate", 1292, mydate, 66, "5-LOW", "F",  0, 104190.66)
+    .baselineValues("1994", "Q1", "Clerk#000000743", "y pending requests integrate", 1292, mydate, 66, "5-LOW", "F",  0, 104190.66)
     .build().run();
   }
 
