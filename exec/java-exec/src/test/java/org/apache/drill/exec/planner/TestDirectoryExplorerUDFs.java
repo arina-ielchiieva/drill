@@ -165,4 +165,74 @@ public class TestDirectoryExplorerUDFs extends PlanTestBase {
     }
   }
 
+
+  @Test
+  public void testFilenameColumnCalledExplicitly() throws Exception {
+
+    JsonStringArrayList<Text> list = new JsonStringArrayList<>();
+
+    list.add(new Text("1"));
+    list.add(new Text("1990"));
+    list.add(new Text("Q1"));
+
+    testBuilder()
+        .sqlQuery("select columns, filename from dfs.`F:\\drill\\files\\dirN\\1990\\1990_Q1_1.csv`")
+        .ordered()
+        .baselineColumns("columns", "filename")
+        .baselineValues(list, "1990_Q1_1.csv")
+        .go();
+  }
+
+  @Test
+  public void testFilenameColumnWithStarClause() throws Exception {
+
+    JsonStringArrayList<Text> list = new JsonStringArrayList<>();
+
+    list.add(new Text("1"));
+    list.add(new Text("1990"));
+    list.add(new Text("Q1"));
+
+    testBuilder()
+        .sqlQuery("select * from dfs.`F:\\drill\\files\\dirN\\1990\\1990_Q1_1.csv`")
+        .ordered()
+        .baselineColumns("columns")
+        .baselineValues(list)
+        .go();
+  }
+
+  @Test
+  public void testFilenameColumnWithWhereClause() throws Exception {
+
+    JsonStringArrayList<Text> list = new JsonStringArrayList<>();
+
+    list.add(new Text("1"));
+    list.add(new Text("1990"));
+    list.add(new Text("Q1"));
+
+    testBuilder()
+        .sqlQuery("select columns from dfs.`F:\\drill\\files\\dirN\\1990` where filename = '1990_Q1_1.csv'")
+        .ordered()
+        .baselineColumns("columns")
+        .baselineValues(list)
+        .go();
+  }
+
+  @Test
+  public void testFilenameColumnWithStarSelectAndExplicitCall() throws Exception {
+
+    JsonStringArrayList<Text> list = new JsonStringArrayList<>();
+
+    list.add(new Text("1"));
+    list.add(new Text("1990"));
+    list.add(new Text("Q1"));
+
+    testBuilder()
+        .sqlQuery("select *, filename from dfs.`F:\\drill\\files\\dirN\\1990\\Q2`")
+        .ordered()
+        .baselineColumns("columns", "filename")
+        .baselineValues(list, "1990_Q1_1.csv")
+        .go();
+  }
+
+
 }

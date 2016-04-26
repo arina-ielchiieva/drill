@@ -37,6 +37,7 @@ import org.apache.drill.common.expression.fn.CastFunctions;
 import org.apache.drill.common.logical.data.NamedExpression;
 import org.apache.drill.common.types.TypeProtos.MinorType;
 import org.apache.drill.common.types.Types;
+import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.exception.ClassTransformationException;
 import org.apache.drill.exec.exception.OutOfMemoryException;
 import org.apache.drill.exec.exception.SchemaChangeException;
@@ -72,7 +73,6 @@ import com.google.common.collect.Maps;
 
 public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ProjectRecordBatch.class);
-
   private Projector projector;
   private List<ValueVector> allocationVectors;
   private List<ComplexWriter> complexWriters;
@@ -279,6 +279,9 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
 
   @Override
   protected boolean setupNewSchema() throws SchemaChangeException {
+    String fileNameColumnLabel = context.getOptions()
+        .getOption(ExecConstants.FILE_NAME_COLUMN_LABEL).string_val; //todo can we set at class level
+
     if (allocationVectors != null) {
       for (final ValueVector v : allocationVectors) {
         v.clear();
@@ -324,6 +327,11 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
               if (name == EMPTY_STRING) {
                 continue;
               }
+
+              if (fileNameColumnLabel.equals(vvIn.getField().getName())) { //todo compare disregarding case
+                continue;
+              }
+
               final FieldReference ref = new FieldReference(name);
               final ValueVector vvOut = container.addOrGet(MaterializedField.create(ref.getAsNamePart().getName(), vvIn.getField().getType()), callBack);
               final TransferPair tp = vvIn.makeTransferPair(vvOut);
@@ -339,6 +347,10 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
               }
               final String name = result.outputNames.get(k++);  // get the renamed column names
               if (name == EMPTY_STRING) {
+                continue;
+              }
+
+              if (fileNameColumnLabel.equals(vvIn.getField().getName())) { //todo compare disregarding case
                 continue;
               }
 

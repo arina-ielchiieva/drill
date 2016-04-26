@@ -136,7 +136,6 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
     List<Integer> selectedPartitionColumns = Lists.newArrayList();
     List<Map<String, String>> virtualColumns = Lists.newLinkedList();
     boolean selectAllColumns = false;
-    boolean selectFileName = false;
 
     if (columns == null || columns.size() == 0 || AbstractRecordReader.isStarQuery(columns)) {
       selectAllColumns = true;
@@ -147,9 +146,6 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
         Matcher m = pattern.matcher(column.getAsUnescapedPath());
         if (m.matches()) {
           selectedPartitionColumns.add(Integer.parseInt(column.getAsUnescapedPath().substring(partitionDesignator.length())));
-        }
-        else if (fileNameColumnLabel.equals(column.getAsUnescapedPath().toLowerCase())) {
-          selectFileName = true;
         } else {
           newColumns.add(column);
         }
@@ -198,9 +194,10 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
             }
           }
         }
-        if ((selectAllColumns && virtualValues.size() > 0) || selectFileName) {
-          virtualValues.put(fileNameColumnLabel, path.getName());
-        }
+
+        //add filename column
+        virtualValues.put(fileNameColumnLabel, path.getName());
+
         if (mapWithMaxSize.size() < virtualValues.size()) {
           mapWithMaxSize = virtualValues;
         }
@@ -219,6 +216,8 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
         }
       }
     }
+    //todo replace with guava implementation
+    //map2.putAll(Maps.difference(map1, map2).entriesOnlyOnLeft());
 
     return new ScanBatch(scan, context, oContext, readers.iterator(), virtualColumns);
   }
