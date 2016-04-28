@@ -18,11 +18,8 @@
 package org.apache.drill.exec.store.hive;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,7 +35,6 @@ import org.apache.drill.exec.physical.impl.ScanBatch;
 import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.store.AbstractRecordReader;
 import org.apache.drill.exec.store.RecordReader;
-import org.apache.drill.exec.store.dfs.easy.EasyFormatPlugin;
 import org.apache.drill.exec.store.parquet.ParquetDirectByteBufferAllocator;
 import org.apache.drill.exec.store.parquet.columnreaders.ParquetRecordReader;
 import org.apache.drill.exec.util.ImpersonationUtil;
@@ -72,14 +68,14 @@ public class HiveDrillNativeScanBatchCreator implements BatchCreator<HiveDrillNa
     final String partitionDesignator = context.getOptions()
         .getOption(ExecConstants.FILESYSTEM_PARTITION_COLUMN_LABEL).string_val;
     List<Map<String, String>> virtualColumns = Lists.newLinkedList();
-    boolean starQuery = AbstractRecordReader.isStarQuery(columns);
+    boolean selectAllQuery = AbstractRecordReader.isStarQuery(columns);
 
     final boolean hasPartitions = (partitions != null && partitions.size() > 0);
 
     final List<String[]> partitionColumns = Lists.newArrayList();
     final List<Integer> selectedPartitionColumns = Lists.newArrayList();
     List<SchemaPath> newColumns = columns;
-    if (!starQuery) {
+    if (!selectAllQuery) {
       // Separate out the partition and non-partition columns. Non-partition columns are passed directly to the
       // ParquetRecordReader. Partition columns are passed to ScanBatch.
       newColumns = Lists.newArrayList();
@@ -136,7 +132,7 @@ public class HiveDrillNativeScanBatchCreator implements BatchCreator<HiveDrillNa
           if (hasPartitions) {
             List<String> values = partitions.get(currentPartitionIndex).getValues();
             for (int i = 0; i < values.size(); i++) {
-              if (starQuery || selectedPartitionColumns.contains(i)) {
+              if (selectAllQuery || selectedPartitionColumns.contains(i)) {
                 virtualValues.put(partitionDesignator + i, values.get(i));
               }
             }

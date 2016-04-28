@@ -21,25 +21,18 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-import com.google.common.base.Enums;
 import com.google.common.base.Functions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Maps;
-import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.EnumUtils;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
-import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.ops.OperatorContext;
 import org.apache.drill.exec.physical.impl.BatchCreator;
 import org.apache.drill.exec.physical.impl.ScanBatch;
 import org.apache.drill.exec.record.RecordBatch;
-import org.apache.drill.exec.store.AbstractRecordReader;
-import org.apache.drill.exec.store.ImplicitColumns;
+import org.apache.drill.exec.store.VirtualColumnExplorer;
 import org.apache.drill.exec.store.RecordReader;
 import org.apache.drill.exec.store.dfs.DrillFileSystem;
 import org.apache.drill.exec.store.parquet.columnreaders.ParquetRecordReader;
@@ -68,39 +61,14 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
   public ScanBatch getBatch(FragmentContext context, ParquetRowGroupScan rowGroupScan, List<RecordBatch> children)
       throws ExecutionSetupException {
     Preconditions.checkArgument(children.isEmpty());
-    String partitionDesignator = context.getOptions()
-      .getOption(ExecConstants.FILESYSTEM_PARTITION_COLUMN_LABEL).string_val;
-    List<SchemaPath> columns = rowGroupScan.getColumns();
-    List<RecordReader> readers = Lists.newArrayList();
     OperatorContext oContext = context.newOperatorContext(rowGroupScan);
 
-    List<Integer> selectedPartitionColumns = Lists.newArrayList();
-    boolean selectAllColumns = AbstractRecordReader.isStarQuery(columns);
-    List<Map<String, String>> virtualColumns = Lists.newArrayList();
-    List<String> implicitColumns = Lists.newArrayList();
+    final VirtualColumnExplorer columnExplorer = new VirtualColumnExplorer(context, rowGroupScan.getColumns());
 
-    List<SchemaPath> newColumns = columns;
-    if (!selectAllColumns) {
-      newColumns = Lists.newArrayList();
-      Pattern pattern = Pattern.compile(String.format("%s[0-9]+", partitionDesignator));
-      for (SchemaPath column : columns) {
-        String path = column.getAsUnescapedPath();
-        Matcher m = pattern.matcher(path);
-        if (m.matches()) {
-          selectedPartitionColumns.add(Integer.parseInt(path.substring(partitionDesignator.length())));
-        } else if (Enums.getIfPresent(ImplicitColumns.class, path.toUpperCase()).isPresent()) {
-          implicitColumns.add(path);
-        } else {
-          newColumns.add(column);
-        }
-      }
-      final int id = rowGroupScan.getOperatorId();
-      // Create the new row group scan with the new columns
+    if (!columnExplorer.isSelectAllColumns()) {
       rowGroupScan = new ParquetRowGroupScan(rowGroupScan.getUserName(), rowGroupScan.getStorageEngine(),
-          rowGroupScan.getRowGroupReadEntries(), newColumns, rowGroupScan.getSelectionRoot());
-      rowGroupScan.setOperatorId(id);
-    } else {
-      implicitColumns.addAll(EnumUtils.getEnumMap(ImplicitColumns.class).keySet());
+          rowGroupScan.getRowGroupReadEntries(), columnExplorer.getTableColumns(), rowGroupScan.getSelectionRoot());
+      rowGroupScan.setOperatorId(rowGroupScan.getOperatorId());
     }
 
     DrillFileSystem fs;
@@ -116,7 +84,9 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
 
     // keep footers in a map to avoid re-reading them
     Map<String, ParquetMetadata> footers = Maps.newHashMap();
-    Map<String, String> mapWithMaxSize = Maps.newLinkedHashMap();
+    List<RecordReader> readers = Lists.newArrayList();
+    List<Map<String, String>> virtualColumns = Lists.newArrayList();
+    Map<String, String> mapWithMaxColumns = Maps.newLinkedHashMap();
     for(RowGroupReadEntry e : rowGroupScan.getRowGroupReadEntries()){
       /*
       Here we could store a map from file names to footers, to prevent re-reading the footer for each row group in a file
@@ -127,7 +97,7 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
       */
       try {
         Stopwatch timer = Stopwatch.createUnstarted();
-        if ( ! footers.containsKey(e.getPath())){
+        if (!footers.containsKey(e.getPath())){
           timer.start();
           ParquetMetadata footer = ParquetFileReader.readFooter(conf, new Path(e.getPath()));
           long timeToRead = timer.elapsed(TimeUnit.MICROSECONDS);
@@ -147,39 +117,24 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
           );
         } else {
           ParquetMetadata footer = footers.get(e.getPath());
-          readers.add(new DrillParquetReader(context, footer, e, newColumns, fs));
+          readers.add(new DrillParquetReader(context, footer, e, columnExplorer.getTableColumns(), fs));
         }
-        Map<String, String> virtualValues = Maps.newLinkedHashMap();
-        if (rowGroupScan.getSelectionRoot() != null) {
-          String[] r = Path.getPathWithoutSchemeAndAuthority(new Path(rowGroupScan.getSelectionRoot())).toString().split("/");
-          Path path = Path.getPathWithoutSchemeAndAuthority(new Path(e.getPath()));
-          String[] p = path.toString().split("/");
-          if (p.length > r.length) {
-            String[] q = ArrayUtils.subarray(p, r.length, p.length - 1);
-            for (int a = 0; a < q.length; a++) {
-              if (selectAllColumns || selectedPartitionColumns.contains(a)) {
-                virtualValues.put(partitionDesignator + a, q[a]);
-              }
-            }
-          }
 
-          //add implicit columns
-          virtualValues.putAll(ImplicitColumns.toMap(path, implicitColumns));
-
-          if (mapWithMaxSize.size() < virtualValues.size()) {
-            mapWithMaxSize = virtualValues;
-          }
-        }
+        Map<String, String> virtualValues = columnExplorer.populateVirtualColumns(e, rowGroupScan.getSelectionRoot());
         virtualColumns.add(virtualValues);
+        if (virtualValues.size() > mapWithMaxColumns.size()) {
+          mapWithMaxColumns = virtualValues;
+        }
+
       } catch (IOException e1) {
         throw new ExecutionSetupException(e1);
       }
     }
 
-    // add missing virtual columns
-    mapWithMaxSize = Maps.transformValues(mapWithMaxSize, Functions.constant((String) null));
+    // all readers should have the same number of virtual columns, add missing ones with value null
+    Map<String, String> diff = Maps.transformValues(mapWithMaxColumns, Functions.constant((String) null));
     for (Map<String, String> map : virtualColumns) {
-      map.putAll(Maps.difference(map, mapWithMaxSize).entriesOnlyOnRight());
+      map.putAll(Maps.difference(map, diff).entriesOnlyOnRight());
     }
 
     return new ScanBatch(rowGroupScan, context, oContext, readers.iterator(), virtualColumns);

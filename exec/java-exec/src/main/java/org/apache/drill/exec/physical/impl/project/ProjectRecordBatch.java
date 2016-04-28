@@ -61,7 +61,7 @@ import org.apache.drill.exec.record.TransferPair;
 import org.apache.drill.exec.record.TypedFieldId;
 import org.apache.drill.exec.record.VectorContainer;
 import org.apache.drill.exec.record.VectorWrapper;
-import org.apache.drill.exec.store.ImplicitColumns;
+import org.apache.drill.exec.store.VirtualColumnExplorer;
 import org.apache.drill.exec.vector.AllocationHelper;
 import org.apache.drill.exec.vector.FixedWidthVector;
 import org.apache.drill.exec.vector.ValueVector;
@@ -326,7 +326,7 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
                 continue;
               }
 
-              if (Enums.getIfPresent(ImplicitColumns.class, vvIn.getField().getName().toUpperCase()).isPresent()) {
+              if (Enums.getIfPresent(VirtualColumnExplorer.ImplicitFileColumns.class, vvIn.getField().getName().toUpperCase()).isPresent()) {
                 continue;
               }
 
@@ -348,7 +348,7 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
                 continue;
               }
 
-              if (Enums.getIfPresent(ImplicitColumns.class, vvIn.getField().getName().toUpperCase()).isPresent()) {
+              if (Enums.getIfPresent(VirtualColumnExplorer.ImplicitFileColumns.class, vvIn.getField().getName().toUpperCase()).isPresent()) {
                 continue;
               }
 

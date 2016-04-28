@@ -21,19 +21,13 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-import com.google.common.base.Enums;
 import com.google.common.base.Functions;
 import com.google.common.collect.Maps;
-import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.EnumUtils;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.common.logical.StoragePluginConfig;
-import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.ops.OperatorContext;
 import org.apache.drill.exec.physical.base.AbstractGroupScan;
@@ -47,8 +41,7 @@ import org.apache.drill.exec.planner.physical.PlannerSettings;
 import org.apache.drill.exec.record.CloseableRecordBatch;
 import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.server.DrillbitContext;
-import org.apache.drill.exec.store.AbstractRecordReader;
-import org.apache.drill.exec.store.ImplicitColumns;
+import org.apache.drill.exec.store.VirtualColumnExplorer;
 import org.apache.drill.exec.store.RecordReader;
 import org.apache.drill.exec.store.RecordWriter;
 import org.apache.drill.exec.store.StoragePluginOptimizerRule;
@@ -59,7 +52,6 @@ import org.apache.drill.exec.store.dfs.FormatMatcher;
 import org.apache.drill.exec.store.dfs.FormatPlugin;
 import org.apache.drill.exec.store.schedule.CompleteFileWork;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
@@ -131,43 +123,12 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
       List<SchemaPath> columns, String userName) throws ExecutionSetupException;
 
   CloseableRecordBatch getReaderBatch(FragmentContext context, EasySubScan scan) throws ExecutionSetupException {
-    String partitionDesignator = context.getOptions()
-      .getOption(ExecConstants.FILESYSTEM_PARTITION_COLUMN_LABEL).string_val;
-    List<SchemaPath> columns = scan.getColumns();
-    List<RecordReader> readers = Lists.newArrayList();
-    List<Integer> selectedPartitionColumns = Lists.newArrayList();
-    List<Map<String, String>> virtualColumns = Lists.newArrayList();
-    List<String> implicitColumns = Lists.newArrayList();
-    boolean selectAllColumns = false;
+    final VirtualColumnExplorer columnExplorer = new VirtualColumnExplorer(context, scan.getColumns());
 
-    if (columns == null || columns.size() == 0 || AbstractRecordReader.isStarQuery(columns)) {
-      selectAllColumns = true;
-      implicitColumns.addAll(EnumUtils.getEnumMap(ImplicitColumns.class).keySet());
-    } else {
-      List<SchemaPath> newColumns = Lists.newArrayList();
-      Pattern pattern = Pattern.compile(String.format("%s[0-9]+", partitionDesignator));
-      for (SchemaPath column : columns) {
-        String path = column.getAsUnescapedPath();
-        Matcher m = pattern.matcher(path);
-        if (m.matches()) {
-          selectedPartitionColumns.add(Integer.parseInt(path.substring(partitionDesignator.length())));
-        } else if (Enums.getIfPresent(ImplicitColumns.class, path.toUpperCase()).isPresent()) {
-          implicitColumns.add(path);
-        } else {
-          newColumns.add(column);
-        }
-      }
-
-      // We must make sure to pass a table column(not to be confused with partition column) to the underlying record
-      // reader.
-      if (newColumns.size()==0) {
-        newColumns.add(AbstractRecordReader.STAR_COLUMN);
-      }
-      // Create a new sub scan object with the new set of columns;
-      EasySubScan newScan = new EasySubScan(scan.getUserName(), scan.getWorkUnits(), scan.getFormatPlugin(),
-          newColumns, scan.getSelectionRoot());
-      newScan.setOperatorId(scan.getOperatorId());
-      scan = newScan;
+    if (!columnExplorer.isSelectAllColumns()) {
+      scan = new EasySubScan(scan.getUserName(), scan.getWorkUnits(), scan.getFormatPlugin(),
+          columnExplorer.getTableColumns(), scan.getSelectionRoot());
+      scan.setOperatorId(scan.getOperatorId());
     }
 
     OperatorContext oContext = context.newOperatorContext(scan);
@@ -178,44 +139,23 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
       throw new ExecutionSetupException(String.format("Failed to create FileSystem: %s", e.getMessage()), e);
     }
 
-    Path selectionRoot;
-    String[] root = null;
-    if (scan.getSelectionRoot() != null) {
-      selectionRoot = Path.getPathWithoutSchemeAndAuthority(new Path(scan.getSelectionRoot()));
-      root = selectionRoot.toString().split("/");
-    }
-
-    Map<String, String> mapWithMaxSize = Maps.newLinkedHashMap();
-    for(FileWork work : scan.getWorkUnits()){
+    List<RecordReader> readers = Lists.newArrayList();
+    List<Map<String, String>> virtualColumns = Lists.newArrayList();
+    Map<String, String> mapWithMaxColumns = Maps.newLinkedHashMap();
+    for(FileWork work : scan.getWorkUnits()) {
       RecordReader recordReader = getRecordReader(context, dfs, work, scan.getColumns(), scan.getUserName());
       readers.add(recordReader);
-      Map<String, String> virtualValues = Maps.newLinkedHashMap();
-      if (root != null) {
-        Path path = Path.getPathWithoutSchemeAndAuthority(new Path(work.getPath()));
-        String[] p = path.toString().split("/");
-        if (p.length > root.length) {
-          String[] q = ArrayUtils.subarray(p, root.length, p.length - 1);
-          for (int a = 0; a < q.length; a++) {
-            if (selectAllColumns || selectedPartitionColumns.contains(a)) {
-              virtualValues.put(partitionDesignator + a, q[a]);
-            }
-          }
-        }
-
-        //add implicit columns
-        virtualValues.putAll(ImplicitColumns.toMap(path, implicitColumns));
-
-        if (mapWithMaxSize.size() < virtualValues.size()) {
-          mapWithMaxSize = virtualValues;
-        }
-      }
+      Map<String, String> virtualValues = columnExplorer.populateVirtualColumns(work, scan.getSelectionRoot());
       virtualColumns.add(virtualValues);
+      if (virtualValues.size() > mapWithMaxColumns.size()) {
+        mapWithMaxColumns = virtualValues;
+      }
     }
 
-    // add missing virtual columns
-    mapWithMaxSize = Maps.transformValues(mapWithMaxSize, Functions.constant((String) null));
+    // all readers should have the same number of virtual columns, add missing ones with value null
+    Map<String, String> diff = Maps.transformValues(mapWithMaxColumns, Functions.constant((String) null));
     for (Map<String, String> map : virtualColumns) {
-      map.putAll(Maps.difference(map, mapWithMaxSize).entriesOnlyOnRight());
+      map.putAll(Maps.difference(map, diff).entriesOnlyOnRight());
     }
 
     return new ScanBatch(scan, context, oContext, readers.iterator(), virtualColumns);
