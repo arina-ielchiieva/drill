@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 
-import com.google.common.base.Enums;
 import org.apache.commons.collections.map.CaseInsensitiveMap;
 import org.apache.drill.common.expression.ConvertExpression;
 import org.apache.drill.common.expression.ErrorCollector;
@@ -326,7 +325,7 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
                 continue;
               }
 
-              if (Enums.getIfPresent(VirtualColumnExplorer.ImplicitFileColumns.class, vvIn.getField().getName().toUpperCase()).isPresent()) {
+              if (isImplicitFileColumn(vvIn)) {
                 continue;
               }
 
@@ -348,7 +347,7 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
                 continue;
               }
 
-              if (Enums.getIfPresent(VirtualColumnExplorer.ImplicitFileColumns.class, vvIn.getField().getName().toUpperCase()).isPresent()) {
+              if (isImplicitFileColumn(vvIn)) {
                 continue;
               }
 
@@ -461,6 +460,10 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
     } else {
       return false;
     }
+  }
+
+  private boolean isImplicitFileColumn(ValueVector vvIn) {
+    return VirtualColumnExplorer.initImplicitFileColumns(context.getOptions()).get(vvIn.getField().getName()) != null;
   }
 
   private List<NamedExpression> getExpressionList() {

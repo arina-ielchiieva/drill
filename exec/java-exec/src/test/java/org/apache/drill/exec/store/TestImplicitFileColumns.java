@@ -22,6 +22,7 @@ import com.google.common.io.Files;
 import org.apache.drill.BaseTestQuery;
 import org.apache.drill.exec.util.JsonStringArrayList;
 import org.apache.drill.exec.util.Text;
+import org.apache.hadoop.fs.Path;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -64,8 +65,8 @@ public class TestImplicitFileColumns extends BaseTestQuery {
         .sqlQuery("select *, filename, suffix, fqn, dirname from dfs.`" + testFolder.getRoot().getPath() + "` order by filename")
         .ordered()
         .baselineColumns("columns", "dir0", "filename", "suffix", "fqn", "dirname")
-        .baselineValues(mainColumnValues, null, mainFile.getName(), CSV, mainFile.getPath(), mainFile.getParent())
-        .baselineValues(nestedColumnValues, NESTED, nestedFile.getName(), CSV, nestedFile.getPath(), nestedFile.getParent())
+        .baselineValues(mainColumnValues, null, mainFile.getName(), CSV, new Path(mainFile.getPath()).toString(), new Path(mainFile.getParent()).toString())
+        .baselineValues(nestedColumnValues, NESTED, nestedFile.getName(), CSV, new Path(nestedFile.getPath()).toString(), new Path(nestedFile.getParent()).toString())
         .go();
   }
 

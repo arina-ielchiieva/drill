@@ -17,15 +17,15 @@
  */
 package org.apache.drill.exec.store;
 
-import com.google.common.base.Enums;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.Files;
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.EnumUtils;
 import org.apache.drill.common.expression.SchemaPath;
+import org.apache.drill.common.map.CaseInsensitiveMap;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.ops.FragmentContext;
+import org.apache.drill.exec.server.options.OptionManager;
 import org.apache.drill.exec.store.dfs.easy.FileWork;
 import org.apache.hadoop.fs.Path;
 
@@ -40,8 +40,10 @@ public class VirtualColumnExplorer {
   private final List<SchemaPath> columns;
   private final boolean selectAllColumns;
   private final List<Integer> selectedPartitionColumns;
-  private final List<String> implicitColumns;
   private final List<SchemaPath> tableColumns;
+  private final Map<String, ImplicitFileColumns> allImplicitColumns;
+  private final Map<String, ImplicitFileColumns> selectedImplicitColumns;
+
 
   /**
    * Helper class that encapsulates logic for sorting out columns
@@ -49,51 +51,33 @@ public class VirtualColumnExplorer {
    * Also populates map with virtual columns names as keys and their values
    */
   public VirtualColumnExplorer(FragmentContext context, List<SchemaPath> columns) {
-    this.partitionDesignator = context.getOptions()
-     .getOption(ExecConstants.FILESYSTEM_PARTITION_COLUMN_LABEL).string_val;
+    this.partitionDesignator = context.getOptions().getOption(ExecConstants.FILESYSTEM_PARTITION_COLUMN_LABEL).string_val;
     this.columns = columns;
     this.selectAllColumns = columns != null && AbstractRecordReader.isStarQuery(columns);
     this.selectedPartitionColumns = Lists.newArrayList();
-    this.implicitColumns = Lists.newArrayList();
     this.tableColumns = Lists.newArrayList();
+    this.allImplicitColumns = initImplicitFileColumns(context.getOptions());
+    this.selectedImplicitColumns = CaseInsensitiveMap.newHashMap();
 
     init();
   }
 
   /**
-   * If it is not select all query, sorts out columns into three categories:
-   * 1. table columns
-   * 2. partition columns
-   * 3. implicit file columns
+   * Creates case insensitive map with implicit file columns as keys and appropriate ImplicitFileColumns enum as values
    */
-  private void init() {
-    if (selectAllColumns) {
-      implicitColumns.addAll(EnumUtils.getEnumMap(ImplicitFileColumns.class).keySet());
-    } else {
-      Pattern pattern = Pattern.compile(String.format("%s[0-9]+", partitionDesignator));
-      for (SchemaPath column : columns) {
-        String path = column.getAsUnescapedPath();
-        Matcher m = pattern.matcher(path);
-        if (m.matches()) {
-          selectedPartitionColumns.add(Integer.parseInt(path.substring(partitionDesignator.length())));
-        } else if (Enums.getIfPresent(ImplicitFileColumns.class, path.toUpperCase()).isPresent()) {
-          implicitColumns.add(path);
-        } else {
-          tableColumns.add(column);
-        }
-      }
-
-      // We must make sure to pass a table column(not to be confused with partition column) to the underlying record
-      // reader.
-      if (tableColumns.size() == 0) {
-        tableColumns.add(AbstractRecordReader.STAR_COLUMN);
-      }
-    }
+  public static Map<String, ImplicitFileColumns> initImplicitFileColumns(OptionManager optionManager) {
+    Map<String, ImplicitFileColumns> map = CaseInsensitiveMap.newHashMap();
+    map.put(optionManager.getOption(ExecConstants.IMPLICIT_FILENAME_COLUMN_LABEL).string_val, ImplicitFileColumns.FILENAME);
+    map.put(optionManager.getOption(ExecConstants.IMPLICIT_SUFFIX_COLUMN_LABEL).string_val, ImplicitFileColumns.SUFFIX);
+    map.put(optionManager.getOption(ExecConstants.IMPLICIT_FQN_COLUMN_LABEL).string_val, ImplicitFileColumns.FQN);
+    map.put(optionManager.getOption(ExecConstants.IMPLICIT_DIRNAME_COLUMN_LABEL).string_val, ImplicitFileColumns.DIRNAME);
+    return map;
   }
 
   /**
    * Compares selection root and actual file path to determine partition columns values.
    * Adds implicit file columns according to columns list.
+   *
    * @return map with columns names as keys and their values
    */
   public Map<String, String> populateVirtualColumns(FileWork work, String selectionRoot) {
@@ -111,7 +95,9 @@ public class VirtualColumnExplorer {
         }
       }
       //add implicit file columns
-      virtualValues.putAll(ImplicitFileColumns.toMap(path, implicitColumns));
+      for (Map.Entry<String, ImplicitFileColumns> entry : selectedImplicitColumns.entrySet()) {
+        virtualValues.put(entry.getKey(), entry.getValue().getValue(path));
+      }
     }
     return virtualValues;
   }
@@ -122,6 +108,37 @@ public class VirtualColumnExplorer {
 
   public List<SchemaPath> getTableColumns() {
     return tableColumns;
+  }
+
+  /**
+   * If it is not select all query, sorts out columns into three categories:
+   * 1. table columns
+   * 2. partition columns
+   * 3. implicit file columns
+   */
+  private void init() {
+    if (selectAllColumns) {
+      selectedImplicitColumns.putAll(allImplicitColumns);
+    } else {
+      Pattern pattern = Pattern.compile(String.format("%s[0-9]+", partitionDesignator));
+      for (SchemaPath column : columns) {
+        String path = column.getAsUnescapedPath();
+        Matcher m = pattern.matcher(path);
+        if (m.matches()) {
+          selectedPartitionColumns.add(Integer.parseInt(path.substring(partitionDesignator.length())));
+        } else if (allImplicitColumns.get(path) != null) {
+          selectedImplicitColumns.put(path, allImplicitColumns.get(path));
+        } else {
+          tableColumns.add(column);
+        }
+      }
+
+      // We must make sure to pass a table column(not to be confused with partition column) to the underlying record
+      // reader.
+      if (tableColumns.size() == 0) {
+        tableColumns.add(AbstractRecordReader.STAR_COLUMN);
+      }
+    }
   }
 
   /**
@@ -169,23 +186,6 @@ public class VirtualColumnExplorer {
         return Files.getFileExtension(path.getName());
       }
     };
-
-    /**
-     * Using list of required implicit file name columns
-     * creates map where key is column name from list,
-     * value is result of ImplicitFileColumnsEnum getValue method
-     * @param path file path
-     * @param columns list of implicit file columns needed
-     * @return map with column names and their values
-     * @throws IllegalArgumentException when column name is not in ImplicitFileColumns enum.
-     */
-    public static Map<String, String> toMap(Path path, List<String> columns) {
-      Map<String, String> map = Maps.newLinkedHashMap();
-      for (String column : columns) {
-        map.put(column, ImplicitFileColumns.valueOf(column.toUpperCase()).getValue(path));
-      }
-      return map;
-    }
 
     /**
      * Using file path calculates value for each implicit file column
