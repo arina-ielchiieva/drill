@@ -307,7 +307,7 @@ public class TestSelectWithOption extends BaseTestQuery {
     value3.add(new Text("Q"));
 
     testBuilder()
-        .sqlQuery("select columns from table(dfs.`F:\\drill\\files\\dirN\\1990\\1990_Q1_4.csv`(type=>'text',lineDelimiter=>'4\r\n',fieldDelimiter=>','))")
+        .sqlQuery("select columns from table(dfs.`F:\\drill\\files\\dirN\\1990\\1990_Q1_4.csv`(type=>'text',lineDelimiter=>'\r\n',fieldDelimiter=>','))")
         .unOrdered()
         .baselineColumns("columns")
         .baselineValues(value1)
@@ -333,6 +333,34 @@ public class TestSelectWithOption extends BaseTestQuery {
         .baselineColumns("columns")
         .baselineValues(value1)
         .baselineValues(values)
+        .go();
+  }
+
+  @Test
+  public void testLargeCount() throws Exception {
+    testBuilder()
+        .sqlQuery("select count(*) as cnt from dfs.`F:\\drill\\files\\hive_5005500.csv`")
+        .unOrdered()
+        .baselineColumns("cnt")
+        .baselineValues(5005500L)
+        .go();
+  }
+
+  @Test
+  public void testErrorWithThreeDelimiters() throws Exception {
+    test("select columns from table(dfs.`F:\\drill\\files\\hive_10.csv`(type=>'text',lineDelimiter=>'key',fieldDelimiter=>','))");
+  }
+
+  @Test
+  public void testDfsAndCarriageReturn() throws Exception {
+    JsonStringArrayList<Text> value = new JsonStringArrayList<>();
+    value.add(new Text("1"));
+    value.add(new Text("key_1\r"));
+    testBuilder()
+        .sqlQuery("select * from table(dfs.`F:\\drill\\files\\hive_1.csv`(type=>'text',lineDelimiter=>'k'))")
+        .unOrdered()
+        .baselineColumns("columns")
+        .baselineValues(value)
         .go();
   }
 

@@ -45,7 +45,8 @@ public class TestFormatPluginOptionExtractor {
         case "text":
           assertEquals(TextFormatConfig.class, d.pluginConfigClass);
           assertEquals(
-              "(type: String, lineDelimiter: String, fieldDelimiter: String, quote: String, escape: String, comment: String, skipFirstLine: boolean, extractHeader: boolean)",
+              "(type: String, lineDelimiters: List, newLineIndicator: String, fieldDelimiter: String, quote: String, escape: String, comment: String, skipFirstLine: boolean, " +
+                  "extractHeader: boolean)",
               d.presentParams()
           );
           break;
