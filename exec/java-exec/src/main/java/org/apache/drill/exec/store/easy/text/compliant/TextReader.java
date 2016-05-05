@@ -86,7 +86,7 @@ final class TextReader {
     this.delimiter = settings.getDelimiter();
     this.quote = settings.getQuote();
     this.quoteEscape = settings.getQuoteEscape();
-    this.newLine = settings.getNormalizedNewLine();
+    this.newLine = settings.getNewLineIndicator();
     this.comment = settings.getComment();
 
     this.input = input;

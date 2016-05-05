@@ -135,7 +135,8 @@ public class TextFormatPlugin extends EasyFormatPlugin<TextFormatPlugin.TextForm
   public static class TextFormatConfig implements FormatPluginConfig {
 
     public List<String> extensions = ImmutableList.of();
-    public String lineDelimiter = "\n";
+    public List<String> lineDelimiters = ImmutableList.of("\r\n", "\n");
+    public char newLineIndicator = '\n';
     public char fieldDelimiter = '\n';
     public char quote = '"';
     public char escape = '"';
@@ -159,8 +160,12 @@ public class TextFormatPlugin extends EasyFormatPlugin<TextFormatPlugin.TextForm
       return comment;
     }
 
-    public String getLineDelimiter() {
-      return lineDelimiter;
+    public List<String> getLineDelimiters() {
+      return lineDelimiters;
+    }
+
+    public char getNewLineIndicator() {
+      return newLineIndicator;
     }
 
     public char getFieldDelimiter() {
@@ -195,7 +200,8 @@ public class TextFormatPlugin extends EasyFormatPlugin<TextFormatPlugin.TextForm
       result = prime * result + escape;
       result = prime * result + ((extensions == null) ? 0 : extensions.hashCode());
       result = prime * result + fieldDelimiter;
-      result = prime * result + ((lineDelimiter == null) ? 0 : lineDelimiter.hashCode());
+      result = prime * result + ((lineDelimiters == null) ? 0 : lineDelimiters.hashCode());
+      result = prime * result + newLineIndicator;
       result = prime * result + quote;
       result = prime * result + (skipFirstLine ? 1231 : 1237);
       return result;
@@ -229,11 +235,14 @@ public class TextFormatPlugin extends EasyFormatPlugin<TextFormatPlugin.TextForm
       if (fieldDelimiter != other.fieldDelimiter) {
         return false;
       }
-      if (lineDelimiter == null) {
-        if (other.lineDelimiter != null) {
+      if (lineDelimiters == null) {
+        if (other.lineDelimiters != null) {
           return false;
         }
-      } else if (!lineDelimiter.equals(other.lineDelimiter)) {
+      } else if (!lineDelimiters.equals(other.lineDelimiters)) {
+        return false;
+      }
+      if (newLineIndicator != other.newLineIndicator) {
         return false;
       }
       if (quote != other.quote) {

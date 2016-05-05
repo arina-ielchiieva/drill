@@ -17,11 +17,14 @@
  */
 package org.apache.drill.exec.store.easy.text.compliant;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import org.apache.drill.exec.store.easy.text.TextFormatPlugin.TextFormatConfig;
 
 import com.google.common.base.Charsets;
-import com.google.common.base.Preconditions;
 import com.univocity.parsers.common.TextParsingException;
+
+import java.util.List;
 
 public class TextParsingSettings {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TextParsingSettings.class);
@@ -36,11 +39,11 @@ public class TextParsingSettings {
   private byte comment = b('#');
 
   private long maxCharsPerColumn = Character.MAX_VALUE;
-  private byte normalizedNewLine = b('\n');
-  private byte[] newLineDelimiter = {normalizedNewLine};
+  private byte newLineIndicator = b('\n');
+  private List<byte[]> newLineDelimiters = ImmutableList.of(new byte[newLineIndicator]);
   private boolean ignoreLeadingWhitespaces = false;
   private boolean ignoreTrailingWhitespaces = false;
-  private String lineSeparatorString = "\n";
+  private String lineSeparatorString = "\r\n";
   private boolean skipFirstLine = false;
 
   private boolean headerExtractionEnabled = false;
@@ -50,9 +53,15 @@ public class TextParsingSettings {
   public void set(TextFormatConfig config){
     this.quote = bSafe(config.getQuote(), "quote");
     this.quoteEscape = bSafe(config.getEscape(), "escape");
-    this.newLineDelimiter = config.getLineDelimiter().getBytes(Charsets.UTF_8);
-    //Preconditions.checkArgument(newLineDelimiter.length == 1 || newLineDelimiter.length == 2,
-        //String.format("Line delimiter must be 1 or 2 bytes in length.  The provided delimiter was %d bytes long.", newLineDelimiter.length));
+
+    if (config.getLineDelimiters().size() != 0) {
+      this.newLineDelimiters = Lists.newArrayList();
+      for (String newLineDelimiter : config.getLineDelimiters()) {
+        this.newLineDelimiters.add(newLineDelimiter.getBytes(Charsets.UTF_8));
+      }
+    }
+
+    this.newLineIndicator = bSafe(config.getNewLineIndicator(), "newLineIndicator");
     this.delimiter = bSafe(config.getFieldDelimiter(), "fieldDelimiter");
     this.comment = bSafe(config.getComment(), "comment");
     this.skipFirstLine = config.isSkipFirstLine();
@@ -96,8 +105,8 @@ public class TextParsingSettings {
     return (byte) c;
   }
 
-  public byte[] getNewLineDelimiter() {
-    return newLineDelimiter;
+  public List<byte[]> getNewLineDelimiters() {
+    return newLineDelimiters;
   }
 
   /**
@@ -264,12 +273,12 @@ public class TextParsingSettings {
     this.comment = comment;
   }
 
-  public byte getNormalizedNewLine() {
-    return normalizedNewLine;
+  public byte getNewLineIndicator() {
+    return newLineIndicator;
   }
 
-  public void setNormalizedNewLine(byte normalizedNewLine) {
-    this.normalizedNewLine = normalizedNewLine;
+  public void setNewLineIndicator(byte newLineIndicator) {
+    this.newLineIndicator = newLineIndicator;
   }
 
   public boolean isIgnoreLeadingWhitespaces() {
