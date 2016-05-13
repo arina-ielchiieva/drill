@@ -6,11 +6,13 @@
       workspaces: {
         "root" : {
           location: "/",
-          writable: false
+          writable: false,
+          physicalLocation: "file:///"
         },
         "tmp" : {
           location: "/tmp",
-          writable: true
+          writable: true,
+          physicalLocation: "file:///tmp"
         }
       },
       formats: {
@@ -62,11 +64,13 @@
       workspaces: {
         "root" : {
           location: "/",
-          writable: false
+          writable: false,
+          physicalLocation: "s3a://my.bucket.location.com"
         },
         "tmp" : {
           location: "/tmp",
-          writable: true
+          writable: true,
+          physicalLocation: "s3a://my.bucket.location.com/tmp"
         }
       },
       formats: {

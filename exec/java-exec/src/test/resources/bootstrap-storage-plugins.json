@@ -6,11 +6,13 @@
       workspaces: {
         "home" : {
           location: "/",
-          writable: false
+          writable: false,
+          physicalLocation: "file:///"
         },
         "tmp" : {
           location: "/tmp/drilltest",
-          writable: true
+          writable: true,
+          physicalLocation: "file:///tmp/drilltest"
         }
       },
       formats: {

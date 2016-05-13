@@ -68,7 +68,7 @@ public class TestUtilities {
     final FileSystemConfig pluginConfig = (FileSystemConfig) plugin.getConfig();
     final WorkspaceConfig tmpWSConfig = pluginConfig.workspaces.get(dfsTestTmpSchema);
 
-    final WorkspaceConfig newTmpWSConfig = new WorkspaceConfig(tmpDirPath, true, tmpWSConfig.getDefaultInputFormat());
+    final WorkspaceConfig newTmpWSConfig = new WorkspaceConfig(tmpDirPath, true, tmpWSConfig.getDefaultInputFormat(), pluginConfig.connection + tmpDirPath.replaceAll("^/",""));
 
     pluginConfig.workspaces.remove(dfsTestTmpSchema);
     pluginConfig.workspaces.put(dfsTestTmpSchema, newTmpWSConfig);
@@ -86,7 +86,7 @@ public class TestUtilities {
     final WorkspaceConfig tmpWSConfig = dfsPluginConfig.workspaces.get(dfsTmpSchema);
 
     final WorkspaceConfig newTmpWSConfig = new WorkspaceConfig(tmpWSConfig.getLocation(), false,
-        tmpWSConfig.getDefaultInputFormat());
+        tmpWSConfig.getDefaultInputFormat(), tmpWSConfig.getLocation());
 
     dfsPluginConfig.workspaces.remove(dfsTmpSchema);
     dfsPluginConfig.workspaces.put(dfsTmpSchema, newTmpWSConfig);

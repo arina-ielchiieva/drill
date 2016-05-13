@@ -353,44 +353,13 @@ public class TestInfoSchema extends BaseTestQuery {
   }
 
   @Test
-  public void describeSchemaDfsTmp() throws Exception {
+  public void describeSchemaOutput() throws Exception {
     String properties = mapper.writeValueAsString(bits[0].getContext().getStorage().getPlugin("dfs_test").getConfig());
     testBuilder()
         .sqlQuery("describe schema dfs_test.tmp")
         .unOrdered()
-        .baselineColumns("name", "physical_location", "properties")
-        .baselineValues("dfs_test.tmp", "file:///" + getDfsTestTmpSchemaLocation().replaceAll("^/", ""), properties)
-        .go();
-  }
-
-  @Test
-  public void describeSchemaCp() throws Exception {
-    String properties = mapper.writeValueAsString(bits[0].getContext().getStorage().getPlugin("cp").getConfig());
-    testBuilder()
-        .sqlQuery("describe schema cp.`default`")
-        .unOrdered()
-        .baselineColumns("name", "physical_location", "properties")
-        .baselineValues("cp.default", "classpath:///", properties)
-        .go();
-  }
-
-  @Test
-  public void describeSchemaInformationUnavailable() throws Exception {
-    StoragePluginRegistry storage = bits[0].getContext().getStorage();
-    String properties = mapper.writeValueAsString(storage.getPlugin("INFORMATION_SCHEMA").getConfig());
-    testBuilder()
-        .sqlQuery("describe schema INFORMATION_SCHEMA")
-        .unOrdered()
-        .baselineColumns("name", "physical_location", "properties")
-        .baselineValues("INFORMATION_SCHEMA", "<INFORMATION UNAVAILABLE>", properties)
-        .go();
-
-    properties = mapper.writeValueAsString(storage.getPlugin("sys").getConfig());
-    testBuilder()
-        .sqlQuery("describe schema sys")
-        .unOrdered()
-        .baselineColumns("name", "physical_location", "properties")
-        .baselineValues("sys", "<INFORMATION UNAVAILABLE>", properties)
+        .baselineColumns("properties")
+        .baselineValues(properties)
         .go();
   }
 

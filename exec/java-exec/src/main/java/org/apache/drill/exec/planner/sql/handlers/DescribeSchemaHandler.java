@@ -48,7 +48,6 @@ public class DescribeSchemaHandler extends DefaultSqlHandler {
     SchemaPlus drillSchema = SchemaUtilites.findSchema(config.getConverter().getDefaultSchema(), schema.names);
 
     if (drillSchema != null) {
-      String schemaName = SchemaUtilites.getSchemaPath(drillSchema);
       StoragePlugin storagePlugin;
       try {
         storagePlugin = context.getStorage().getPlugin(schema.names.get(0));
@@ -57,8 +56,6 @@ public class DescribeSchemaHandler extends DefaultSqlHandler {
             .message("Failure while retrieving storage plugin", e)
             .build(logger);
       }
-
-      String physicalLocation = storagePlugin.getPhysicalLocation(drillSchema.getName());
       String properties;
       try {
         properties = mapper.writeValueAsString(storagePlugin.getConfig());
@@ -67,7 +64,7 @@ public class DescribeSchemaHandler extends DefaultSqlHandler {
             .message("Error while trying to convert storage config to json string")
             .build(logger);
       }
-      return DirectPlan.createDirectPlan(context, new DescribeSchemaCommandResult(schemaName, physicalLocation, properties));
+      return DirectPlan.createDirectPlan(context, new DescribeSchemaCommandResult(properties));
     }
 
     throw UserException.validationError()

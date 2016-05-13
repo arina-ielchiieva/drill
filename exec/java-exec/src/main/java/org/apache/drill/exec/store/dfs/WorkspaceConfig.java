@@ -25,23 +25,27 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  *  - location which is a path.
  *  - writable flag to indicate whether the location supports creating new tables.
  *  - default storage format for new tables created in this workspace.
+ *  - physicalLocation is full path to workspace
  */
 @JsonIgnoreProperties(value = {"storageformat"})
 public class WorkspaceConfig {
 
   /** Default workspace is a root directory which supports read, but not write. */
-  public static final WorkspaceConfig DEFAULT = new WorkspaceConfig("/", false, null);
+  public static final WorkspaceConfig DEFAULT = new WorkspaceConfig("/", false, null, null);
 
   private final String location;
   private final boolean writable;
   private final String defaultInputFormat;
+  private final String physicalLocation;
 
   public WorkspaceConfig(@JsonProperty("location") String location,
                          @JsonProperty("writable") boolean writable,
-                         @JsonProperty("defaultInputFormat") String defaultInputFormat) {
+                         @JsonProperty("defaultInputFormat") String defaultInputFormat,
+                         @JsonProperty("physicalLocation") String physicalLocation) {
     this.location = location;
     this.writable = writable;
     this.defaultInputFormat = defaultInputFormat;
+    this.physicalLocation = physicalLocation;
   }
 
   public String getLocation() {
@@ -56,6 +60,8 @@ public class WorkspaceConfig {
     return defaultInputFormat;
   }
 
+  public String getPhysicalLocation() { return physicalLocation; }
+
   @Override
   public int hashCode() {
     final int prime = 31;
@@ -63,6 +69,7 @@ public class WorkspaceConfig {
     result = prime * result + ((defaultInputFormat == null) ? 0 : defaultInputFormat.hashCode());
     result = prime * result + ((location == null) ? 0 : location.hashCode());
     result = prime * result + (writable ? 1231 : 1237);
+    result = prime * result + ((physicalLocation == null) ? 0 : physicalLocation.hashCode());
     return result;
   }
 
@@ -93,6 +100,13 @@ public class WorkspaceConfig {
       return false;
     }
     if (writable != other.writable) {
+      return false;
+    }
+    if (physicalLocation == null) {
+      if (other.physicalLocation != null) {
+        return false;
+      }
+    } else if (!physicalLocation.equals(other.physicalLocation)) {
       return false;
     }
     return true;

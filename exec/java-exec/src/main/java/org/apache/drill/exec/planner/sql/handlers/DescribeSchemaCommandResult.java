@@ -19,14 +19,9 @@ package org.apache.drill.exec.planner.sql.handlers;
 
 public class DescribeSchemaCommandResult {
 
-  public final String name;
-  public final String physical_location;
   public final String properties;
 
-
-  public DescribeSchemaCommandResult(String name, String physicalLocation, String properties) {
-    this.name = name;
-    this.physical_location = physicalLocation;
+  public DescribeSchemaCommandResult(String properties) {
     this.properties = properties;
   }
 }
