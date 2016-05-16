@@ -49,6 +49,8 @@ public class DrillFunctionRegistry {
   // key: function name (lowercase) value: list of functions with that name
   private final ArrayListMultimap<String, DrillFuncHolder> registeredFunctions = ArrayListMultimap.create();
 
+  private final Map<String, String> functionSignatureMap = new HashMap<>();
+
   private static final ImmutableMap<String, Pair<Integer, Integer>> registeredFuncNameToArgRange = ImmutableMap.<String, Pair<Integer, Integer>> builder()
       // CONCAT is allowed to take [1, infinity) number of arguments.
       // Currently, this flexibility is offered by DrillOptiq to rewrite it as
@@ -72,7 +74,8 @@ public class DrillFunctionRegistry {
     // key: Function Name + Input's Major Type
     // value: Class name where function is implemented
     //
-    final Map<String, String> functionSignatureMap = new HashMap<>();
+
+    //final Map<String, String> functionSignatureMap = new HashMap<>();
     for (AnnotatedClassDescriptor func : providerClasses) {
       DrillFuncHolder holder = converter.getHolder(func);
       if (holder != null) {
@@ -85,6 +88,11 @@ public class DrillFunctionRegistry {
           functionInput += ref.getType().toString();
         }
         for (String name : names) {
+
+          if (name.equals("arina_upper")) {
+            System.out.println("Found arina_upper");
+          }
+
           String functionName = name.toLowerCase();
           registeredFunctions.put(functionName, holder);
           String functionSignature = functionName + functionInput;
@@ -125,6 +133,41 @@ public class DrillFunctionRegistry {
   public void register(DrillOperatorTable operatorTable) {
     registerOperatorsWithInference(operatorTable);
     registerOperatorsWithoutInference(operatorTable);
+  }
+
+  public void dynamicallyRegister(ScanResult classpathScan) {
+    FunctionConverter converter = new FunctionConverter();
+    List<AnnotatedClassDescriptor> providerClasses = classpathScan.getAnnotatedClasses();
+    for (AnnotatedClassDescriptor func : providerClasses) {
+      DrillFuncHolder holder = converter.getHolder(func);
+      if (holder != null) {
+        // register handle for each name the function can be referred to
+        String[] names = holder.getRegisteredNames();
+
+        // Create the string for input types
+        String functionInput = "";
+        for (DrillFuncHolder.ValueReference ref : holder.parameters) {
+          functionInput += ref.getType().toString();
+        }
+        for (String name : names) {
+          String functionName = name.toLowerCase();
+          registeredFunctions.put(functionName, holder);
+          String functionSignature = functionName + functionInput;
+          String existingImplementation;
+          if ((existingImplementation = functionSignatureMap.get(functionSignature)) != null) {
+            //todo don't we need to clean up first before failing?
+            throw new AssertionError(String.format("Conflicting functions with similar signature found. Func Name: %s, Class name: %s " + " Class name: %s", functionName, func.getClassName(), existingImplementation));
+          } else if (holder.isAggregating() && !holder.isDeterministic()) {
+            logger.warn("Aggregate functions must be deterministic, did not register function {}", func.getClassName());
+          } else {
+            functionSignatureMap.put(functionSignature, func.getClassName());
+          }
+        }
+      } else {
+        logger.warn("Unable to initialize function for class {}", func.getClassName());
+      }
+    }
+    //todo add return with status of registered functions
   }
 
   private void registerOperatorsWithInference(DrillOperatorTable operatorTable) {

@@ -127,7 +127,8 @@ if [ "${HBASE_CLASSPATH}x" != "x" ]; then
 fi
 
 # Followed by Drill other dependency jars
-CP=$CP:$DRILL_HOME/jars/3rdparty/*
+DRILL_CP_3RD_PARTY=$DRILL_HOME/jars/3rdparty
+CP=$CP:$DRILL_CP_3RD_PARTY/*
 CP=$CP:$DRILL_HOME/jars/classb/*
 
 # Finally any user specified 
@@ -211,3 +212,4 @@ export DRILL_HOME
 export DRILL_CONF_DIR
 export DRILL_LOG_DIR
 export CP
+export DRILL_CP_3RD_PARTY

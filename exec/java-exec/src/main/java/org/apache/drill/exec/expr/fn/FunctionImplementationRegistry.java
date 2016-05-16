@@ -186,4 +186,9 @@ public class FunctionImplementationRegistry implements FunctionLookupContext {
     }
     return false;
   }
+
+  public void dynamicallyRegister(ScanResult scanResult) {
+    drillFuncRegistry.dynamicallyRegister(scanResult);
+  }
+
 }

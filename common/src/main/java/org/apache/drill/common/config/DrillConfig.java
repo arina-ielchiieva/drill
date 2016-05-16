@@ -50,7 +50,6 @@ public class DrillConfig extends NestedConfig {
   @SuppressWarnings("restriction")
   private static final long MAX_DIRECT_MEMORY = sun.misc.VM.maxDirectMemory();
 
-  @VisibleForTesting
   public DrillConfig(Config config, boolean enableServerConfigs) {
     super(config);
     logger.debug("Setting up DrillConfig object.");

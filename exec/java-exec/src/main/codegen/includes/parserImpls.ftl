@@ -278,3 +278,31 @@ SqlNode SqlRefreshMetadata() :
     }
 }
 
+/**
+* Parse create function statement
+* CREATE FUNCTION USING JAR 'path_to_jar' [SOURCES 'path_to_sources']
+*/
+SqlNode SqlCreateFunction() :
+{
+    SqlParserPos pos;
+    SqlNode pathToJar;
+    SqlNode pathToSources = null;
+}
+{
+   <CREATE> { pos = getPos(); }
+   <FUNCTION>
+   <USING>
+   <JAR>
+   pathToJar = StringLiteral()
+      (
+          <SOURCES>
+          pathToSources = StringLiteral()
+          |
+          E()
+      )
+  {
+      return new SqlCreateFunction(pos, pathToJar, pathToSources);
+  }
+}
+
+
