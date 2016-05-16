@@ -38,6 +38,7 @@ import org.apache.drill.exec.proto.BitControl.QueryContextInformation;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
 import org.apache.drill.exec.proto.UserBitShared.QueryId;
 import org.apache.drill.exec.proto.helper.QueryIdHelper;
+import org.apache.drill.exec.rpc.control.Controller;
 import org.apache.drill.exec.rpc.user.UserSession;
 import org.apache.drill.exec.server.DrillbitContext;
 import org.apache.drill.exec.server.options.OptionManager;
@@ -230,6 +231,8 @@ public class QueryContext implements AutoCloseable, OptimizerRulesContext {
   public QueryContextInformation getQueryContextInfo() {
     return queryContextInfo;
   }
+
+  public Controller getController() { return drillbitContext.getController(); }
 
   @Override
   public ContextInformation getContextInformation() {

@@ -186,4 +186,13 @@ public class FunctionImplementationRegistry implements FunctionLookupContext {
     }
     return false;
   }
+
+  public Collection<String> registerFunctions(ScanResult scanResult) {
+    return drillFuncRegistry.registerFunctions(scanResult);
+  }
+
+  public Collection<String> deleteFunctions(ScanResult scanResult) {
+    return drillFuncRegistry.deleteFunctions(scanResult);
+  }
+
 }

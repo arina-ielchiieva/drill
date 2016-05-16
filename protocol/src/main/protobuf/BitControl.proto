@@ -26,6 +26,9 @@ enum RpcType {
   REQ_QUERY_CANCEL = 15;
   REQ_UNPAUSE_FRAGMENT = 16; // send a resume message for a fragment, returns Ack
   REQ_CUSTOM = 17;
+  REQ_CREATE_UDF = 19; // create udf
+  REQ_DELETE_UDF = 20; // delete udf
+  REQ_TRANSFER_FILES = 22; // transfer files with their content
 
   // bit responses
   RESP_FRAGMENT_HANDLE = 11;
@@ -33,6 +36,7 @@ enum RpcType {
   RESP_BIT_STATUS = 13;
   RESP_QUERY_STATUS = 14;
   RESP_CUSTOM = 18;
+  RESP_STRING_LIST = 21; // holds list of string
 }
 
 message BitControlHandshake{

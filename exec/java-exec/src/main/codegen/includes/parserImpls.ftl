@@ -278,3 +278,44 @@ SqlNode SqlRefreshMetadata() :
     }
 }
 
+/**
+* Parse create UDF statement
+* CREATE FUNCTION USING JAR 'path_to_binary_jar'
+*/
+SqlNode SqlCreateUDF() :
+{
+    SqlParserPos pos;
+    SqlNode pathToJar;
+}
+{
+   <CREATE> { pos = getPos(); }
+   <FUNCTION>
+   <USING>
+   <JAR>
+   pathToJar = StringLiteral()
+  {
+      return new SqlCreateUDF(pos, pathToJar);
+  }
+}
+
+/**
+* Parse delete UDF statement
+* DELETE FUNCTION USING JAR 'binaryJarName'
+*/
+SqlNode SqlDeleteUDF() :
+{
+   SqlParserPos pos;
+   SqlNode jarName;
+}
+{
+    <DELETE> { pos = getPos(); }
+    <FUNCTION>
+    <USING>
+    <JAR>
+    jarName = StringLiteral()
+   {
+      return new SqlDeleteUDF(pos, jarName);
+   }
+}
+
+

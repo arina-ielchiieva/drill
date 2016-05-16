@@ -214,6 +214,12 @@
       <directory>../sample-data</directory>
       <outputDirectory>sample-data</outputDirectory>
     </fileSet>
+    <fileSet> <!-- Create empty udf directory -->
+      <outputDirectory>../jars/3rdparty/udf</outputDirectory>
+      <excludes>
+        <exclude>**/*</exclude>
+      </excludes>
+    </fileSet>
   </fileSets>
 
   <files>

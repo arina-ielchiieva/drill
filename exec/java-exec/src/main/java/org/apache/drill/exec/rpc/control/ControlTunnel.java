@@ -32,6 +32,8 @@ import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;
 import org.apache.drill.exec.proto.GeneralRPCProtos.Ack;
 import org.apache.drill.exec.proto.UserBitShared.QueryId;
 import org.apache.drill.exec.proto.UserBitShared.QueryProfile;
+import org.apache.drill.exec.proto.UserProtos.FileHolder;
+import org.apache.drill.exec.proto.UserProtos.StringList;
 import org.apache.drill.exec.rpc.DrillRpcFuture;
 import org.apache.drill.exec.rpc.FutureBitCommand;
 import org.apache.drill.exec.rpc.ListeningCommand;
@@ -106,6 +108,23 @@ public class ControlTunnel {
     return b.getFuture();
   }
 
+  public DrillRpcFuture<StringList> createUDF(StringList list) {
+    CreateUDF b = new CreateUDF(list);
+    manager.runCommand(b);
+    return b.getFuture();
+  }
+
+  public DrillRpcFuture<StringList> deleteUDF(StringList list) {
+    DeleteUDF b = new DeleteUDF(list);
+    manager.runCommand(b);
+    return b.getFuture();
+  }
+
+  public DrillRpcFuture<Ack> transferFiles(FileHolder holder) {
+    TransferFiles b = new TransferFiles(holder);
+    manager.runCommand(b);
+    return b.getFuture();
+  }
 
   public static class SendFragmentStatus extends FutureBitCommand<Ack, ControlConnection> {
     final FragmentStatus status;
@@ -194,6 +213,48 @@ public class ControlTunnel {
     @Override
     public void doRpcCall(RpcOutcomeListener<Ack> outcomeListener, ControlConnection connection) {
       connection.send(outcomeListener, RpcType.REQ_QUERY_CANCEL, queryId, Ack.class);
+    }
+  }
+
+  public static class CreateUDF extends FutureBitCommand<StringList, ControlConnection> {
+    final StringList list;
+
+    public CreateUDF(StringList list) {
+      super();
+      this.list = list;
+    }
+
+    @Override
+    public void doRpcCall(RpcOutcomeListener<StringList> outcomeListener, ControlConnection connection) {
+      connection.send(outcomeListener, RpcType.REQ_CREATE_UDF, list, StringList.class);
+    }
+  }
+
+  public static class DeleteUDF extends FutureBitCommand<StringList, ControlConnection> {
+    final StringList list;
+
+    public DeleteUDF(StringList list) {
+      super();
+      this.list = list;
+    }
+
+    @Override
+    public void doRpcCall(RpcOutcomeListener<StringList> outcomeListener, ControlConnection connection) {
+      connection.send(outcomeListener, RpcType.REQ_DELETE_UDF, list, StringList.class);
+    }
+  }
+
+  public static class TransferFiles extends FutureBitCommand<Ack, ControlConnection> {
+    final FileHolder holder;
+
+    public TransferFiles(FileHolder holder) {
+      super();
+      this.holder = holder;
+    }
+
+    @Override
+    public void doRpcCall(RpcOutcomeListener<Ack> outcomeListener, ControlConnection connection) {
+      connection.send(outcomeListener, RpcType.REQ_TRANSFER_FILES, holder, Ack.class);
     }
   }
 

@@ -36,7 +36,8 @@
     "USE",
     "FILES",
     "REFRESH",
-    "METADATA"
+    "METADATA",
+    "JAR"
   ]
 
   # List of methods for parsing custom SQL statements.
@@ -50,7 +51,9 @@
     "SqlShowFiles()",
     "SqlCreateTable()",
     "SqlDropTable()",
-    "SqlRefreshMetadata()"
+    "SqlRefreshMetadata()",
+    "SqlCreateUDF()",
+    "SqlDeleteUDF()"
   ]
 
   # List of methods for parsing custom literals.

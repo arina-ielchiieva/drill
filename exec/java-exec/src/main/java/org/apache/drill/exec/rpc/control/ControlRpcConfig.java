@@ -31,6 +31,8 @@ import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;
 import org.apache.drill.exec.proto.GeneralRPCProtos.Ack;
 import org.apache.drill.exec.proto.UserBitShared.QueryId;
 import org.apache.drill.exec.proto.UserBitShared.QueryProfile;
+import org.apache.drill.exec.proto.UserProtos.FileHolder;
+import org.apache.drill.exec.proto.UserProtos.StringList;
 import org.apache.drill.exec.rpc.Acks;
 import org.apache.drill.exec.rpc.Response;
 import org.apache.drill.exec.rpc.RpcConfig;
@@ -52,6 +54,9 @@ public class ControlRpcConfig {
         .add(RpcType.REQ_QUERY_STATUS, QueryId.class, RpcType.RESP_QUERY_STATUS, QueryProfile.class)
         .add(RpcType.REQ_UNPAUSE_FRAGMENT, FragmentHandle.class, RpcType.ACK, Ack.class)
         .add(RpcType.REQ_CUSTOM, CustomMessage.class, RpcType.RESP_CUSTOM, CustomMessage.class)
+        .add(RpcType.REQ_CREATE_UDF, StringList.class, RpcType.RESP_STRING_LIST, StringList.class)
+        .add(RpcType.REQ_DELETE_UDF, StringList.class, RpcType.RESP_STRING_LIST, StringList.class)
+        .add(RpcType.REQ_TRANSFER_FILES, FileHolder.class, RpcType.ACK, Ack.class)
         .build();
   }
 

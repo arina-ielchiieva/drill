@@ -18,10 +18,14 @@
 package org.apache.drill.exec.work.batch;
 
 import static org.apache.drill.exec.rpc.RpcBus.get;
+
+import com.google.common.collect.Lists;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.DrillBuf;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.drill.exec.ops.FragmentContext;
+import org.apache.drill.exec.planner.sql.UDFHandler;
 import org.apache.drill.exec.proto.BitControl.CustomMessage;
 import org.apache.drill.exec.proto.BitControl.FinishedReceiver;
 import org.apache.drill.exec.proto.BitControl.FragmentStatus;
@@ -32,6 +36,9 @@ import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;
 import org.apache.drill.exec.proto.GeneralRPCProtos.Ack;
 import org.apache.drill.exec.proto.UserBitShared.QueryId;
 import org.apache.drill.exec.proto.UserBitShared.QueryProfile;
+import org.apache.drill.exec.proto.UserProtos;
+import org.apache.drill.exec.proto.UserProtos.FileHolder;
+import org.apache.drill.exec.proto.UserProtos.StringList;
 import org.apache.drill.exec.proto.helper.QueryIdHelper;
 import org.apache.drill.exec.rpc.Acks;
 import org.apache.drill.exec.rpc.Response;
@@ -49,6 +56,10 @@ import org.apache.drill.exec.work.fragment.FragmentExecutor;
 import org.apache.drill.exec.work.fragment.FragmentManager;
 import org.apache.drill.exec.work.fragment.FragmentStatusReporter;
 import org.apache.drill.exec.work.fragment.NonRootFragmentManager;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
 
 public class ControlMessageHandler {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ControlMessageHandler.class);
@@ -121,6 +132,24 @@ public class ControlMessageHandler {
     case RpcType.REQ_UNPAUSE_FRAGMENT_VALUE: {
       final FragmentHandle handle = get(pBody, FragmentHandle.PARSER);
       resumeFragment(handle);
+      return ControlRpcConfig.OK;
+    }
+
+    case RpcType.REQ_CREATE_UDF_VALUE: {
+      final StringList list = get(pBody, StringList.PARSER);
+      final UDFHandler udfHandler = new UDFHandler(bee.getContext().getFunctionImplementationRegistry());
+      return new Response(RpcType.RESP_STRING_LIST, udfHandler.createUDF(list));
+    }
+
+    case RpcType.REQ_DELETE_UDF_VALUE: {
+      final StringList list = get(pBody, StringList.PARSER);
+      final UDFHandler udfHandler = new UDFHandler(bee.getContext().getFunctionImplementationRegistry());
+      return new Response(RpcType.RESP_STRING_LIST, udfHandler.deleteUDF(list));
+    }
+
+    case RpcType.REQ_TRANSFER_FILES_VALUE: {
+      final FileHolder holder = get(pBody, FileHolder.PARSER);
+      transferFiles(holder);
       return ControlRpcConfig.OK;
     }
 
@@ -242,4 +271,22 @@ public class ControlMessageHandler {
     return handlerRegistry;
   }
 
+  private void transferFiles(FileHolder holder) throws UserRpcException {
+    String tempFolder = System.getProperty("java.io.tmpdir");
+    List<File> createdFiles = Lists.newArrayList();
+    try {
+      for (UserProtos.File f : holder.getFilesList()) {
+        File file = new File(tempFolder, f.getName());
+        FileUtils.writeByteArrayToFile(file, f.toByteArray());
+        createdFiles.add(file);
+      }
+    } catch(IOException e){
+      for (File file : createdFiles) {
+        if (!file.delete()) {
+          logger.warn("Could not delete file {}", file);
+        }
+      }
+      throw new UserRpcException(bee.getContext().getEndpoint(), "Failure while trying to transfer files", e);
+    }
+  }
 }
