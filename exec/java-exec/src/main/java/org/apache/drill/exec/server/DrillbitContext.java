@@ -32,6 +32,7 @@ import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
 import org.apache.drill.exec.memory.BufferAllocator;
 import org.apache.drill.exec.physical.impl.OperatorCreatorRegistry;
 import org.apache.drill.exec.planner.PhysicalPlanReader;
+import org.apache.drill.exec.planner.sql.handlers.CreateFunctionHandler;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
 import org.apache.drill.exec.rpc.control.Controller;
 import org.apache.drill.exec.rpc.control.WorkEventBus;
@@ -90,6 +91,12 @@ public class DrillbitContext implements AutoCloseable {
     this.systemOptions = new SystemOptionManager(lpPersistence, provider);
     this.functionRegistry = new FunctionImplementationRegistry(context.getConfig(), classpathScan, systemOptions);
     this.compiler = new CodeCompiler(context.getConfig(), systemOptions);
+
+    //todo where else we can register these 3 custom handlers?
+    this.controller.registerCustomHandler(1, new CreateFunctionHandler.JarTransferHandler(), CreateFunctionHandler.SIMPLE_SERDE, CreateFunctionHandler.SIMPLE_SERDE);
+    this.controller.registerCustomHandler(2, new CreateFunctionHandler.AddFunctionHandler(functionRegistry), CreateFunctionHandler.SIMPLE_SERDE, CreateFunctionHandler.SIMPLE_SERDE);
+    this.controller.registerCustomHandler(3, new CreateFunctionHandler.DeleteFunctionHandler(functionRegistry), CreateFunctionHandler.SIMPLE_SERDE, CreateFunctionHandler
+        .SIMPLE_SERDE);
   }
 
   public FunctionImplementationRegistry getFunctionImplementationRegistry() {

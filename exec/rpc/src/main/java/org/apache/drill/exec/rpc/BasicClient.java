@@ -164,6 +164,7 @@ public abstract class BasicClient<T extends EnumLite, R extends RemoteConnection
     super.send(listener, connection, rpcType, protobufBody, clazz, dataBodies);
   }
 
+  //return client.send(RpcType.CANCEL_QUERY, id, Ack.class);
   public <SEND extends MessageLite, RECEIVE extends MessageLite> DrillRpcFuture<RECEIVE> send(T rpcType,
       SEND protobufBody, Class<RECEIVE> clazz, ByteBuf... dataBodies) {
     return super.send(connection, rpcType, protobufBody, clazz, dataBodies);

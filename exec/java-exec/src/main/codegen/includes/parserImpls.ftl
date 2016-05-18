@@ -305,4 +305,24 @@ SqlNode SqlCreateFunction() :
   }
 }
 
+/**
+* Parse delete function statement
+* DELETE FUNCTION BY JAR 'jarName'
+*/
+SqlNode SqlDeleteFunction() :
+{
+   SqlParserPos pos;
+   SqlNode jarName;
+}
+{
+    <DELETE> { pos = getPos(); }
+    <FUNCTION>
+    <BY>
+    <JAR>
+    jarName = StringLiteral()
+   {
+      return new SqlDeleteFunction(pos, jarName);
+   }
+}
+
 

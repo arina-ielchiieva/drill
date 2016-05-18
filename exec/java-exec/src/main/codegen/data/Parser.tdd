@@ -53,7 +53,8 @@
     "SqlCreateTable()",
     "SqlDropTable()",
     "SqlRefreshMetadata()",
-    "SqlCreateFunction()"
+    "SqlCreateFunction()",
+    "SqlDeleteFunction()"
   ]
 
   # List of methods for parsing custom literals.

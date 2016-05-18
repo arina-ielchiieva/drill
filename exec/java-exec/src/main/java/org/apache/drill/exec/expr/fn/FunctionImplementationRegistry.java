@@ -191,4 +191,8 @@ public class FunctionImplementationRegistry implements FunctionLookupContext {
     drillFuncRegistry.dynamicallyRegister(scanResult);
   }
 
+  public void dynamicallyDelete(ScanResult scanResult) {
+    drillFuncRegistry.dynamicallyDelete(scanResult);
+  }
+
 }

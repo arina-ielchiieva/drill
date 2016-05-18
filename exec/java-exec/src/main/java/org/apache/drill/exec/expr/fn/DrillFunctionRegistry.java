@@ -25,12 +25,14 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.calcite.sql.SqlOperator;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.drill.common.scanner.persistence.AnnotatedClassDescriptor;
 import org.apache.drill.common.scanner.persistence.ScanResult;
+import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.exec.planner.logical.DrillConstExecutor;
 import org.apache.drill.exec.planner.sql.DrillOperatorTable;
 import org.apache.drill.exec.planner.sql.DrillSqlAggOperator;
@@ -88,11 +90,6 @@ public class DrillFunctionRegistry {
           functionInput += ref.getType().toString();
         }
         for (String name : names) {
-
-          if (name.equals("arina_upper")) {
-            System.out.println("Found arina_upper");
-          }
-
           String functionName = name.toLowerCase();
           registeredFunctions.put(functionName, holder);
           String functionSignature = functionName + functionInput;
@@ -151,7 +148,6 @@ public class DrillFunctionRegistry {
         }
         for (String name : names) {
           String functionName = name.toLowerCase();
-          registeredFunctions.put(functionName, holder);
           String functionSignature = functionName + functionInput;
           String existingImplementation;
           if ((existingImplementation = functionSignatureMap.get(functionSignature)) != null) {
@@ -161,6 +157,7 @@ public class DrillFunctionRegistry {
             logger.warn("Aggregate functions must be deterministic, did not register function {}", func.getClassName());
           } else {
             functionSignatureMap.put(functionSignature, func.getClassName());
+            registeredFunctions.put(functionName, holder);
           }
         }
       } else {
@@ -169,6 +166,62 @@ public class DrillFunctionRegistry {
     }
     //todo add return with status of registered functions
   }
+
+  public void dynamicallyDelete(ScanResult classpathScan) {
+    FunctionConverter converter = new FunctionConverter();
+    List<AnnotatedClassDescriptor> providerClasses = classpathScan.getAnnotatedClasses();
+    for (AnnotatedClassDescriptor func : providerClasses) {
+      DrillFuncHolder holder = converter.getHolder(func);
+      if (holder != null) {
+        // register handle for each name the function can be referred to
+        String[] names = holder.getRegisteredNames();
+
+        // Create the string for input types
+        String functionInput = "";
+        for (DrillFuncHolder.ValueReference ref : holder.parameters) {
+          functionInput += ref.getType().toString();
+        }
+        for (String name : names) {
+          String functionName = name.toLowerCase();
+          String functionSignature = functionName + functionInput;
+          if ((func.getClassName().equals(functionSignatureMap.get(functionSignature)))) {
+            functionSignatureMap.remove(functionSignature);
+            List<DrillFuncHolder> drillFuncHolders = registeredFunctions.get(functionName);
+            // prepare holder parameters
+            List<TypeProtos.MajorType> argTypes = Lists.newArrayList();
+            for (DrillFuncHolder.ValueReference ref : holder.getParameters()) {
+              argTypes.add(ref.getType());
+            }
+
+            DrillFuncHolder holderToDelete = null;
+            for (DrillFuncHolder h : drillFuncHolders) {
+              if (h.matches(holder.getReturnType(), argTypes)) {
+                holderToDelete = h;
+              }
+            }
+            drillFuncHolders.remove(holderToDelete);
+          }
+        }
+      } else {
+        logger.warn("Unable to initialize function for class {}", func.getClassName());
+      }
+      //todo add return with status of removed functions
+    }
+  }
+
+  /*
+
+   public DrillFuncHolder findExactMatchingDrillFunction(String name, List<MajorType> argTypes, MajorType returnType) {
+    for (DrillFuncHolder h : drillFuncRegistry.getMethods(name)) {
+      if (h.matches(returnType, argTypes)) {
+        return h;
+      }
+    }
+
+    return null;
+  }
+
+   */
 
   private void registerOperatorsWithInference(DrillOperatorTable operatorTable) {
     final Map<String, DrillSqlOperator.DrillSqlOperatorBuilder> map = Maps.newHashMap();

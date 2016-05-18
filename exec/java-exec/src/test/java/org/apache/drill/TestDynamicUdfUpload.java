@@ -23,6 +23,7 @@ import com.typesafe.config.ConfigFactory;
 import mockit.Mocked;
 import mockit.NonStrictExpectations;
 import org.apache.drill.common.config.DrillConfig;
+import org.apache.drill.common.exceptions.UserRemoteException;
 import org.apache.drill.common.scanner.RunTimeScan;
 import org.apache.drill.common.scanner.persistence.ScanResult;
 import org.apache.drill.exec.expr.fn.DrillFunctionRegistry;
@@ -36,6 +37,9 @@ import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Enumeration;
+
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.junit.Assert.assertThat;
 
 public class TestDynamicUdfUpload extends BaseTestQuery {
 
@@ -135,13 +139,14 @@ public class TestDynamicUdfUpload extends BaseTestQuery {
 
   @Test
   public void testDynamicallyUploadFunction() throws Exception {
-    String jar = "/home/osboxes/git_repo/drillUDF/target/DrillUDF-1.0.jar";
+    String jar = "F:\\git_repo\\drillUDF\\target\\DrillUDF-1.0.jar";
     test(String.format("create function using jar '%s'", jar));
 
     testBuilder()
         .sqlQuery("select arina_upper(full_name) as upper_name from cp.`employee.json` where full_name = 'Sheri Nowmer'")
         .unOrdered()
-        .baselineColumns("upper_name").baselineValues("SHERI NOWMER")
+        .baselineColumns("upper_name")
+        .baselineValues("SHERI NOWMER")
         .go();
 
     testBuilder()
@@ -149,6 +154,20 @@ public class TestDynamicUdfUpload extends BaseTestQuery {
         .ordered()
         .sqlBaselineQuery("select upper(full_name) as upper_name from cp.`employee.json` order by 1")
         .go();
+  }
+
+  @Test
+  public void testFunctionDelete() throws Exception {
+    String jar = "F:\\git_repo\\drillUDF\\target\\DrillUDF-1.0.jar";
+    test(String.format("create function using jar '%s'", jar));
+    test("select arina_upper(full_name) as upper_name from cp.`employee.json` where full_name = 'Sheri Nowmer'");
+    test("delete function by jar 'DrillUDF-1.0.jar'");
+
+    try {
+      test("select arina_upper(full_name) as upper_name from cp.`employee.json` where full_name = 'Sheri Nowmer'");
+    } catch (UserRemoteException e) {
+      assertThat(e.getMessage(), containsString("No match found for function signature arina_upper(<ANY>"));
+    }
   }
 
 
