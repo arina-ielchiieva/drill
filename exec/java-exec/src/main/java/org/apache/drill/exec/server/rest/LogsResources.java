@@ -111,19 +111,20 @@ public class LogsResources {
     final int maxLines = work.getContext().getOptionManager().getOption(ExecConstants.WEB_LOGS_MAX_LINES).num_val.intValue();
 
     try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-      Map<String, String> cache = new LinkedHashMap<String, String>(maxLines, .75f, true) {
+      Map<Integer, String> cache = new LinkedHashMap<Integer, String>(maxLines, .75f, true) {
         @Override
-        protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+        protected boolean removeEldestEntry(Map.Entry<Integer, String> eldest) {
           return size() > maxLines;
         }
       };
 
       String line;
+      int i = 0;
       while ((line = br.readLine()) != null) {
-        cache.put(line, null);
+        cache.put(++i, line);
       }
 
-      return new LogContent(file.getName(), cache.keySet(), maxLines);
+      return new LogContent(file.getName(), cache.values(), maxLines);
     }
   }
 
@@ -133,7 +134,7 @@ public class LogsResources {
   public Response getFullLog(@PathParam("name") final String name) {
     File file = getFileByName(getLogFolder(), name);
     Response.ResponseBuilder response = Response.ok(file);
-    response.header("Content-Disposition", String.format("attachment;filename\"%s\"", name));
+    response.header("Content-Disposition", String.format("attachment;filename=\"%s\"", name));
     return response.build();
   }
 
