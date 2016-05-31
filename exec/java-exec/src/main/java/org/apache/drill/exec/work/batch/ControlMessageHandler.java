@@ -18,10 +18,12 @@
 package org.apache.drill.exec.work.batch;
 
 import static org.apache.drill.exec.rpc.RpcBus.get;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.DrillBuf;
 
 import org.apache.drill.exec.ops.FragmentContext;
+import org.apache.drill.exec.planner.sql.UDFHandler;
 import org.apache.drill.exec.proto.BitControl.CustomMessage;
 import org.apache.drill.exec.proto.BitControl.FinishedReceiver;
 import org.apache.drill.exec.proto.BitControl.FragmentStatus;
@@ -32,6 +34,8 @@ import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;
 import org.apache.drill.exec.proto.GeneralRPCProtos.Ack;
 import org.apache.drill.exec.proto.UserBitShared.QueryId;
 import org.apache.drill.exec.proto.UserBitShared.QueryProfile;
+import org.apache.drill.exec.proto.UserProtos.JarHolder;
+import org.apache.drill.exec.proto.UserProtos.UDFHolder;
 import org.apache.drill.exec.proto.helper.QueryIdHelper;
 import org.apache.drill.exec.rpc.Acks;
 import org.apache.drill.exec.rpc.Response;
@@ -122,6 +126,18 @@ public class ControlMessageHandler {
       final FragmentHandle handle = get(pBody, FragmentHandle.PARSER);
       resumeFragment(handle);
       return ControlRpcConfig.OK;
+    }
+
+    case RpcType.REQ_CREATE_UDF_VALUE: {
+      final UDFHolder holder = get(pBody, UDFHolder.PARSER);
+      final UDFHandler udfHandler = new UDFHandler(bee.getContext().getFunctionImplementationRegistry());
+      return new Response(RpcType.RESP_STRING_LIST, udfHandler.createUDF(holder));
+    }
+
+    case RpcType.REQ_DELETE_UDF_VALUE: {
+      final JarHolder holder = get(pBody, JarHolder.PARSER);
+      final UDFHandler udfHandler = new UDFHandler(bee.getContext().getFunctionImplementationRegistry());
+      return new Response(RpcType.RESP_STRING_LIST, udfHandler.deleteUDF(holder));
     }
 
     default:

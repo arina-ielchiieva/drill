@@ -27,6 +27,10 @@ import org.apache.drill.common.exceptions.UserRemoteException;
 import org.apache.drill.common.scanner.RunTimeScan;
 import org.apache.drill.common.scanner.persistence.ScanResult;
 import org.apache.drill.exec.expr.fn.DrillFunctionRegistry;
+import org.apache.drill.exec.proto.GeneralRPCProtos;
+import org.apache.drill.exec.proto.UserBitShared;
+import org.apache.drill.exec.proto.helper.QueryIdHelper;
+import org.apache.drill.exec.server.DrillbitContext;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -55,7 +59,7 @@ public class TestDynamicUdfUpload extends BaseTestQuery {
     new NonStrictExpectations(system)
     {
       {
-        invoke(System.class, "getenv", "DRILL_CP_3RD_PARTY");
+        invoke(System.class, "getenv", "DRILL_CP_UDF");
         returns(folder.getRoot().getPath());
       }
     };
@@ -104,7 +108,7 @@ public class TestDynamicUdfUpload extends BaseTestQuery {
       ScanResult scanResult = RunTimeScan.dynamicPackageScan(config, Sets.newHashSet(urls));
       DrillFunctionRegistry drillFunctionRegistry = new DrillFunctionRegistry(scanResult);
 
-      getDrillbitContext().getFunctionImplementationRegistry().dynamicallyRegister(scanResult);
+      getDrillbitContext().getFunctionImplementationRegistry().registerFunctions(scanResult);
 
       test("select arina_upper(n_name) from cp.`tpch/nation.parquet`");
 
@@ -126,7 +130,7 @@ public class TestDynamicUdfUpload extends BaseTestQuery {
 
   @Test
   public void testCreateFunctionSyntaxWithoutSources() throws Exception {
-    String jar = "/home/osboxes/git_repo/drillUDF/target/DrillUDF-1.0.jar";
+    String jar = "/home/osboxes/git_repo/drillUDF/target/DrillUDF-2.0.jar";
     test(String.format("create function using jar '%s'", jar));
   }
 
@@ -139,8 +143,15 @@ public class TestDynamicUdfUpload extends BaseTestQuery {
 
   @Test
   public void testDynamicallyUploadFunction() throws Exception {
-    String jar = "F:\\git_repo\\drillUDF\\target\\DrillUDF-1.0.jar";
-    test(String.format("create function using jar '%s'", jar));
+    String jar = "/home/osboxes/projects/DrillUDF/target/DrillUDF-2.0.jar";
+    //test(String.format("create function using jar '%s'", jar));
+
+    testBuilder()
+        .sqlQuery(String.format("create function using jar '%s'", jar))
+        .unOrdered()
+        .baselineColumns("ok", "summary")
+        .baselineValues(true, "The following UDFs have been created [arina_upper, arina_lower]")
+        .go();
 
     testBuilder()
         .sqlQuery("select arina_upper(full_name) as upper_name from cp.`employee.json` where full_name = 'Sheri Nowmer'")
@@ -158,10 +169,16 @@ public class TestDynamicUdfUpload extends BaseTestQuery {
 
   @Test
   public void testFunctionDelete() throws Exception {
-    String jar = "F:\\git_repo\\drillUDF\\target\\DrillUDF-1.0.jar";
+    String jar = "/home/osboxes/projects/DrillUDF/target/DrillUDF-2.0.jar";
     test(String.format("create function using jar '%s'", jar));
     test("select arina_upper(full_name) as upper_name from cp.`employee.json` where full_name = 'Sheri Nowmer'");
-    test("delete function by jar 'DrillUDF-1.0.jar'");
+    // test("delete function using jar 'DrillUDF-2.0.jar'");
+    testBuilder()
+        .sqlQuery("delete function using jar 'DrillUDF-2.0.jar'")
+        .unOrdered()
+        .baselineColumns("ok", "summary")
+        .baselineValues(true, "UDFs have been deleted successfully - [arina_upper, arina_lower]")
+        .go();
 
     try {
       test("select arina_upper(full_name) as upper_name from cp.`employee.json` where full_name = 'Sheri Nowmer'");
@@ -169,6 +186,24 @@ public class TestDynamicUdfUpload extends BaseTestQuery {
       assertThat(e.getMessage(), containsString("No match found for function signature arina_upper(<ANY>"));
     }
   }
+
+  @Test
+  public void testSendUsingProtosHandle() throws Exception {
+    //UserProtos.JarHolder jarHolder = UserProtos.JarHolder.newBuilder().setName("some name").build();
+    //UserProtos.JarWithSourcesHolder jarWithSourcesHolder = UserProtos.JarWithSourcesHolder.newBuilder().setJar(jarHolder).build();
+    final DrillbitContext context = getDrillbitContext();
+    //for (CoordinationProtos.DrillbitEndpoint e : getDrillbitContext().getBits()) {
+      // GeneralRPCProtos.Ack a = getDrillbitContext().getController().getTunnel(e).addUDF(jarWithSourcesHolder).get();
+      UserBitShared.QueryId id = QueryIdHelper.getQueryIdFromString("111");
+      GeneralRPCProtos.Ack a = context.getController().getTunnel(context.getEndpoint()).requestCancelQuery(id).get();
+      System.out.println(a.getOk());
+    //}
+  }
+
+  /*
+    QueryId id = QueryIdHelper.getQueryIdFromString(queryId);
+  Ack a = work.getContext().getController().getTunnel(info.getForeman()).requestCancelQuery(id).checkedGet(2, TimeUnit.SECONDS);
+   */
 
 
   private static void addSoftwareLibrary(File file) throws Exception {

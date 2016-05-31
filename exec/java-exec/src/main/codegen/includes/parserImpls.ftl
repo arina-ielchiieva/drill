@@ -279,14 +279,13 @@ SqlNode SqlRefreshMetadata() :
 }
 
 /**
-* Parse create function statement
-* CREATE FUNCTION USING JAR 'path_to_jar' [SOURCES 'path_to_sources']
+* Parse create UDF statement
+* CREATE FUNCTION USING JAR 'path_to_binary_jar'
 */
-SqlNode SqlCreateFunction() :
+SqlNode SqlCreateUDF() :
 {
     SqlParserPos pos;
     SqlNode pathToJar;
-    SqlNode pathToSources = null;
 }
 {
    <CREATE> { pos = getPos(); }
@@ -294,22 +293,16 @@ SqlNode SqlCreateFunction() :
    <USING>
    <JAR>
    pathToJar = StringLiteral()
-      (
-          <SOURCES>
-          pathToSources = StringLiteral()
-          |
-          E()
-      )
   {
-      return new SqlCreateFunction(pos, pathToJar, pathToSources);
+      return new SqlCreateUDF(pos, pathToJar);
   }
 }
 
 /**
-* Parse delete function statement
-* DELETE FUNCTION BY JAR 'jarName'
+* Parse delete UDF statement
+* DELETE FUNCTION USING JAR 'binaryJarName'
 */
-SqlNode SqlDeleteFunction() :
+SqlNode SqlDeleteUDF() :
 {
    SqlParserPos pos;
    SqlNode jarName;
@@ -317,11 +310,11 @@ SqlNode SqlDeleteFunction() :
 {
     <DELETE> { pos = getPos(); }
     <FUNCTION>
-    <BY>
+    <USING>
     <JAR>
     jarName = StringLiteral()
    {
-      return new SqlDeleteFunction(pos, jarName);
+      return new SqlDeleteUDF(pos, jarName);
    }
 }
 

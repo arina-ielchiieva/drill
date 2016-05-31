@@ -1,14 +1,13 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- * <p/>
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * <p/>
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,27 +26,25 @@ import org.apache.calcite.sql.SqlSpecialOperator;
 import org.apache.calcite.sql.SqlWriter;
 import org.apache.calcite.sql.parser.SqlParserPos;
 import org.apache.drill.exec.planner.sql.handlers.AbstractSqlHandler;
-import org.apache.drill.exec.planner.sql.handlers.CreateFunctionHandler;
+import org.apache.drill.exec.planner.sql.handlers.DeleteUDFHandler;
 import org.apache.drill.exec.planner.sql.handlers.SqlHandlerConfig;
 
 import java.util.List;
 
-public class SqlCreateFunction extends DrillSqlCall {
+public class SqlDeleteUDF extends DrillSqlCall {
 
-  private final SqlNode pathToJar;
-  private final SqlNode pathToSources;
+  private final SqlNode jarName;
 
-  public static final SqlSpecialOperator OPERATOR = new SqlSpecialOperator("CREATE_FUNCTION", SqlKind.OTHER) {
+  public static final SqlSpecialOperator OPERATOR = new SqlSpecialOperator("DELETE_UDF", SqlKind.OTHER) {
     @Override
     public SqlCall createCall(SqlLiteral functionQualifier, SqlParserPos pos, SqlNode... operands) {
-      return new SqlCreateFunction(pos, operands[0], operands[1]);
+      return new SqlDeleteUDF(pos, operands[0]);
     }
   };
 
-  public SqlCreateFunction(SqlParserPos pos, SqlNode pathToJar, SqlNode pathToSources) {
+  public SqlDeleteUDF(SqlParserPos pos, SqlNode jarName) {
     super(pos);
-    this.pathToJar = pathToJar;
-    this.pathToSources = pathToSources;
+    this.jarName = jarName;
   }
 
   @Override
@@ -58,30 +55,23 @@ public class SqlCreateFunction extends DrillSqlCall {
   @Override
   public List<SqlNode> getOperandList() {
     List<SqlNode> opList = Lists.newArrayList();
-    opList.add(pathToJar);
-    opList.add(pathToSources);
+    opList.add(jarName);
     return opList;
   }
 
   @Override
   public void unparse(SqlWriter writer, int leftPrec, int rightPrec) {
-    writer.keyword("CREATE");
+    writer.keyword("DELETE");
     writer.keyword("FUNCTION");
     writer.keyword("USING");
     writer.keyword("JAR");
-    pathToJar.unparse(writer, leftPrec, rightPrec);
-    if (pathToSources != null) {
-      writer.keyword("SOURCES");
-      pathToSources.unparse(writer, leftPrec, rightPrec);
-    }
+    jarName.unparse(writer, leftPrec, rightPrec);
   }
 
   @Override
   public AbstractSqlHandler getSqlHandler(SqlHandlerConfig config) {
-    return new CreateFunctionHandler(config);
+    return new DeleteUDFHandler(config);
   }
 
-  public SqlNode getPathToJar() { return pathToJar; }
-  public SqlNode getPathToSources() { return pathToSources; }
-
+  public SqlNode getJarName() { return jarName; }
 }

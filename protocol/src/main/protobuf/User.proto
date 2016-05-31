@@ -27,12 +27,15 @@ enum RpcType {
   // bit to user
   QUERY_DATA = 6; // drillbit is sending a query result data batch to the user
   QUERY_HANDLE = 7;
-  QUERY_PLAN_FRAGMENTS = 13; // return plan fragments 
+  QUERY_PLAN_FRAGMENTS = 13; // return plan fragments
 
   REQ_META_FUNCTIONS = 8;
   RESP_FUNCTION_LIST = 9;
 
   QUERY_RESULT = 10; // drillbit is reporting a query status change, most likely a terminal message, to the user
+
+  CREATE_UDF = 14; // create udf
+  DELETE_UDF = 15; // delete udf
 }
 
 message Property {
@@ -97,4 +100,18 @@ message BitToUserHandshake {
   optional HandshakeStatus status = 3;
   optional string errorId = 4;
   optional string errorMessage = 5;
+}
+
+message JarHolder {
+  required string name = 1;
+  repeated bytes content = 2;
+}
+
+message UDFHolder {
+  required JarHolder binary = 1;
+  required JarHolder source = 2;
+}
+
+message StringList {
+  repeated string list = 1;
 }

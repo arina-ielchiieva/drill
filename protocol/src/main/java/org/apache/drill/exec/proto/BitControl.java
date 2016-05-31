@@ -103,29 +103,53 @@ public final class BitControl {
      */
     REQ_CUSTOM(11, 17),
     /**
+     * <code>REQ_CREATE_UDF = 19;</code>
+     *
+     * <pre>
+     * create udf
+     * </pre>
+     */
+    REQ_CREATE_UDF(12, 19),
+    /**
+     * <code>REQ_DELETE_UDF = 20;</code>
+     *
+     * <pre>
+     * delete udf
+     * </pre>
+     */
+    REQ_DELETE_UDF(13, 20),
+    /**
      * <code>RESP_FRAGMENT_HANDLE = 11;</code>
      *
      * <pre>
      * bit responses
      * </pre>
      */
-    RESP_FRAGMENT_HANDLE(12, 11),
+    RESP_FRAGMENT_HANDLE(14, 11),
     /**
      * <code>RESP_FRAGMENT_STATUS = 12;</code>
      */
-    RESP_FRAGMENT_STATUS(13, 12),
+    RESP_FRAGMENT_STATUS(15, 12),
     /**
      * <code>RESP_BIT_STATUS = 13;</code>
      */
-    RESP_BIT_STATUS(14, 13),
+    RESP_BIT_STATUS(16, 13),
     /**
      * <code>RESP_QUERY_STATUS = 14;</code>
      */
-    RESP_QUERY_STATUS(15, 14),
+    RESP_QUERY_STATUS(17, 14),
     /**
      * <code>RESP_CUSTOM = 18;</code>
      */
-    RESP_CUSTOM(16, 18),
+    RESP_CUSTOM(18, 18),
+    /**
+     * <code>RESP_STRING_LIST = 21;</code>
+     *
+     * <pre>
+     * holds list of string
+     * </pre>
+     */
+    RESP_STRING_LIST(19, 21),
     ;
 
     /**
@@ -197,6 +221,22 @@ public final class BitControl {
      */
     public static final int REQ_CUSTOM_VALUE = 17;
     /**
+     * <code>REQ_CREATE_UDF = 19;</code>
+     *
+     * <pre>
+     * create udf
+     * </pre>
+     */
+    public static final int REQ_CREATE_UDF_VALUE = 19;
+    /**
+     * <code>REQ_DELETE_UDF = 20;</code>
+     *
+     * <pre>
+     * delete udf
+     * </pre>
+     */
+    public static final int REQ_DELETE_UDF_VALUE = 20;
+    /**
      * <code>RESP_FRAGMENT_HANDLE = 11;</code>
      *
      * <pre>
@@ -220,6 +260,14 @@ public final class BitControl {
      * <code>RESP_CUSTOM = 18;</code>
      */
     public static final int RESP_CUSTOM_VALUE = 18;
+    /**
+     * <code>RESP_STRING_LIST = 21;</code>
+     *
+     * <pre>
+     * holds list of string
+     * </pre>
+     */
+    public static final int RESP_STRING_LIST_VALUE = 21;
 
 
     public final int getNumber() { return value; }
@@ -238,11 +286,14 @@ public final class BitControl {
         case 15: return REQ_QUERY_CANCEL;
         case 16: return REQ_UNPAUSE_FRAGMENT;
         case 17: return REQ_CUSTOM;
+        case 19: return REQ_CREATE_UDF;
+        case 20: return REQ_DELETE_UDF;
         case 11: return RESP_FRAGMENT_HANDLE;
         case 12: return RESP_FRAGMENT_STATUS;
         case 13: return RESP_BIT_STATUS;
         case 14: return RESP_QUERY_STATUS;
         case 18: return RESP_CUSTOM;
+        case 21: return RESP_STRING_LIST;
         default: return null;
       }
     }
@@ -9013,18 +9064,19 @@ public final class BitControl {
       "\024\n\014queue_length\030\002 \001(\005\022\023\n\013report_time\030\003 \001" +
       "(\003\"h\n\020FinishedReceiver\022*\n\010receiver\030\001 \001(\013" +
       "2\030.exec.bit.FragmentHandle\022(\n\006sender\030\002 \001" +
-      "(\0132\030.exec.bit.FragmentHandle*\364\002\n\007RpcType" +
+      "(\0132\030.exec.bit.FragmentHandle*\262\003\n\007RpcType" +
       "\022\r\n\tHANDSHAKE\020\000\022\007\n\003ACK\020\001\022\013\n\007GOODBYE\020\002\022\034\n" +
       "\030REQ_INITIALIZE_FRAGMENTS\020\003\022\027\n\023REQ_CANCE",
       "L_FRAGMENT\020\006\022\031\n\025REQ_RECEIVER_FINISHED\020\007\022" +
       "\027\n\023REQ_FRAGMENT_STATUS\020\010\022\022\n\016REQ_BIT_STAT" +
       "US\020\t\022\024\n\020REQ_QUERY_STATUS\020\n\022\024\n\020REQ_QUERY_" +
       "CANCEL\020\017\022\030\n\024REQ_UNPAUSE_FRAGMENT\020\020\022\016\n\nRE" +
-      "Q_CUSTOM\020\021\022\030\n\024RESP_FRAGMENT_HANDLE\020\013\022\030\n\024" +
+      "Q_CUSTOM\020\021\022\022\n\016REQ_CREATE_UDF\020\023\022\022\n\016REQ_DE" +
+      "LETE_UDF\020\024\022\030\n\024RESP_FRAGMENT_HANDLE\020\013\022\030\n\024" +
       "RESP_FRAGMENT_STATUS\020\014\022\023\n\017RESP_BIT_STATU" +
       "S\020\r\022\025\n\021RESP_QUERY_STATUS\020\016\022\017\n\013RESP_CUSTO" +
-      "M\020\022B+\n\033org.apache.drill.exec.protoB\nBitC" +
-      "ontrolH\001"
+      "M\020\022\022\024\n\020RESP_STRING_LIST\020\025B+\n\033org.apache." +
+      "drill.exec.protoB\nBitControlH\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {

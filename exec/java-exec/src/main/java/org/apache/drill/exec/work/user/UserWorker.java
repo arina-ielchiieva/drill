@@ -21,6 +21,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.drill.exec.proto.GeneralRPCProtos.Ack;
 import org.apache.drill.exec.proto.UserBitShared.QueryId;
+import org.apache.drill.exec.proto.UserProtos;
 import org.apache.drill.exec.proto.UserProtos.GetQueryPlanFragments;
 import org.apache.drill.exec.proto.UserProtos.QueryPlanFragments;
 import org.apache.drill.exec.proto.UserProtos.RunQuery;
@@ -72,6 +73,7 @@ public class UserWorker{
   }
 
   public Ack cancelQuery(QueryId query) {
+    System.out.println("CANCELLING QUERY from UserWorker");
     Foreman foreman = bee.getForemanForQueryId(query);
     if(foreman != null) {
       foreman.cancel();

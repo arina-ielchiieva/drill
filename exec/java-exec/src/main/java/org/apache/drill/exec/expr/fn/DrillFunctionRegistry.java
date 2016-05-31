@@ -18,7 +18,6 @@
 package org.apache.drill.exec.expr.fn;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -51,7 +50,10 @@ public class DrillFunctionRegistry {
   // key: function name (lowercase) value: list of functions with that name
   private final ArrayListMultimap<String, DrillFuncHolder> registeredFunctions = ArrayListMultimap.create();
 
-  private final Map<String, String> functionSignatureMap = new HashMap<>();
+  // Hash map to prevent registering functions with exactly matching signatures
+  // key: Function Name + Input's Major Type
+  // value: Class name where function is implemented
+  private final Map<String, String> functionSignatureMap = Maps.newHashMap();
 
   private static final ImmutableMap<String, Pair<Integer, Integer>> registeredFuncNameToArgRange = ImmutableMap.<String, Pair<Integer, Integer>> builder()
       // CONCAT is allowed to take [1, infinity) number of arguments.
@@ -59,56 +61,17 @@ public class DrillFunctionRegistry {
       // a nested structure
       .put("CONCAT", Pair.of(1, Integer.MAX_VALUE))
 
-      // When LENGTH is given two arguments, this function relies on DrillOptiq to rewrite it as
-      // another function based on the second argument (encodingType)
+          // When LENGTH is given two arguments, this function relies on DrillOptiq to rewrite it as
+          // another function based on the second argument (encodingType)
       .put("LENGTH", Pair.of(1, 2))
 
-      // Dummy functions
+          // Dummy functions
       .put("CONVERT_TO", Pair.of(2, 2))
       .put("CONVERT_FROM", Pair.of(2, 2))
       .put("FLATTEN", Pair.of(1, 1)).build();
 
   public DrillFunctionRegistry(ScanResult classpathScan) {
-    FunctionConverter converter = new FunctionConverter();
-    List<AnnotatedClassDescriptor> providerClasses = classpathScan.getAnnotatedClasses();
-
-    // Hash map to prevent registering functions with exactly matching signatures
-    // key: Function Name + Input's Major Type
-    // value: Class name where function is implemented
-    //
-
-    //final Map<String, String> functionSignatureMap = new HashMap<>();
-    for (AnnotatedClassDescriptor func : providerClasses) {
-      DrillFuncHolder holder = converter.getHolder(func);
-      if (holder != null) {
-        // register handle for each name the function can be referred to
-        String[] names = holder.getRegisteredNames();
-
-        // Create the string for input types
-        String functionInput = "";
-        for (DrillFuncHolder.ValueReference ref : holder.parameters) {
-          functionInput += ref.getType().toString();
-        }
-        for (String name : names) {
-          String functionName = name.toLowerCase();
-          registeredFunctions.put(functionName, holder);
-          String functionSignature = functionName + functionInput;
-          String existingImplementation;
-          if ((existingImplementation = functionSignatureMap.get(functionSignature)) != null) {
-            throw new AssertionError(
-                String.format(
-                    "Conflicting functions with similar signature found. Func Name: %s, Class name: %s " +
-                " Class name: %s", functionName, func.getClassName(), existingImplementation));
-          } else if (holder.isAggregating() && !holder.isDeterministic() ) {
-            logger.warn("Aggregate functions must be deterministic, did not register function {}", func.getClassName());
-          } else {
-            functionSignatureMap.put(functionSignature, func.getClassName());
-          }
-        }
-      } else {
-        logger.warn("Unable to initialize function for class {}", func.getClassName());
-      }
-    }
+    registerFunctions(classpathScan);
     if (logger.isTraceEnabled()) {
       StringBuilder allFunctions = new StringBuilder();
       for (DrillFuncHolder method: registeredFunctions.values()) {
@@ -132,9 +95,45 @@ public class DrillFunctionRegistry {
     registerOperatorsWithoutInference(operatorTable);
   }
 
-  public void dynamicallyRegister(ScanResult classpathScan) {
+  /**
+   * Registers functions
+   * @param classpathScan scan result of classpath
+   * @return list of added functions
+   */
+  public Collection<String> registerFunctions(ScanResult classpathScan) {
+    RegistryHelper registerFunctions = new RegistryHelper() {
+      @Override
+      void doWork(String functionName, String functionSignature, DrillFuncHolder holder, AnnotatedClassDescriptor func) {
+        String existingImplementation;
+        if ((existingImplementation = functionSignatureMap.get(functionSignature)) != null ||
+            (existingImplementation = tempFunctionSignatureMap.get(functionSignature)) != null) {
+          throw new AssertionError(String.format("Conflicting functions with similar signature found." +
+                  " Func Name: %s, Class name: %s " + " Class name: %s",
+              functionName, func.getClassName(), existingImplementation));
+        } else if (holder.isAggregating() && !holder.isDeterministic()) {
+          logger.warn("Aggregate functions must be deterministic, did not register function {}", func.getClassName());
+        } else {
+          tempFunctionSignatureMap.put(functionSignature, func.getClassName());
+          tempRegisteredFunctions.put(functionName, holder);
+        }
+      }
+
+      @Override
+      Collection<String> getResult() {
+        functionSignatureMap.putAll(tempFunctionSignatureMap);
+        registeredFunctions.putAll(tempRegisteredFunctions);
+
+        return tempRegisteredFunctions.keySet();
+      }
+    };
+    return registerFunctions.apply(classpathScan);
+  }
+/*
+  public Collection<String> registerFunctions(ScanResult classpathScan) {
     FunctionConverter converter = new FunctionConverter();
     List<AnnotatedClassDescriptor> providerClasses = classpathScan.getAnnotatedClasses();
+    final Map<String, String> tempFunctionSignatureMap = Maps.newHashMap();
+    final ArrayListMultimap<String, DrillFuncHolder> tempRegisteredFunctions = ArrayListMultimap.create();
     for (AnnotatedClassDescriptor func : providerClasses) {
       DrillFuncHolder holder = converter.getHolder(func);
       if (holder != null) {
@@ -148,26 +147,74 @@ public class DrillFunctionRegistry {
         }
         for (String name : names) {
           String functionName = name.toLowerCase();
+          // used to be here //todo remove upon final check
+          // registeredFunctions.put(functionName, holder);
           String functionSignature = functionName + functionInput;
           String existingImplementation;
-          if ((existingImplementation = functionSignatureMap.get(functionSignature)) != null) {
-            //todo don't we need to clean up first before failing?
-            throw new AssertionError(String.format("Conflicting functions with similar signature found. Func Name: %s, Class name: %s " + " Class name: %s", functionName, func.getClassName(), existingImplementation));
+          if ((existingImplementation = functionSignatureMap.get(functionSignature)) != null ||
+              (existingImplementation = tempFunctionSignatureMap.get(functionSignature)) != null) {
+            throw new AssertionError(String.format("Conflicting functions with similar signature found." +
+                " Func Name: %s, Class name: %s " + " Class name: %s",
+                functionName, func.getClassName(), existingImplementation));
           } else if (holder.isAggregating() && !holder.isDeterministic()) {
             logger.warn("Aggregate functions must be deterministic, did not register function {}", func.getClassName());
           } else {
-            functionSignatureMap.put(functionSignature, func.getClassName());
-            registeredFunctions.put(functionName, holder);
+            tempFunctionSignatureMap.put(functionSignature, func.getClassName());
+            tempRegisteredFunctions.put(functionName, holder);
           }
         }
       } else {
         logger.warn("Unable to initialize function for class {}", func.getClassName());
       }
     }
-    //todo add return with status of registered functions
-  }
 
-  public void dynamicallyDelete(ScanResult classpathScan) {
+    functionSignatureMap.putAll(tempFunctionSignatureMap);
+    registeredFunctions.putAll(tempRegisteredFunctions);
+
+    return registeredFunctions.keySet(); //todo check how functions are displayed, probably use info from functionSignatureMap
+  }*/
+
+  /**
+   * Deletes functions
+   * @param classpathScan scan result of classpath
+   * @return list of deleted functions
+   */
+  public Collection<String> deleteFunctions(ScanResult classpathScan) {
+    RegistryHelper deleteFunctions = new RegistryHelper() {
+      @Override
+      public void doWork(String functionName, String functionSignature, DrillFuncHolder holder, AnnotatedClassDescriptor func) {
+        if ((func.getClassName().equals(functionSignatureMap.get(functionSignature)))) {
+          String removedSignature;
+          if ((removedSignature = functionSignatureMap.remove(functionSignature)) != null) {
+            tempFunctionSignatureMap.put(functionSignature, removedSignature);
+          }
+          List<DrillFuncHolder> drillFuncHolders = registeredFunctions.get(functionName);
+          // prepare holder parameters
+          List<TypeProtos.MajorType> argTypes = Lists.newArrayList();
+          for (DrillFuncHolder.ValueReference ref : holder.getParameters()) {
+            argTypes.add(ref.getType());
+          }
+
+          DrillFuncHolder holderToDelete = null;
+          for (DrillFuncHolder h : drillFuncHolders) {
+            if (h.matches(holder.getReturnType(), argTypes)) {
+              holderToDelete = h;
+            }
+          }
+          if (drillFuncHolders.remove(holderToDelete)) {
+            tempRegisteredFunctions.put(functionName, holderToDelete);
+          }
+        }
+      }
+
+      @Override
+      Collection<String> getResult() {
+        return tempRegisteredFunctions.keySet();
+      }
+    };
+    return deleteFunctions.apply(classpathScan);
+  }
+/*  public Collection<String> deleteFunctions(ScanResult classpathScan) {
     FunctionConverter converter = new FunctionConverter();
     List<AnnotatedClassDescriptor> providerClasses = classpathScan.getAnnotatedClasses();
     for (AnnotatedClassDescriptor func : providerClasses) {
@@ -207,7 +254,8 @@ public class DrillFunctionRegistry {
       }
       //todo add return with status of removed functions
     }
-  }
+    return null;
+  }*/
 
   /*
 
@@ -313,5 +361,64 @@ public class DrillFunctionRegistry {
         }
       }
     }
+  }
+
+  /**
+   * Helper class to work with function registry holders using classpath scan result.
+   */
+  private abstract class RegistryHelper {
+    final Map<String, String> tempFunctionSignatureMap;
+    final ArrayListMultimap<String, DrillFuncHolder> tempRegisteredFunctions;
+
+    RegistryHelper() {
+      tempFunctionSignatureMap = Maps.newHashMap();
+      tempRegisteredFunctions = ArrayListMultimap.create();
+    }
+
+    /**
+     * Upon classpath scan result gets list of found function and applies certain actions on each function.
+     * Provides ability to finalize work on all functions.
+     * @param classpathScan classpath scan result
+     * @return list of affected functions
+     */
+    final Collection<String> apply(ScanResult classpathScan) {
+      FunctionConverter converter = new FunctionConverter();
+      List<AnnotatedClassDescriptor> providerClasses = classpathScan.getAnnotatedClasses();
+
+      for (AnnotatedClassDescriptor func : providerClasses) {
+        DrillFuncHolder holder = converter.getHolder(func);
+        if (holder != null) {
+          // register handle for each name the function can be referred to
+          String[] names = holder.getRegisteredNames();
+
+          // Create the string for input types
+          String functionInput = "";
+          for (DrillFuncHolder.ValueReference ref : holder.parameters) {
+            functionInput += ref.getType().toString();
+          }
+          for (String name : names) {
+            String functionName = name.toLowerCase();
+            // used to be here //todo remove upon final check
+            // registeredFunctions.put(functionName, holder);
+            String functionSignature = functionName + functionInput;
+            doWork(functionName, functionSignature, holder, func);
+          }
+        } else {
+          logger.warn("Unable to initialize function for class {}", func.getClassName());
+        }
+      }
+      return getResult();
+    }
+
+    /**
+     * Implement to apply certain actions on each function.
+     */
+    abstract void doWork(String functionName, String functionSignature, DrillFuncHolder holder, AnnotatedClassDescriptor func);
+
+    /**
+     * Implement to finalize work on found functions.
+     * @return list of affected functions
+     */
+    abstract Collection<String> getResult();
   }
 }

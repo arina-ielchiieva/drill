@@ -21,6 +21,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.google.common.collect.Lists;
+import com.google.protobuf.ByteString;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.DrillBuf;
 import io.netty.buffer.UnpooledByteBufAllocator;
@@ -42,7 +43,10 @@ import java.util.Random;
 
 import org.apache.drill.BaseTestQuery;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
+import org.apache.drill.exec.proto.GeneralRPCProtos;
 import org.apache.drill.exec.proto.UserBitShared.QueryId;
+import org.apache.drill.exec.proto.UserProtos;
+import org.apache.drill.exec.rpc.Acks;
 import org.apache.drill.exec.rpc.UserRpcException;
 import org.apache.drill.exec.rpc.control.ControlTunnel;
 import org.apache.drill.exec.rpc.control.ControlTunnel.CustomFuture;
@@ -155,6 +159,70 @@ public class TestCustomTunnel extends BaseTestQuery {
     System.out.println(future.get());
   }
 
+/*  @Test
+  public void testCopyJarUsingProtobuf() throws Exception {
+    Path jar = Paths.get("/home/osboxes/git_repo/drillUDF/target/DrillUDF-1.0.jar");
+    Path sources = Paths.get("/home/osboxes/git_repo/drillUDF/target/DrillUDF-1.0-sources.jar");
+    final DrillbitContext context = getDrillbitContext();
+    CopyTransferHandlerWithProto handler = new CopyTransferHandlerWithProto();
+    context.getController().registerCustomHandler(12012, handler, UserProtos.JarWithSourcesHolder.PARSER); //todo from where we take our proto
+    final ControlTunnel loopbackTunnel = context.getController().getTunnel(context.getEndpoint());
+    final CustomTunnel<UserProtos.JarWithSourcesHolder, GeneralRPCProtos.Ack> tunnel = loopbackTunnel.getCustomTunnel(12012, UserProtos.JarWithSourcesHolder.class,
+        GeneralRPCProtos.Ack.PARSER);
+
+    byte[] b = Files.readAllBytes(jar);
+    ByteString bs = ByteString.copyFrom(b);
+
+    UserProtos.JarHolder jarHolder = UserProtos.JarHolder.newBuilder()
+        .setName("DrillUDF-1.0.jar")
+        .addContent(bs)
+        //.setContent(0, ByteString.copyFrom(Files.readAllBytes(jar)))
+        .build();
+
+    UserProtos.JarHolder sourcesHolder = UserProtos.JarHolder.newBuilder()
+        .setName("DrillUDF-1.0-sources.jar")
+        .addContent(ByteString.copyFrom(Files.readAllBytes(sources)))
+        .build();
+
+    UserProtos.JarWithSourcesHolder holder = UserProtos.JarWithSourcesHolder.newBuilder()
+        .setJar(jarHolder)
+        .setSources(sourcesHolder)
+        .build();
+
+    CustomFuture<GeneralRPCProtos.Ack> future = tunnel.send(holder);
+    System.out.println(future.get().getOk());
+  }
+
+  public static class CopyTransferHandlerWithProto implements CustomMessageHandler<UserProtos.JarWithSourcesHolder, GeneralRPCProtos.Ack> {
+
+    @Override
+    public CustomResponse<GeneralRPCProtos.Ack> onMessage(UserProtos.JarWithSourcesHolder pBody, DrillBuf dBody) throws UserRpcException {
+      try {
+        System.out.println(pBody.getJar().getName());
+        byte[] jarBytes = pBody.getJar().toByteArray();
+        Path jarDestination = Paths.get("/home/osboxes/files/" + pBody.getJar().getName());
+        Files.write(jarDestination, jarBytes);
+        byte[] sourcesBytes = pBody.getSources().toByteArray();
+        Path sourcesDestination = Paths.get("/home/osboxes/files/" + pBody.getSources().getName());
+        Files.write(sourcesDestination, sourcesBytes);
+        System.out.println(pBody.getSources().getName());
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      return new CustomResponse<GeneralRPCProtos.Ack>() {
+        @Override
+        public GeneralRPCProtos.Ack getMessage() {
+          return Acks.OK;
+        }
+
+        @Override
+        public ByteBuf[] getBodies() {
+          return null;
+        }
+      };
+    }
+  }*/
+
   public static class CopyJarTransferHandler implements CustomMessageHandler<String, List<String>> {
 
     private final DrillbitContext context;
@@ -258,8 +326,7 @@ public class TestCustomTunnel extends BaseTestQuery {
     final TestCustomMessageHandlerForJar handler = new TestCustomMessageHandlerForJar(context.getEndpoint(), true);
     context.getController().registerCustomHandler(1002, handler, DrillbitEndpoint.PARSER);
     final ControlTunnel loopbackTunnel = context.getController().getTunnel(context.getEndpoint());
-    final CustomTunnel<DrillbitEndpoint, QueryId> tunnel = loopbackTunnel.getCustomTunnel(1002, DrillbitEndpoint.class,
-        QueryId.PARSER);
+    final CustomTunnel<DrillbitEndpoint, QueryId> tunnel = loopbackTunnel.getCustomTunnel(1002, DrillbitEndpoint.class, QueryId.PARSER);
     //buf1.retain();
     Path jar = Paths.get("/home/osboxes/projects/DrillUDF/target/DrillUDF-1.0.jar");
 /*    byte[] bytes = Files.readAllBytes(jar);
