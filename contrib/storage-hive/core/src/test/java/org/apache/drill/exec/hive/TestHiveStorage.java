@@ -19,7 +19,6 @@ package org.apache.drill.exec.hive;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.drill.common.exceptions.UserRemoteException;
-import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.planner.physical.PlannerSettings;
 import org.apache.hadoop.fs.FileSystem;
 import org.joda.time.DateTime;
@@ -45,23 +44,15 @@ public class TestHiveStorage extends HiveTestBase {
 
   @Test // DRILL-4083
   public void testNativeScanWhenNoColumnIsRead() throws Exception {
-    try {
-      test(String.format("alter session set `%s` = true", ExecConstants.HIVE_OPTIMIZE_SCAN_WITH_NATIVE_READERS));
+    String query = "SELECT count(*) as col FROM hive.countStar_Parquet";
+    testPhysicalPlan(query, "hive-drill-native-parquet-scan");
 
-      String query = "SELECT count(*) as col FROM hive.countStar_Parquet";
-      testPhysicalPlan(query, "hive-drill-native-parquet-scan");
-
-      testBuilder()
-          .sqlQuery(query)
-          .unOrdered()
-          .baselineColumns("col")
-          .baselineValues(200l)
-          .go();
-    } finally {
-      test(String.format("alter session set `%s` = %s",
-          ExecConstants.HIVE_OPTIMIZE_SCAN_WITH_NATIVE_READERS,
-              ExecConstants.HIVE_OPTIMIZE_SCAN_WITH_NATIVE_READERS_VALIDATOR.getDefault().bool_val ? "true" : "false"));
-    }
+    testBuilder()
+        .sqlQuery(query)
+        .unOrdered()
+        .baselineColumns("col")
+        .baselineValues(200l)
+        .go();
   }
 
   @Test
@@ -204,16 +195,14 @@ public class TestHiveStorage extends HiveTestBase {
    */
   @Test
   public void readAllSupportedHiveDataTypesNativeParquet() throws Exception {
-    try {
-      test(String.format("alter session set `%s` = true", ExecConstants.HIVE_OPTIMIZE_SCAN_WITH_NATIVE_READERS));
-      final String query = "SELECT * FROM hive.readtest_parquet";
+    final String query = "SELECT * FROM hive.readtest_parquet";
 
-      // Make sure the plan has Hive scan with native parquet reader
-      testPhysicalPlan(query, "hive-drill-native-parquet-scan");
+    // Make sure the plan has Hive scan with native parquet reader
+    testPhysicalPlan(query, "hive-drill-native-parquet-scan");
 
-      testBuilder().sqlQuery(query)
-          .unOrdered()
-          .baselineColumns(
+    testBuilder().sqlQuery(query)
+        .unOrdered()
+        .baselineColumns(
               "binary_field",
               "boolean_field",
               "tinyint_field",
@@ -250,7 +239,7 @@ public class TestHiveStorage extends HiveTestBase {
               "timestamp_part",
               "date_part",
               "char_part")
-          .baselineValues(
+        .baselineValues(
               "binaryfield".getBytes(),
               false,
               34,
@@ -287,7 +276,7 @@ public class TestHiveStorage extends HiveTestBase {
               new DateTime(Timestamp.valueOf("2013-07-05 17:01:00").getTime()),
               new DateTime(Date.valueOf("2013-07-05").getTime()),
               "char")
-          .baselineValues( // All fields are null, but partition fields have non-null values
+        .baselineValues( // All fields are null, but partition fields have non-null values
               null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
               // There is a regression in Hive 1.2.1 in binary and boolean partition columns. Disable for now.
               //"binary",
@@ -308,10 +297,7 @@ public class TestHiveStorage extends HiveTestBase {
               new DateTime(Timestamp.valueOf("2013-07-05 17:01:00").getTime()),
               new DateTime(Date.valueOf("2013-07-05").getTime()),
               "char")
-          .go();
-    } finally {
-        test(String.format("alter session set `%s` = false", ExecConstants.HIVE_OPTIMIZE_SCAN_WITH_NATIVE_READERS));
-    }
+        .go();
   }
 
   @Test
@@ -385,16 +371,11 @@ public class TestHiveStorage extends HiveTestBase {
 
   @Test // DRILL-3938
   public void nativeReaderIsDisabledForAlteredPartitionedTable() throws Exception {
-    try {
-      test(String.format("alter session set `%s` = true", ExecConstants.HIVE_OPTIMIZE_SCAN_WITH_NATIVE_READERS));
-      final String query = "EXPLAIN PLAN FOR SELECT key, `value`, newcol FROM hive.kv_parquet ORDER BY key LIMIT 1";
+    final String query = "EXPLAIN PLAN FOR SELECT key, `value`, newcol FROM hive.kv_parquet ORDER BY key LIMIT 1";
 
-      // Make sure the HiveScan in plan has no native parquet reader
-      final String planStr = getPlanInString(query, JSON_FORMAT);
-      assertFalse("Hive native is not expected in the plan", planStr.contains("hive-drill-native-parquet-scan"));
-    } finally {
-      test(String.format("alter session set `%s` = false", ExecConstants.HIVE_OPTIMIZE_SCAN_WITH_NATIVE_READERS));
-    }
+    // Make sure the HiveScan in plan has no native parquet reader
+    final String planStr = getPlanInString(query, JSON_FORMAT);
+    assertFalse("Hive native is not expected in the plan", planStr.contains("hive-drill-native-parquet-scan"));
   }
 
   @Test // DRILL-3739
@@ -409,18 +390,12 @@ public class TestHiveStorage extends HiveTestBase {
 
   @Test // DRILL-3739
   public void readingFromStorageHandleBasedTable2() throws Exception {
-    try {
-      test(String.format("alter session set `%s` = true", ExecConstants.HIVE_OPTIMIZE_SCAN_WITH_NATIVE_READERS));
-
-      testBuilder()
-          .sqlQuery("SELECT * FROM hive.kv_sh ORDER BY key LIMIT 2")
-          .ordered()
-          .baselineColumns("key", "value")
-          .expectsEmptyResultSet()
-          .go();
-    } finally {
-      test(String.format("alter session set `%s` = false", ExecConstants.HIVE_OPTIMIZE_SCAN_WITH_NATIVE_READERS));
-    }
+    testBuilder()
+        .sqlQuery("SELECT * FROM hive.kv_sh ORDER BY key LIMIT 2")
+        .ordered()
+        .baselineColumns("key", "value")
+        .expectsEmptyResultSet()
+        .go();
   }
 
   @Test // DRILL-3688
