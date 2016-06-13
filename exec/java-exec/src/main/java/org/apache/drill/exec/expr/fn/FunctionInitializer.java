@@ -42,8 +42,8 @@ import com.google.common.io.Resources;
 public class FunctionInitializer {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(FunctionInitializer.class);
 
-  private String className;
-
+  private final String className;
+  private final Class<?> clazz;
   private Map<String, CompilationUnit> functionUnits = Maps.newHashMap();
   private Map<String, String> methods;
   private List<String> imports;
@@ -55,6 +55,14 @@ public class FunctionInitializer {
   public FunctionInitializer(String className) {
     super();
     this.className = className;
+    try {
+      this.clazz = ClassLoader.getSystemClassLoader().loadClass(className);
+    } catch (ClassNotFoundException e) {
+      throw UserException.resourceError(e)
+          .message("Failure creating function class.")
+          .addContext("Function Class", className)
+          .build(logger);
+    }
   }
 
   /**
@@ -81,6 +89,13 @@ public class FunctionInitializer {
     return methods.get(methodName);
   }
 
+  /**
+   * @return the path of the class implementing the function
+   */
+  public String getPath() {
+    return clazz.getProtectionDomain().getCodeSource().getLocation().getPath();
+  }
+
   private void checkInit() {
     if (ready) {
       return;
@@ -94,7 +109,7 @@ public class FunctionInitializer {
       // get function body.
 
       try {
-        final Class<?> clazz = Class.forName(className);
+        //final Class<?> clazz = Class.forName(className);
         final CompilationUnit cu = get(clazz);
 
         if (cu == null) {
@@ -104,7 +119,7 @@ public class FunctionInitializer {
         methods = MethodGrabbingVisitor.getMethods(cu, clazz);
         imports = ImportGrabber.getMethods(cu);
 
-      } catch (IOException | ClassNotFoundException e) {
+      } catch (IOException e) {
         throw UserException.functionError(e)
             .message("Failure reading Function class.")
             .addContext("Function Class", className)

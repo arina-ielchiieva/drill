@@ -48,4 +48,6 @@ public abstract class AbstractFuncHolder implements FuncHolder {
   public abstract MajorType getParmMajorType(int i);
 
   public abstract int getParamCount();
+
+  public abstract String getPath();
 }

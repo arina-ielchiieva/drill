@@ -124,6 +124,11 @@ public abstract class DrillFuncHolder extends AbstractFuncHolder {
     return new DrillFuncHolderExpr(name, this, args, pos);
   }
 
+  @Override
+  public String getPath() {
+    return initializer.getPath();
+  }
+
   public boolean isAggregating() {
     return false;
   }
@@ -419,5 +424,9 @@ public abstract class DrillFuncHolder extends AbstractFuncHolder {
 
   public ValueReference getReturnValue() {
     return returnValue;
+  }
+
+  public String getClassPath() {
+    return initializer.getPath();
   }
 }

@@ -94,7 +94,6 @@ public class CreateUDFHandler extends DefaultSqlHandler {
     // distribute binary and source jars to all drillbits
     ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newCachedThreadPool();
     executor.setMaximumPoolSize(100);
-    
     List<Pair<CoordinationProtos.DrillbitEndpoint, Future<GeneralRPCProtos.Ack>>> transferResult = Lists.newArrayList();
     for (CoordinationProtos.DrillbitEndpoint endpoint : context.getActiveEndpoints()) {
       final DrillRpcFuture<GeneralRPCProtos.Ack> transferFiles = context.getController().getTunnel(endpoint).transferFiles(fileHolder);
