@@ -219,6 +219,7 @@ public class TestHiveStorage extends HiveTestBase {
               "string_field",
               "varchar_field",
               "timestamp_field",
+              "date_field",
               "char_field",
               // There is a regression in Hive 1.2.1 in binary and boolean partition columns. Disable for now.
               //"binary_part",
@@ -256,6 +257,7 @@ public class TestHiveStorage extends HiveTestBase {
               "stringfield",
               "varcharfield",
               new DateTime(Timestamp.valueOf("2013-07-05 17:01:00").getTime()),
+              new DateTime(Timestamp.valueOf("2013-07-05").getTime()),
               "charfield",
               // There is a regression in Hive 1.2.1 in binary and boolean partition columns. Disable for now.
               //"binary",

@@ -129,7 +129,7 @@ public class HiveTestDataGenerator {
     // generate (key, value) test data
     String testDataFile = generateTestDataFile();
 
-    // Create a (key, value) schema table with Text SerDe which is available in hive-serdes.jar
+ /*   // Create a (key, value) schema table with Text SerDe which is available in hive-serdes.jar
     executeQuery(hiveDriver, "CREATE TABLE IF NOT EXISTS default.kv(key INT, value STRING) " +
         "ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE");
     executeQuery(hiveDriver, "LOAD DATA LOCAL INPATH '" + testDataFile + "' OVERWRITE INTO TABLE default.kv");
@@ -309,9 +309,9 @@ public class HiveTestDataGenerator {
         "charType CHAR(10))"
     );
 
-    /**
+    *//**
      * Create a PARQUET table with all supported types.
-     */
+     *//*
     executeQuery(hiveDriver,
         "CREATE TABLE readtest_parquet (" +
             "  binary_field BINARY, " +
@@ -330,6 +330,7 @@ public class HiveTestDataGenerator {
             "  string_field STRING," +
             "  varchar_field VARCHAR(50)," +
             "  timestamp_field TIMESTAMP," +
+            "  date_field DATE," +
             "  char_field CHAR(10)" +
             ") PARTITIONED BY (" +
             // There is a regression in Hive 1.2.1 in binary type partition columns. Disable for now.
@@ -393,6 +394,7 @@ public class HiveTestDataGenerator {
         "  string_field," +
         "  varchar_field," +
         "  timestamp_field," +
+        "  date_field," +
         "  char_field" +
         " FROM readtest WHERE tinyint_part = 64");
 
@@ -510,6 +512,42 @@ public class HiveTestDataGenerator {
       final String loadData = String.format("load data local inpath '" +
           Resources.getResource("simple.json") + "' into table default.simple_json");
       executeQuery(hiveDriver, loadData);
+*/
+    // Create default.voter_text table
+    executeQuery(hiveDriver, "create table default.voter_text (" +
+        "   VOTER_ID SMALLINT," +
+        "   NAME VARCHAR(40)," +
+        "   AGE TINYINT," +
+        "   REGISTRATION CHAR(11)," +
+        "   CONTRIBUTIONS float," +
+        "   VOTERZONE INT," +
+        "   CREATE_TIMESTAMP TIMESTAMP," +
+        "   create_date date" +
+        ") " +
+        "ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' " +
+        "STORED AS TEXTFILE TBLPROPERTIES('serialization.null.format'='')");
+
+    // Load data into default.voter_text
+    executeQuery(hiveDriver, "load data local inpath '/home/osboxes/git_repo/drill-test-framework/framework/resources/Datasources/hive_storage/voterhive.tsv'" +
+        " into table default.voter_text");
+
+    // Create table default.voter_parquet
+    executeQuery(hiveDriver, "create table default.voter_parquet (" +
+        "   VOTER_ID SMALLINT," +
+        "   NAME VARCHAR(40)," +
+        "   AGE TINYINT," +
+        "   REGISTRATION CHAR(11)," +
+        "   CONTRIBUTIONS float," +
+        "   VOTERZONE INT," +
+        "   CREATE_TIMESTAMP TIMESTAMP," +
+        "   create_date date" +
+        ") " +
+        "STORED AS PARQUET");
+
+    // Load data into default.voter_parquet
+    executeQuery(hiveDriver, "FROM default.voter_text insert overwrite table default.voter_parquet " +
+        "select voter_id,name,age,registration,contributions,voterzone,create_timestamp,create_date");
+
     ss.close();
   }
 
