@@ -99,6 +99,11 @@ public class JdbcStoragePlugin extends AbstractStoragePlugin {
       source.setPassword(config.getPassword());
     }
 
+    //new condition
+    if (config.getUrl().contains("jdbc:mysql")) {
+      source.setConnectionProperties("useCursorFetch=true;defaultFetchSize=10000");
+    }
+
     this.source = source;
     this.dialect = JdbcSchema.createDialect(source);
     this.convention = new DrillJdbcConvention(dialect, name);
