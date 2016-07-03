@@ -20,14 +20,18 @@ package org.apache.drill.exec.impersonation;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import org.apache.commons.io.FileUtils;
 import org.apache.drill.PlanTestBase;
 import org.apache.drill.common.config.DrillConfig;
+import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.dotdrill.DotDrillType;
 import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.apache.drill.exec.store.dfs.FileSystemConfig;
 import org.apache.drill.exec.store.dfs.WorkspaceConfig;
+import org.apache.drill.exec.store.easy.text.TextFormatPlugin;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -37,6 +41,7 @@ import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.security.UserGroupInformation;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Properties;
 
@@ -132,20 +137,30 @@ public class BaseTestImpersonation extends PlanTestBase {
     miniDfsPluginConfig.connection = dfsConf.get(FileSystem.FS_DEFAULT_NAME_KEY);
 
     createAndAddWorkspace("tmp", "/tmp", (short)0777, processUser, processUser, workspaces);
+    createAndAddWorkspace("arina", "/tmp", (short)0777, processUser, processUser, workspaces, "dat");
 
     miniDfsPluginConfig.workspaces = workspaces;
+
+    TextFormatPlugin.TextFormatConfig datFormat = new TextFormatPlugin.TextFormatConfig();
+    datFormat.extensions = Lists.newArrayList(".dat");
+    datFormat.fieldDelimiter = '|';
+
+    lfsPluginConfig.formats.put("dat", datFormat);
     miniDfsPluginConfig.formats = ImmutableMap.copyOf(lfsPluginConfig.formats);
+
     miniDfsPluginConfig.setEnabled(true);
 
     pluginRegistry.createOrUpdate(MINIDFS_STORAGE_PLUGIN_NAME, miniDfsPluginConfig, true);
+    pluginRegistry.createOrUpdate("dfs_test", lfsPluginConfig, true);
   }
 
   protected static void createAndAddWorkspace(String name, String path, short permissions, String owner,
-      String group, final Map<String, WorkspaceConfig> workspaces) throws Exception {
+      String group, final Map<String, WorkspaceConfig> workspaces, String... ff) throws Exception {
     final Path dirPath = new Path(path);
     FileSystem.mkdirs(fs, dirPath, new FsPermission(permissions));
     fs.setOwner(dirPath, owner, group);
-    final WorkspaceConfig ws = new WorkspaceConfig(path, true, "parquet");
+    final String f = ff.length > 0 ? ff[0] : "parquet";
+    final WorkspaceConfig ws = new WorkspaceConfig(path, true, f);
     workspaces.put(name, ws);
   }
 
