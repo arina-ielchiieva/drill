@@ -43,6 +43,8 @@ import org.apache.drill.exec.store.sys.PersistentStoreRegistry;
 import org.apache.drill.exec.store.sys.store.provider.LocalPersistentStoreProvider;
 import org.apache.drill.exec.util.GuavaPatcher;
 import org.apache.drill.exec.work.WorkManager;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.zookeeper.Environment;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -113,6 +115,13 @@ public class Drillbit implements AutoCloseable {
 
   public void run() throws Exception {
     final Stopwatch w = Stopwatch.createStarted();
+
+    Configuration conf = new Configuration();
+    FileSystem fs = FileSystem.get(conf);
+    System.out.println("ARINA: " + fs.getHomeDirectory());
+    logger.info("ARINA: " + fs.getHomeDirectory());
+
+
     logger.debug("Startup begun.");
     coord.start(10000);
     storeProvider.start();

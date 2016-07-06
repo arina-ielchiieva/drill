@@ -21,6 +21,8 @@ import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.util.FileUtils;
 import org.apache.drill.common.util.TestTools;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -493,6 +495,13 @@ public class TestStarQueries extends BaseTestQuery{
     expectedRecordCount = 25;
     assertEquals(String.format("Received unexpected number of rows in output for query:\n%s\n expected=%d, received=%s",
         query2, expectedRecordCount, actualRecordCount), expectedRecordCount, actualRecordCount);
+  }
+
+  @Test
+  public void testFs() throws Exception {
+    Configuration conf = new Configuration();
+    FileSystem fs = FileSystem.get(conf);
+    System.out.println(fs.getHomeDirectory());
   }
 
 }
