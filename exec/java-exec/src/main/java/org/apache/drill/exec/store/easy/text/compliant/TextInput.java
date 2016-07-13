@@ -67,6 +67,7 @@ final class TextInput {
 
   private long lineCount;
   private long charCount;
+  private int remByteCount = 0;
 
   /**
    * The starting position in the file.
@@ -200,19 +201,40 @@ final class TextInput {
    * read some more bytes from the stream.  Uses the zero copy interface if available.  Otherwise, does byte copy.
    * @throws IOException
    */
-  private final void read() throws IOException {
+  private void read() throws IOException {
     if(bufferReadable){
 
-      if(remByte){
+      if (remByteCount != 0) {
+        for (int i = 0; i <= remByteCount; i++) {
+          underlyingBuffer.put(lineSeparator[i]);
+        }
+        remByteCount = 0;
+      }
+
+/*      if(remByte){
         underlyingBuffer.put(lineSeparator1);
         remByte = false;
       }
-      length = inputFS.read(underlyingBuffer);
+      length = inputFS.read(underlyingBuffer);*/
 
-    }else{
+    }else {
 
       byte[] b = new byte[underlyingBuffer.capacity()];
-      if(remByte){
+
+      if (remByteCount != 0) {
+        int remBytesNum = remByteCount + 1;
+        System.arraycopy(lineSeparator, 0, b, 0, remBytesNum);
+        length = input.read(b, 1, b.length - remBytesNum);
+        //length = input.read(b, remBytesNum, b.length - remBytesNum);
+      } else {
+        length = input.read(b);
+      }
+      underlyingBuffer.put(b);
+    }
+
+
+
+/*      if(remByte){
         b[0] = lineSeparator1;
         length = input.read(b, 1, b.length - 1);
         remByte = false;
@@ -221,7 +243,7 @@ final class TextInput {
       }
 
       underlyingBuffer.put(b);
-    }
+    }*/
   }
 
 
@@ -231,7 +253,7 @@ final class TextInput {
    */
 
   //todo arina - no changes in this method
-  private final void updateBuffer() throws IOException {
+  private void updateBuffer() throws IOException {
     streamPos = seekable.getPos();
     underlyingBuffer.clear();
 
@@ -265,10 +287,51 @@ final class TextInput {
     final byte lineSeparator1 = this.lineSeparator1;
     final byte lineSeparator2 = this.lineSeparator2;
 
+    final byte[] lineSeparator = this.lineSeparator;
+
     // find the next line separator:
     final long max = bStart + length;
 
-    for(long m = this.bStart + (endPos - streamPos); m < max; m++){
+    for(long m = this.bStart + (endPos - streamPos); m < max; m++) {
+      if (PlatformDependent.getByte(m) == lineSeparator1) {
+        // we found a potential line break.
+        if (lineSeparator.length == 1) {
+          // we found a line separator and don't need to consult the next byte.
+          length = (int) (m - bStart) + 1; // make sure we include line separator otherwise query may fail (DRILL-4317)
+          endFound = true;
+          break;
+        } else {
+          for (int i = 1; i < lineSeparator.length; i++) {
+            long mPlus = m + i;
+            if (mPlus < max) {
+              // we can check next byte and see if the second lineSeparator is correct.
+              if (lineSeparator[i] != PlatformDependent.getByte(mPlus)) {
+                //length = (int) (mPlus - bStart);
+                //endFound = true;
+                //break;
+              //} else {
+                // this was a partial line break.
+                // continue; //todo changed by arina
+                break;
+              }
+            } else {
+              // the last character of the read was a remnant byte.  We'll hold off on dealing with this byte until the next read.
+              // remByte = true;
+              //length -= 1; / todo changed by arina
+
+              remByteCount = i;
+              length = length - i;
+              break;
+            }
+          }
+
+          length = (int) (m + lineSeparator.length - bStart);
+          endFound = true;
+        }
+      }
+    }
+
+/*    for(long m = this.bStart + (endPos - streamPos); m < max; m++){
       if(PlatformDependent.getByte(m) == lineSeparator1){
         // we found a potential line break.
 
@@ -300,7 +363,7 @@ final class TextInput {
 
         }
       }
-    }
+    }*/
   }
 
   /**
