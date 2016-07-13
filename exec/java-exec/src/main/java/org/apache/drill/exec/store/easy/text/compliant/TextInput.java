@@ -56,20 +56,12 @@ import com.univocity.parsers.common.Format;
  */
 final class TextInput {
 
-
   private final byte[] lineSeparator;
-
   private final byte normalizedLineSeparator;
   private final TextParsingSettings settings;
 
   private long lineCount;
   private long charCount;
-
-  /**
-   * Whether there was a possible partial line separator on the previous
-   * read so we dropped it and it should be appended to next read.
-   */
-  private int remByteCount = -1;
 
   /**
    * The starting position in the file.
@@ -94,6 +86,12 @@ final class TextInput {
   private final boolean bufferReadable;
 
   /**
+   * Whether there was a possible partial line separator on the previous
+   * read so we dropped it and it should be appended to next read.
+   */
+  private int remByte = -1;
+
+  /**
    * The current position in the buffer.
    */
   public int bufferPtr;
@@ -111,9 +109,9 @@ final class TextInput {
    * normalizedLineSeparator the normalized newline character (as defined in {@link Format#getNormalizedNewline()}) that is used to replace any lineSeparator sequence found in the input.
    */
   public TextInput(TextParsingSettings settings, InputStream input, DrillBuf readBuffer, long startPos, long endPos) {
-    byte[] lineSeparator = settings.getNewLineDelimiter();
+    this.lineSeparator = settings.getNewLineDelimiter();
     byte normalizedLineSeparator = settings.getNormalizedNewLine();
-   Preconditions.checkArgument(input instanceof Seekable, "Text input only supports an InputStream that supports Seekable.");
+    Preconditions.checkArgument(input instanceof Seekable, "Text input only supports an InputStream that supports Seekable.");
     boolean isCompressed = input instanceof CompressionInputStream ;
     Preconditions.checkArgument(!isCompressed || startPos == 0, "Cannot use split on compressed stream.");
 
@@ -136,8 +134,6 @@ final class TextInput {
 
     this.startPos = startPos;
     this.endPos = endPos;
-
-    this.lineSeparator = lineSeparator;
 
     this.normalizedLineSeparator = normalizedLineSeparator;
 
@@ -195,24 +191,23 @@ final class TextInput {
   private void read() throws IOException {
     if(bufferReadable){
 
-      if (remByteCount != -1) {
-        for (int i = 0; i <= remByteCount; i++) {
+      if(remByte != -1){
+        for (int i = 0; i <= remByte; i++) {
           underlyingBuffer.put(lineSeparator[i]);
         }
-        remByteCount = -1;
+        remByte = -1;
       }
       length = inputFS.read(underlyingBuffer);
 
-    } else {
+    }else{
 
       byte[] b = new byte[underlyingBuffer.capacity()];
-
-      if (remByteCount != -1) {
-        int remBytesNum = remByteCount + 1;
+      if(remByte != -1){
+        int remBytesNum = remByte + 1;
         System.arraycopy(lineSeparator, 0, b, 0, remBytesNum);
         length = input.read(b, remBytesNum, b.length - remBytesNum);
-        remByteCount = -1;
-      } else {
+        remByte = -1;
+      }else{
         length = input.read(b);
       }
       underlyingBuffer.put(b);
@@ -253,39 +248,27 @@ final class TextInput {
    * adjusts so that we can only read to the last character of the first line that crosses
    * the split boundary.
    */
-  private void updateLengthBasedOnConstraint(){
-    // we've run over our alotted data.
+  private void updateLengthBasedOnConstraint() {
     // find the next line separator:
     final long max = bStart + length;
 
     for(long m = this.bStart + (endPos - streamPos); m < max; m++) {
-      //if (PlatformDependent.getByte(m) == lineSeparator[0]) {
-        // we found a potential line break.
-        //if (lineSeparator.length == 1) {
-          // we found a line separator and don't need to consult the next byte.
-/*          length = (int) (m - bStart) + 1; // make sure we include line separator otherwise query may fail (DRILL-4317)
-          endFound = true;
-          break;
-        } else {*/
-          for (int i = 0; i < lineSeparator.length; i++) {
-            long mPlus = m + i;
-            if (mPlus < max) {
-              // we can check next byte and see if the next lineSeparator is correct.
-              if (lineSeparator[i] != PlatformDependent.getByte(mPlus)) {
-                break;
-              }
-            } else {
-              // the last character of the read was a remnant byte.  We'll hold off on dealing with this byte until the next read.
-              remByteCount = i;
-              length -= 1;
-              break;
-            }
+      for (int i = 0; i < lineSeparator.length; i++) {
+        long mPlus = m + i;
+        if (mPlus < max) {
+          // we can check if next byte corresponds to next line separator
+          if (lineSeparator[i] != PlatformDependent.getByte(mPlus)) {
+            break;
           }
+        } else {
+          // the last N characters of the read were a remnant bytes. We'll hold off on dealing with these bytes until the next read.
+          remByte = i;
+          length -= 1;
+          break;
+        }
+      }
 
-          length = (int) (m + lineSeparator.length - bStart);
-          endFound = true;
-        //}
-      //}
+      length = (int) (m + lineSeparator.length - bStart);
     }
   }
 
@@ -296,7 +279,6 @@ final class TextInput {
    * @throws IOException
    */
   public final byte nextChar() throws IOException {
-    final byte[] lineSeparator = this.lineSeparator;
 
     if (length == -1) {
       throw StreamFinishedPseudoException.INSTANCE;
@@ -319,19 +301,21 @@ final class TextInput {
 
     bufferPtr++;
 
-    if (lineSeparator[0] == byteChar) {
-      int tempBufferPtr = bufferPtr - 1;
-      for (int i = 1; i < lineSeparator.length; i++, tempBufferPtr++) {
-        if (lineSeparator[i] != buffer.getByte(tempBufferPtr)) {
+    // monitor for next line.
+    int bufferPtrTemp = bufferPtr - 1;
+    if (byteChar == lineSeparator[0]) {
+      for (int i = 1; i < lineSeparator.length; i++, bufferPtrTemp++) {
+        if (lineSeparator[i] !=  buffer.getByte(bufferPtrTemp)) {
           return byteChar;
         }
       }
 
       lineCount++;
       byteChar = normalizedLineSeparator;
-      if (lineSeparator.length > 1) {
-        bufferPtr = bufferPtr + (lineSeparator.length - 1);
 
+      // we don't need to update buffer position if line separator is one byte long
+      if (lineSeparator.length > 1) {
+        bufferPtr += (lineSeparator.length - 1);
         if (bufferPtr >= length) {
           if (length != -1) {
             updateBuffer();
@@ -341,6 +325,7 @@ final class TextInput {
         }
       }
     }
+
     return byteChar;
   }
 
