@@ -268,7 +268,7 @@ final class TextInput {
         }
       }
 
-      length = (int) (m + lineSeparator.length - bStart);
+      length = (int) (m + lineSeparator.length - bStart - 1);
     }
   }
 
