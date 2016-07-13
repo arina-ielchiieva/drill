@@ -224,8 +224,8 @@ final class TextInput {
       if (remByteCount != 0) {
         int remBytesNum = remByteCount + 1;
         System.arraycopy(lineSeparator, 0, b, 0, remBytesNum);
-        length = input.read(b, 1, b.length - remBytesNum);
-        //length = input.read(b, remBytesNum, b.length - remBytesNum);
+        //length = input.read(b, 1, b.length - remBytesNum);
+        length = input.read(b, remBytesNum, b.length - remBytesNum);
       } else {
         length = input.read(b);
       }
