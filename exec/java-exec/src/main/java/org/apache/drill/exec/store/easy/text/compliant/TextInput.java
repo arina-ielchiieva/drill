@@ -217,6 +217,8 @@ final class TextInput {
       }
       length = inputFS.read(underlyingBuffer);*/
 
+      length = inputFS.read(underlyingBuffer);
+
     }else {
 
       byte[] b = new byte[underlyingBuffer.capacity()];
@@ -293,7 +295,7 @@ final class TextInput {
     final long max = bStart + length;
 
     for(long m = this.bStart + (endPos - streamPos); m < max; m++) {
-      if (PlatformDependent.getByte(m) == lineSeparator1) {
+      if (PlatformDependent.getByte(m) == lineSeparator[0]) {
         // we found a potential line break.
         if (lineSeparator.length == 1) {
           // we found a line separator and don't need to consult the next byte.
