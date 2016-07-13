@@ -59,6 +59,9 @@ final class TextInput {
   private static final byte NULL_BYTE = (byte) '\0';
   private final byte lineSeparator1;
   private final byte lineSeparator2;
+
+  private final byte[] lineSeparator;
+
   private final byte normalizedLineSeparator;
   private final TextParsingSettings settings;
 
@@ -105,7 +108,7 @@ final class TextInput {
 
   private boolean endFound = false;
 
-  /**
+  /*
    * Creates a new instance with the mandatory characters for handling newlines transparently.
    * @param lineSeparator the sequence of characters that represent a newline, as defined in {@link Format#getLineSeparator()}
    * @param normalizedLineSeparator the normalized newline character (as defined in {@link Format#getNormalizedNewline()}) that is used to replace any lineSeparator sequence found in the input.
@@ -113,7 +116,8 @@ final class TextInput {
   public TextInput(TextParsingSettings settings, InputStream input, DrillBuf readBuffer, long startPos, long endPos) {
     byte[] lineSeparator = settings.getNewLineDelimiter();
     byte normalizedLineSeparator = settings.getNormalizedNewLine();
-    Preconditions.checkArgument(lineSeparator != null && (lineSeparator.length == 1 || lineSeparator.length == 2), "Invalid line separator. Expected 1 to 2 characters");
+    //check is not needed, since we can have more than two delimiters
+    //Preconditions.checkArgument(lineSeparator != null && (lineSeparator.length == 1 || lineSeparator.length == 2), "Invalid line separator. Expected 1 to 2 characters");
     Preconditions.checkArgument(input instanceof Seekable, "Text input only supports an InputStream that supports Seekable.");
     boolean isCompressed = input instanceof CompressionInputStream ;
     Preconditions.checkArgument(!isCompressed || startPos == 0, "Cannot use split on compressed stream.");
@@ -140,6 +144,9 @@ final class TextInput {
 
     this.lineSeparator1 = lineSeparator[0];
     this.lineSeparator2 = lineSeparator.length == 2 ? lineSeparator[1] : NULL_BYTE;
+
+    this.lineSeparator = lineSeparator;
+
     this.normalizedLineSeparator = normalizedLineSeparator;
 
     this.buffer = readBuffer;
@@ -222,6 +229,8 @@ final class TextInput {
    * Read more data into the buffer.  Will also manage split end conditions.
    * @throws IOException
    */
+
+  //todo arina - no changes in this method
   private final void updateBuffer() throws IOException {
     streamPos = seekable.getPos();
     underlyingBuffer.clear();
@@ -304,6 +313,8 @@ final class TextInput {
     final byte lineSeparator1 = this.lineSeparator1;
     final byte lineSeparator2 = this.lineSeparator2;
 
+    final byte[] lineSeparator = this.lineSeparator;
+
     if (length == -1) {
       throw StreamFinishedPseudoException.INSTANCE;
     }
@@ -325,14 +336,22 @@ final class TextInput {
 
     bufferPtr++;
 
-    // monitor for next line.
-    if (lineSeparator1 == byteChar && (lineSeparator2 == NULL_BYTE || lineSeparator2 == buffer.getByte(bufferPtr - 1))) {
+
+    //todo arina's changes
+
+    if (lineSeparator[0] == byteChar) {
+      int tempBufferPtr = bufferPtr - 1;
+      for (int i = 1; i < lineSeparator.length; i++, tempBufferPtr++) {
+        if (lineSeparator[i] != buffer.getByte(tempBufferPtr)) {
+          return byteChar; //todo are we sure don't need break?
+        }
+      }
+
       lineCount++;
+      byteChar = normalizedLineSeparator;
+      if (lineSeparator.length > 1) {
+        bufferPtr = bufferPtr + (lineSeparator.length - 1);
 
-      if (lineSeparator2 != NULL_BYTE) {
-        byteChar = normalizedLineSeparator;
-
-        bufferPtr++; //todo added by arina
         if (bufferPtr >= length) {
           if (length != -1) {
             updateBuffer();
@@ -342,6 +361,24 @@ final class TextInput {
         }
       }
     }
+
+/*    // monitor for next line.
+    if (lineSeparator1 == byteChar && (lineSeparator2 == NULL_BYTE || lineSeparator2 == buffer.getByte(bufferPtr - 1))) {
+      lineCount++;
+
+      if (lineSeparator2 != NULL_BYTE) {
+        byteChar = normalizedLineSeparator;
+
+        bufferPtr++; //todo added by arina -> fixed problem with skipping second delimiter
+        if (bufferPtr >= length) {
+          if (length != -1) {
+            updateBuffer();
+          } else {
+            throw StreamFinishedPseudoException.INSTANCE;
+          }
+        }
+      }
+    }*/
     return byteChar;
   }
 
