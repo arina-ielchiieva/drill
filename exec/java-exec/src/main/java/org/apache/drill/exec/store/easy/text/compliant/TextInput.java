@@ -249,15 +249,32 @@ final class TextInput {
    * the split boundary.
    */
   private void updateLengthBasedOnConstraint() {
-    // we've run over our alotted data.
-
     final byte[] lineSeparator = this.lineSeparator;
 
     // find the next line separator:
     final long max = bStart + length;
 
     for(long m = this.bStart + (endPos - streamPos); m < max; m++) {
-      if (PlatformDependent.getByte(m) == lineSeparator[0]) {
+      for (int i = 0; i < lineSeparator.length; i++) {
+        long mPlus = m + i;
+        if (mPlus < max) {
+          if (lineSeparator[i] != PlatformDependent.getByte(mPlus)) {
+            break;
+          }
+        } else {
+          // the last N characters of the read were remnant bytes.  We'll hold off on dealing with these bytes until the next read.
+          remByte = i;
+          length = length - i;
+          break;
+        }
+      }
+      // we found a line separator and don't need to consult the next byte.
+      length = (int) (m + lineSeparator.length - bStart);
+      endFound = true;
+    }
+
+
+/*      if (PlatformDependent.getByte(m) == lineSeparator[0]) {
         // we found a potential line break.
         if (lineSeparator.length == 1) {
           // we found a line separator and don't need to consult the next byte.
@@ -270,30 +287,20 @@ final class TextInput {
             if (mPlus < max) {
               // we can check next byte and see if the second lineSeparator is correct.
               if (lineSeparator[i] != PlatformDependent.getByte(mPlus)) {
-                //length = (int) (mPlus - bStart);
-                //endFound = true;
-                //break;
-                //} else {
-                // this was a partial line break.
-                // continue; //todo changed by arina
                 break;
               }
             } else {
-              // the last character of the read was a remnant byte.  We'll hold off on dealing with this byte until the next read.
-              // remByte = true;
-              //length -= 1; / todo changed by arina
-
+              // the last N characters of the read were remnant bytes.  We'll hold off on dealing with these bytes until the next read.
               remByte = i;
               length = length - i;
               break;
             }
           }
-
           length = (int) (m + lineSeparator.length - bStart);
           endFound = true;
         }
       }
-    }
+    }*/
 
 /*    for(long m = this.bStart + (endPos - streamPos); m < max; m++){
       if(PlatformDependent.getByte(m) == lineSeparator1){
