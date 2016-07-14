@@ -228,6 +228,7 @@ final class TextInput {
         System.arraycopy(lineSeparator, 0, b, 0, remBytesNum);
         //length = input.read(b, 1, b.length - remBytesNum);
         length = input.read(b, remBytesNum, b.length - remBytesNum);
+        remByteCount = 0;
       } else {
         length = input.read(b);
       }
@@ -253,8 +254,6 @@ final class TextInput {
    * Read more data into the buffer.  Will also manage split end conditions.
    * @throws IOException
    */
-
-  //todo arina - no changes in this method
   private void updateBuffer() throws IOException {
     streamPos = seekable.getPos();
     underlyingBuffer.clear();
@@ -415,7 +414,7 @@ final class TextInput {
       lineCount++;
       byteChar = normalizedLineSeparator;
       if (lineSeparator.length > 1) {
-        bufferPtr = bufferPtr + (lineSeparator.length - 1);
+        bufferPtr += (lineSeparator.length - 1);
 
         if (bufferPtr >= length) {
           if (length != -1) {
