@@ -188,7 +188,7 @@ final class TextInput {
    * read some more bytes from the stream.  Uses the zero copy interface if available.  Otherwise, does byte copy.
    * @throws IOException
    */
-  private final void read() throws IOException {
+  private void read() throws IOException {
     if(bufferReadable){
 
       if(remByte != -1){
@@ -219,7 +219,7 @@ final class TextInput {
    * Read more data into the buffer.  Will also manage split end conditions.
    * @throws IOException
    */
-  private final void updateBuffer() throws IOException {
+  private void updateBuffer() throws IOException {
     streamPos = seekable.getPos();
     underlyingBuffer.clear();
 
@@ -249,12 +249,10 @@ final class TextInput {
    * the split boundary.
    */
   private void updateLengthBasedOnConstraint() {
-    final byte[] lineSeparator = this.lineSeparator;
-
     // find the next line separator:
     final long max = bStart + length;
 
-    for(long m = this.bStart + (endPos - streamPos); m < max; m++) {
+    for(long m = bStart + (endPos - streamPos); m < max; m++) {
       for (int i = 0; i < lineSeparator.length; i++) {
         long mPlus = m + i;
         if (mPlus < max) {
@@ -262,7 +260,7 @@ final class TextInput {
             break;
           }
         } else {
-          // the last N characters of the read were remnant bytes.  We'll hold off on dealing with these bytes until the next read.
+          // the last N characters of the read were remnant bytes. We'll hold off on dealing with these bytes until the next read.
           remByte = i;
           length = length - i;
           break;
@@ -272,69 +270,6 @@ final class TextInput {
       length = (int) (m + lineSeparator.length - bStart);
       endFound = true;
     }
-
-
-/*      if (PlatformDependent.getByte(m) == lineSeparator[0]) {
-        // we found a potential line break.
-        if (lineSeparator.length == 1) {
-          // we found a line separator and don't need to consult the next byte.
-          length = (int) (m - bStart) + 1; // make sure we include line separator otherwise query may fail (DRILL-4317)
-          endFound = true;
-          break;
-        } else {
-          for (int i = 1; i < lineSeparator.length; i++) {
-            long mPlus = m + i;
-            if (mPlus < max) {
-              // we can check next byte and see if the second lineSeparator is correct.
-              if (lineSeparator[i] != PlatformDependent.getByte(mPlus)) {
-                break;
-              }
-            } else {
-              // the last N characters of the read were remnant bytes.  We'll hold off on dealing with these bytes until the next read.
-              remByte = i;
-              length = length - i;
-              break;
-            }
-          }
-          length = (int) (m + lineSeparator.length - bStart);
-          endFound = true;
-        }
-      }
-    }*/
-
-/*    for(long m = this.bStart + (endPos - streamPos); m < max; m++){
-      if(PlatformDependent.getByte(m) == lineSeparator1){
-        // we found a potential line break.
-
-        if(lineSeparator2 == NULL_BYTE){
-          // we found a line separator and don't need to consult the next byte.
-          length = (int)(m - bStart) + 1; // make sure we include line separator otherwise query may fail (DRILL-4317)
-          endFound = true;
-          break;
-        }else{
-          // this is a two byte line separator.
-
-          long mPlus = m+1;
-          if(mPlus < max){
-            // we can check next byte and see if the second lineSeparator is correct.
-            if(lineSeparator2 == PlatformDependent.getByte(mPlus)){
-              length = (int)(mPlus - bStart);
-              endFound = true;
-              break;
-            }else{
-              // this was a partial line break.
-              continue;
-            }
-          }else{
-            // the last character of the read was a remnant byte.  We'll hold off on dealing with this byte until the next read.
-            remByte = true;
-            length -= 1;
-            break;
-          }
-
-        }
-      }
-    }*/
   }
 
   /**
