@@ -268,7 +268,7 @@ final class TextInput {
             } else {
               // the last N characters of the read were a remnant byte. We'll hold off on dealing with these bytes until the next read.
               remByte = i;
-              length -= i;
+              length = length - i;
               break;
             }
           }
