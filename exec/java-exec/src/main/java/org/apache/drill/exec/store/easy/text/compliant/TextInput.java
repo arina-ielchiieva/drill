@@ -257,7 +257,7 @@ final class TextInput {
           // we found a line separator and don't need to consult the next byte.
           length = (int) (m - bStart) + 1;
           endFound = true;
-          break;
+          return;
         } else {
           for (int i = 1; i < lineSeparator.length; i++) {
             long mPlus = m + i;
@@ -269,12 +269,12 @@ final class TextInput {
               // the last N characters of the read were remnant bytes. We'll hold off on dealing with these bytes until the next read.
               remByte = i;
               length = length - i;
-              break;
+              return;
             }
           }
           length = (int) (m + lineSeparator.length - bStart);
           endFound = true;
-          break;
+          return;
         }
       }
     }
