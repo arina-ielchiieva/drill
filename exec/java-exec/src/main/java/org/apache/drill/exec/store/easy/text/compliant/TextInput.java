@@ -259,7 +259,8 @@ final class TextInput {
           endFound = true;
           return;
         } else {
-          for (int i = 1; i < lineSeparator.length; i++) {
+          int i = 0;
+          for (; i < lineSeparator.length; i++) {
             long mPlus = m + i;
             if (mPlus < max) {
               if (lineSeparator[i] != PlatformDependent.getByte(mPlus)) {
@@ -272,9 +273,11 @@ final class TextInput {
               return;
             }
           }
-          length = (int) (m + lineSeparator.length - bStart);
-          endFound = true;
-          return;
+          if (i == lineSeparator.length) {
+            length = (int) (m + lineSeparator.length - bStart);
+            endFound = true;
+            return;
+          }
         }
       }
     }
