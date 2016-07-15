@@ -274,7 +274,7 @@ final class TextInput {
             }
           }
           // we found a line separator and don't need to consult the next byte.
-          if (i == lineSeparator.length - 1) {
+          if (i == lineSeparator.length) {
             length = (int) (m + lineSeparator.length - bStart);
             endFound = true;
             return;
