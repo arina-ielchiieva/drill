@@ -249,16 +249,16 @@ final class TextInput {
    * the split boundary.
    */
   private void updateLengthBasedOnConstraint() {
-    final long max = bStart + length;
+/*    final long max = bStart + length;
     for(long m = bStart + (endPos - streamPos); m < max; m++) {
-/*      if (PlatformDependent.getByte(m) == lineSeparator[0]) {
+*//*      if (PlatformDependent.getByte(m) == lineSeparator[0]) {
         // we found a potential line break.
         if (lineSeparator.length == 1) {
           // we found a line separator and don't need to consult the next byte.
           length = (int) (m - bStart) + 1;
           endFound = true;
           return;
-        } else {*/
+        } else {*//*
           int i = 0;
           for (; i < lineSeparator.length; i++) {
             long mPlus = m + i;
@@ -281,7 +281,46 @@ final class TextInput {
           }
         }
       // }
-    // }
+    // }*/
+
+    //todo check different version
+
+    // we've run over our alotted data.
+
+    // find the next line separator:
+    final long max = bStart + length;
+    outer:
+    for (long m = this.bStart + (endPos - streamPos); m < max; m++) {
+      if (PlatformDependent.getByte(m) == lineSeparator[0]) {
+        // we found a potential line break.
+        if (lineSeparator.length == 1) {
+          // we found a line separator and don't need to consult the next byte.
+          length = (int) (m - bStart) + 1; // make sure we include line separator otherwise query may fail (DRILL-4317)
+          endFound = true;
+          break;
+        }
+        // this is a multi-byte line separator.
+        for (int i = 1; i < lineSeparator.length; i++) {
+          long mPlus = m + i;
+          if (mPlus < max) {
+            if (lineSeparator[i] == PlatformDependent.getByte(mPlus)) {
+              if (lineSeparator.length - 1 == i) {
+                length = (int) (mPlus - bStart);
+                endFound = true;
+                break outer;
+              }
+            }
+          } else {
+            // the last character of the read was a remnant byte.  We'll hold off on dealing with this byte until the next read.
+            remByte = i;
+            length -= 1;
+            break outer;
+          }
+        }
+      }
+
+    }
+
   }
 
   /**
