@@ -259,7 +259,7 @@ final class TextInput {
           endFound = true;
           return;
         } else {
-          int i = 0;
+          int i = 1;
           for (; i < lineSeparator.length; i++) {
             long mPlus = m + i;
             if (mPlus < max) {
@@ -273,7 +273,7 @@ final class TextInput {
               return;
             }
           }
-          if (i == lineSeparator.length) {
+          if (i == lineSeparator.length - 1) {
             length = (int) (m + lineSeparator.length - bStart);
             endFound = true;
             return;
