@@ -17,22 +17,6 @@
  */
 package org.apache.drill.exec.store.easy.text.compliant;
 
-/*******************************************************************************
- * Copyright 2014 uniVocity Software Pty Ltd
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- ******************************************************************************/
-
 import io.netty.buffer.DrillBuf;
 import io.netty.util.internal.PlatformDependent;
 
@@ -251,14 +235,6 @@ final class TextInput {
   private void updateLengthBasedOnConstraint() {
     final long max = bStart + length;
     for(long m = bStart + (endPos - streamPos); m < max; m++) {
-/*      if (PlatformDependent.getByte(m) == lineSeparator[0]) {
-        // we found a potential line break.
-        if (lineSeparator.length == 1) {
-          // we found a line separator and don't need to consult the next byte.
-          length = (int) (m - bStart) + 1;
-          endFound = true;
-          return;
-        } else {*/
       int i = 0;
       for (; i < lineSeparator.length; i++) {
         long mPlus = m + i;
@@ -275,13 +251,11 @@ final class TextInput {
       }
       // we found a line separator and don't need to consult the next byte.
       if (i == lineSeparator.length) {
-        length = (int) (m - bStart) + (lineSeparator.length);
+        length = (int) (m - bStart) + lineSeparator.length;
         endFound = true;
         return;
       }
     }
-    // }
-    // }
   }
 
   /**
