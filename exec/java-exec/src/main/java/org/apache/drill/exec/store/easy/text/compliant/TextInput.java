@@ -251,14 +251,20 @@ final class TextInput {
   private void updateLengthBasedOnConstraint() {
     final long max = bStart + length;
     for(long m = bStart + (endPos - streamPos); m < max; m++) {
-      for (int i = 0; i < lineSeparator.length; i++) {
+/*      if (PlatformDependent.getByte(m) == lineSeparator[0]) {
+        // we found a potential line break.
+        if (lineSeparator.length == 1) {
+          // we found a line separator and don't need to consult the next byte.
+          length = (int) (m - bStart) + 1;
+          endFound = true;
+          return;
+        } else {*/
+      int i = 0;
+      for (; i < lineSeparator.length; i++) {
         long mPlus = m + i;
         if (mPlus < max) {
-          // we found a line separator and don't need to consult the next byte.
-          if (lineSeparator[i] == PlatformDependent.getByte(mPlus) && i == lineSeparator.length - 1) {
-            length = (int) (m - bStart) + i;
-            endFound = true;
-            return;
+          if (lineSeparator[i] != PlatformDependent.getByte(mPlus)) {
+            break;
           }
         } else {
           // the last N characters of the read were remnant bytes. We'll hold off on dealing with these bytes until the next read.
@@ -267,7 +273,15 @@ final class TextInput {
           return;
         }
       }
+      // we found a line separator and don't need to consult the next byte.
+      if (i == lineSeparator.length) {
+        length = (int) (m - bStart) + (lineSeparator.length - 1);
+        endFound = true;
+        return;
+      }
     }
+    // }
+    // }
   }
 
   /**
