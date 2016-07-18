@@ -240,7 +240,7 @@ final class TextInput {
         if (mPlus < max) {
           // we found a line separator and don't need to consult the next byte.
           if (lineSeparator[i] == PlatformDependent.getByte(mPlus) && i == lineSeparator.length - 1) {
-            length = (int) (mPlus - bStart);
+            length = (int) (mPlus - bStart) + 1;
             endFound = true;
             return;
           }
