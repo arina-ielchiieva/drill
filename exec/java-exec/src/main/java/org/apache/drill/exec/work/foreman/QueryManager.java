@@ -36,8 +36,10 @@ import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
 import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;
 import org.apache.drill.exec.proto.GeneralRPCProtos.Ack;
 import org.apache.drill.exec.proto.SchemaUserBitShared;
+import org.apache.drill.exec.proto.UserBitShared;
 import org.apache.drill.exec.proto.UserBitShared.FragmentState;
 import org.apache.drill.exec.proto.UserBitShared.MajorFragmentProfile;
+import org.apache.drill.exec.proto.UserBitShared.Option;
 import org.apache.drill.exec.proto.UserBitShared.QueryId;
 import org.apache.drill.exec.proto.UserBitShared.QueryInfo;
 import org.apache.drill.exec.proto.UserBitShared.QueryProfile;
@@ -48,6 +50,9 @@ import org.apache.drill.exec.proto.helper.QueryIdHelper;
 import org.apache.drill.exec.rpc.RpcException;
 import org.apache.drill.exec.rpc.control.Controller;
 import org.apache.drill.exec.server.DrillbitContext;
+import org.apache.drill.exec.server.options.OptionList;
+import org.apache.drill.exec.server.options.OptionManager;
+import org.apache.drill.exec.server.options.OptionValue;
 import org.apache.drill.exec.store.sys.PersistentStore;
 import org.apache.drill.exec.store.sys.PersistentStoreConfig;
 import org.apache.drill.exec.store.sys.PersistentStoreProvider;
@@ -81,6 +86,7 @@ public class QueryManager implements AutoCloseable {
   private final String stringQueryId;
   private final RunQuery runQuery;
   private final Foreman foreman;
+  private final List<Option> queryOptions;
 
   /*
    * Doesn't need to be thread safe as fragmentDataMap is generated in a single thread and then
@@ -105,10 +111,11 @@ public class QueryManager implements AutoCloseable {
   private final AtomicInteger finishedFragments = new AtomicInteger(0);
 
   public QueryManager(final QueryId queryId, final RunQuery runQuery, final PersistentStoreProvider storeProvider,
-      final ClusterCoordinator coordinator, final Foreman foreman) {
+      final ClusterCoordinator coordinator, final Foreman foreman, final OptionManager queryOptions) {
     this.queryId =  queryId;
     this.runQuery = runQuery;
     this.foreman = foreman;
+    this.queryOptions = getQueryOptions(queryOptions);
 
     stringQueryId = QueryIdHelper.getQueryId(queryId);
     try {
@@ -320,6 +327,7 @@ public class QueryManager implements AutoCloseable {
         .setUser(foreman.getQueryContext().getQueryUserName())
         .setForeman(foreman.getQueryContext().getCurrentEndpoint())
         .setStart(startTime)
+        .addAllOptions(queryOptions)
         .build();
   }
 
@@ -338,7 +346,8 @@ public class QueryManager implements AutoCloseable {
         .setStart(startTime)
         .setEnd(endTime)
         .setTotalFragments(fragmentDataSet.size())
-        .setFinishedFragments(finishedFragments.get());
+        .setFinishedFragments(finishedFragments.get())
+        .addAllOptions(queryOptions);
 
     if (ex != null) {
       profileBuilder.setError(ex.getMessage(false));
@@ -356,6 +365,15 @@ public class QueryManager implements AutoCloseable {
     fragmentDataMap.forEach(new OuterIter(profileBuilder));
 
     return profileBuilder.build();
+  }
+
+  private List<Option> getQueryOptions(OptionManager optionManager) {
+    List<Option> sessionOptions = Lists.newArrayList();
+    OptionList optionList = optionManager.getOptionList();
+    for (OptionValue optionValue : optionList) {
+      sessionOptions.add(Option.newBuilder().setKey(optionValue.name).setValue(optionValue.getValue().toString()).build());
+    }
+    return sessionOptions;
   }
 
   private class OuterIter implements IntObjectPredicate<IntObjectHashMap<FragmentData>> {
