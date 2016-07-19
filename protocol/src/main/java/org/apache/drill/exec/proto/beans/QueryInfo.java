@@ -24,6 +24,8 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.dyuproject.protostuff.ByteString;
 import com.dyuproject.protostuff.GraphIOUtil;
@@ -54,6 +56,7 @@ public final class QueryInfo implements Externalizable, Message<QueryInfo>, Sche
     private QueryResult.QueryState state;
     private String user = DEFAULT_USER;
     private DrillbitEndpoint foreman;
+    private List<Option> options;
 
     public QueryInfo()
     {
@@ -127,6 +130,19 @@ public final class QueryInfo implements Externalizable, Message<QueryInfo>, Sche
         return this;
     }
 
+    // options
+
+    public List<Option> getOptionsList()
+    {
+        return options;
+    }
+
+    public QueryInfo setOptionsList(List<Option> options)
+    {
+        this.options = options;
+        return this;
+    }
+
     // java serialization
 
     public void readExternal(ObjectInput in) throws IOException
@@ -197,6 +213,12 @@ public final class QueryInfo implements Externalizable, Message<QueryInfo>, Sche
                     message.foreman = input.mergeObject(message.foreman, DrillbitEndpoint.getSchema());
                     break;
 
+                case 6:
+                    if(message.options == null)
+                        message.options = new ArrayList<Option>();
+                    message.options.add(input.mergeObject(null, Option.getSchema()));
+                    break;
+
                 default:
                     input.handleUnknownField(number, this);
             }   
@@ -221,6 +243,16 @@ public final class QueryInfo implements Externalizable, Message<QueryInfo>, Sche
         if(message.foreman != null)
              output.writeObject(5, message.foreman, DrillbitEndpoint.getSchema(), false);
 
+
+        if(message.options != null)
+        {
+            for(Option options : message.options)
+            {
+                if(options != null)
+                    output.writeObject(6, options, Option.getSchema(), true);
+            }
+        }
+
     }
 
     public String getFieldName(int number)
@@ -232,6 +264,7 @@ public final class QueryInfo implements Externalizable, Message<QueryInfo>, Sche
             case 3: return "state";
             case 4: return "user";
             case 5: return "foreman";
+            case 6: return "options";
             default: return null;
         }
     }
@@ -250,6 +283,7 @@ public final class QueryInfo implements Externalizable, Message<QueryInfo>, Sche
         __fieldMap.put("state", 3);
         __fieldMap.put("user", 4);
         __fieldMap.put("foreman", 5);
+        __fieldMap.put("options", 6);
     }
     
 }

@@ -166,10 +166,12 @@ public class Foreman implements Runnable {
     closeFuture.addListener(closeListener);
 
     queryContext = new QueryContext(connection.getSession(), drillbitContext, queryId);
-    queryManager = new QueryManager(queryId, queryRequest, drillbitContext.getStoreProvider(),
-        drillbitContext.getClusterCoordinator(), this);
 
     final OptionManager optionManager = queryContext.getOptions();
+
+    queryManager = new QueryManager(queryId, queryRequest, drillbitContext.getStoreProvider(),
+        drillbitContext.getClusterCoordinator(), this, optionManager);
+
     queuingEnabled = optionManager.getOption(ExecConstants.ENABLE_QUEUE);
 
     final QueryState initialState = queuingEnabled ? QueryState.ENQUEUED : QueryState.STARTING;
