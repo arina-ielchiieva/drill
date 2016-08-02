@@ -17,11 +17,13 @@
  */
 package org.apache.drill.exec.ops;
 
+import com.google.common.collect.Maps;
 import io.netty.buffer.DrillBuf;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.calcite.jdbc.SimpleCalciteSchema;
 import org.apache.calcite.schema.SchemaPlus;
@@ -31,6 +33,7 @@ import org.apache.drill.common.config.LogicalPlanPersistence;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
+import org.apache.drill.exec.expr.holders.ValueHolder;
 import org.apache.drill.exec.memory.BufferAllocator;
 import org.apache.drill.exec.planner.physical.PlannerSettings;
 import org.apache.drill.exec.planner.sql.DrillOperatorTable;
@@ -52,6 +55,7 @@ import org.apache.drill.exec.util.ImpersonationUtil;
 import org.apache.drill.exec.util.Utilities;
 
 import com.google.common.collect.Lists;
+import org.apache.drill.exec.vector.ValueHolderHelper;
 
 // TODO - consider re-name to PlanningContext, as the query execution context actually appears
 // in fragment contexts
@@ -72,6 +76,7 @@ public class QueryContext implements AutoCloseable, OptimizerRulesContext {
   private final ViewExpansionContext viewExpansionContext;
 
   private final List<SchemaPlus> schemaTreesToClose;
+  private final Map<String, ValueHolder> constantsCache;
 
   /*
    * Flag to indicate if close has been called, after calling close the first
@@ -98,6 +103,7 @@ public class QueryContext implements AutoCloseable, OptimizerRulesContext {
     bufferManager = new BufferManagerImpl(this.allocator);
     viewExpansionContext = new ViewExpansionContext(this);
     schemaTreesToClose = Lists.newArrayList();
+    constantsCache = Maps.newHashMap();
   }
 
   @Override
@@ -244,6 +250,16 @@ public class QueryContext implements AutoCloseable, OptimizerRulesContext {
   @Override
   public PartitionExplorer getPartitionExplorer() {
     return new PartitionExplorerImpl(getRootSchema());
+  }
+
+  @Override
+  public ValueHolder getConstantsCache(String constant) {
+    ValueHolder valueVector = constantsCache.get(constant);
+    if (valueVector == null) {
+      valueVector = ValueHolderHelper.getVarCharHolder(getManagedBuffer(), constant);
+      constantsCache.put(constant, valueVector);
+    }
+    return valueVector;
   }
 
   @Override

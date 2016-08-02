@@ -379,7 +379,8 @@ public class InterpreterEvaluator {
 
     @Override
     public ValueHolder visitQuotedStringConstant(ValueExpressions.QuotedString e, Integer value) throws RuntimeException {
-      return ValueHolderHelper.getVarCharHolder(getManagedBufferIfAvailable(), e.value);
+      return udfUtilities.getConstantsCache(e.value);
+      // return ValueHolderHelper.getVarCharHolder(getManagedBufferIfAvailable(), e.value);
     }
 
 

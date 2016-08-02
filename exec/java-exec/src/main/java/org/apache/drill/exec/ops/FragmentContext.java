@@ -34,6 +34,7 @@ import org.apache.drill.exec.exception.OutOfMemoryException;
 import org.apache.drill.exec.expr.ClassGenerator;
 import org.apache.drill.exec.expr.CodeGenerator;
 import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
+import org.apache.drill.exec.expr.holders.ValueHolder;
 import org.apache.drill.exec.memory.BufferAllocator;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.planner.physical.PlannerSettings;
@@ -54,6 +55,7 @@ import org.apache.drill.exec.store.PartitionExplorer;
 import org.apache.drill.exec.store.SchemaConfig;
 import org.apache.drill.exec.testing.ExecutionControls;
 import org.apache.drill.exec.util.ImpersonationUtil;
+import org.apache.drill.exec.vector.ValueHolderHelper;
 import org.apache.drill.exec.work.batch.IncomingBuffers;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -83,6 +85,7 @@ public class FragmentContext implements AutoCloseable, UdfUtilities {
   private final BufferManager bufferManager;
   private ExecutorState executorState;
   private final ExecutionControls executionControls;
+  private final Map<String, ValueHolder> constantsCache;
 
 
   private final SendingAccountor sendingAccountor = new SendingAccountor();
@@ -173,6 +176,7 @@ public class FragmentContext implements AutoCloseable, UdfUtilities {
 
     stats = new FragmentStats(allocator, fragment.getAssignment());
     bufferManager = new BufferManagerImpl(this.allocator);
+    constantsCache = Maps.newHashMap();
   }
 
   /**
@@ -438,6 +442,16 @@ public class FragmentContext implements AutoCloseable, UdfUtilities {
     throw new UnsupportedOperationException(String.format("The partition explorer interface can only be used " +
         "in functions that can be evaluated at planning time. Make sure that the %s configuration " +
         "option is set to true.", PlannerSettings.CONSTANT_FOLDING.getOptionName()));
+  }
+
+  @Override
+  public ValueHolder getConstantsCache(String constant) {
+    ValueHolder valueVector = constantsCache.get(constant);
+    if (valueVector == null) {
+      valueVector = ValueHolderHelper.getVarCharHolder(getManagedBuffer(), constant);
+      constantsCache.put(constant, valueVector);
+    }
+    return valueVector;
   }
 
   public Executor getExecutor(){
