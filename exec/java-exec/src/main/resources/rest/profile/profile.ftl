@@ -107,7 +107,7 @@
   <p>FOREMAN: ${model.getProfile().getForeman().getAddress()}</p>
   <p>TOTAL FRAGMENTS: ${model.getProfile().getTotalFragments()}</p>
 
-  <#if (model.getProfile().getOptionsList()?size > 0)>
+  <#if (model.getOptionList()?size > 0)>
     <div class="page-header"></div>
     <h3>Session Options</h3>
     <div class="panel-group" id="session-options-accordion">
@@ -129,10 +129,10 @@
                 </tr>
               </thead>
               <tbody>
-                <#list model.getProfile().getOptionsList() as option>
+                <#list model.getOptionList() as option>
                   <tr>
                     <td>${option.getName()}</td>
-                    <td>${option.getValue()}</td>
+                    <td>${option.getValue()?c}</td>
                   </tr>
                 </#list>
               </tbody>

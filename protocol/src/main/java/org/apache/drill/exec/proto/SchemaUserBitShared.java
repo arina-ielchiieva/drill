@@ -1594,124 +1594,6 @@ public final class SchemaUserBitShared
         }
     }
 
-    public static final class Option
-    {
-        public static final org.apache.drill.exec.proto.SchemaUserBitShared.Option.MessageSchema WRITE =
-            new org.apache.drill.exec.proto.SchemaUserBitShared.Option.MessageSchema();
-        public static final org.apache.drill.exec.proto.SchemaUserBitShared.Option.BuilderSchema MERGE =
-            new org.apache.drill.exec.proto.SchemaUserBitShared.Option.BuilderSchema();
-        
-        public static class MessageSchema implements com.dyuproject.protostuff.Schema<org.apache.drill.exec.proto.UserBitShared.Option>
-        {
-            public void writeTo(com.dyuproject.protostuff.Output output, org.apache.drill.exec.proto.UserBitShared.Option message) throws java.io.IOException
-            {
-                if(message.hasName())
-                    output.writeString(1, message.getName(), false);
-                if(message.hasValue())
-                    output.writeString(2, message.getValue(), false);
-            }
-            public boolean isInitialized(org.apache.drill.exec.proto.UserBitShared.Option message)
-            {
-                return message.isInitialized();
-            }
-            public java.lang.String getFieldName(int number)
-            {
-                return org.apache.drill.exec.proto.SchemaUserBitShared.Option.getFieldName(number);
-            }
-            public int getFieldNumber(java.lang.String name)
-            {
-                return org.apache.drill.exec.proto.SchemaUserBitShared.Option.getFieldNumber(name);
-            }
-            public java.lang.Class<org.apache.drill.exec.proto.UserBitShared.Option> typeClass()
-            {
-                return org.apache.drill.exec.proto.UserBitShared.Option.class;
-            }
-            public java.lang.String messageName()
-            {
-                return org.apache.drill.exec.proto.UserBitShared.Option.class.getSimpleName();
-            }
-            public java.lang.String messageFullName()
-            {
-                return org.apache.drill.exec.proto.UserBitShared.Option.class.getName();
-            }
-            //unused
-            public void mergeFrom(com.dyuproject.protostuff.Input input, org.apache.drill.exec.proto.UserBitShared.Option message) throws java.io.IOException {}
-            public org.apache.drill.exec.proto.UserBitShared.Option newMessage() { return null; }
-        }
-        public static class BuilderSchema implements com.dyuproject.protostuff.Schema<org.apache.drill.exec.proto.UserBitShared.Option.Builder>
-        {
-            public void mergeFrom(com.dyuproject.protostuff.Input input, org.apache.drill.exec.proto.UserBitShared.Option.Builder builder) throws java.io.IOException
-            {
-                for(int number = input.readFieldNumber(this);; number = input.readFieldNumber(this))
-                {
-                    switch(number)
-                    {
-                        case 0:
-                            return;
-                        case 1:
-                            builder.setName(input.readString());
-                            break;
-                        case 2:
-                            builder.setValue(input.readString());
-                            break;
-                        default:
-                            input.handleUnknownField(number, this);
-                    }
-                }
-            }
-            public boolean isInitialized(org.apache.drill.exec.proto.UserBitShared.Option.Builder builder)
-            {
-                return builder.isInitialized();
-            }
-            public org.apache.drill.exec.proto.UserBitShared.Option.Builder newMessage()
-            {
-                return org.apache.drill.exec.proto.UserBitShared.Option.newBuilder();
-            }
-            public java.lang.String getFieldName(int number)
-            {
-                return org.apache.drill.exec.proto.SchemaUserBitShared.Option.getFieldName(number);
-            }
-            public int getFieldNumber(java.lang.String name)
-            {
-                return org.apache.drill.exec.proto.SchemaUserBitShared.Option.getFieldNumber(name);
-            }
-            public java.lang.Class<org.apache.drill.exec.proto.UserBitShared.Option.Builder> typeClass()
-            {
-                return org.apache.drill.exec.proto.UserBitShared.Option.Builder.class;
-            }
-            public java.lang.String messageName()
-            {
-                return org.apache.drill.exec.proto.UserBitShared.Option.class.getSimpleName();
-            }
-            public java.lang.String messageFullName()
-            {
-                return org.apache.drill.exec.proto.UserBitShared.Option.class.getName();
-            }
-            //unused
-            public void writeTo(com.dyuproject.protostuff.Output output, org.apache.drill.exec.proto.UserBitShared.Option.Builder builder) throws java.io.IOException {}
-        }
-        public static java.lang.String getFieldName(int number)
-        {
-            switch(number)
-            {
-                case 1: return "name";
-                case 2: return "value";
-                default: return null;
-            }
-        }
-        public static int getFieldNumber(java.lang.String name)
-        {
-            java.lang.Integer number = fieldMap.get(name);
-            return number == null ? 0 : number.intValue();
-        }
-        private static final java.util.HashMap<java.lang.String,java.lang.Integer> fieldMap = new java.util.HashMap<java.lang.String,java.lang.Integer>();
-        static
-        {
-            fieldMap.put("name", 1);
-            fieldMap.put("value", 2);
-        }
-    }
-
     public static final class QueryInfo
     {
         public static final org.apache.drill.exec.proto.SchemaUserBitShared.QueryInfo.MessageSchema WRITE =
@@ -1734,9 +1616,8 @@ public final class SchemaUserBitShared
                 if(message.hasForeman())
                     output.writeObject(5, message.getForeman(), org.apache.drill.exec.proto.SchemaCoordinationProtos.DrillbitEndpoint.WRITE, false);
 
-                for(org.apache.drill.exec.proto.UserBitShared.Option options : message.getOptionsList())
-                    output.writeObject(6, options, org.apache.drill.exec.proto.SchemaUserBitShared.Option.WRITE, true);
-
+                if(message.hasOptionsJson())
+                    output.writeString(6, message.getOptionsJson(), false);
             }
             public boolean isInitialized(org.apache.drill.exec.proto.UserBitShared.QueryInfo message)
             {
@@ -1793,8 +1674,7 @@ public final class SchemaUserBitShared
 
                             break;
                         case 6:
-                            builder.addOptions(input.mergeObject(org.apache.drill.exec.proto.UserBitShared.Option.newBuilder(), org.apache.drill.exec.proto.SchemaUserBitShared.Option.MERGE));
-
+                            builder.setOptionsJson(input.readString());
                             break;
                         default:
                             input.handleUnknownField(number, this);
@@ -1841,7 +1721,7 @@ public final class SchemaUserBitShared
                 case 3: return "state";
                 case 4: return "user";
                 case 5: return "foreman";
-                case 6: return "options";
+                case 6: return "optionsJson";
                 default: return null;
             }
         }
@@ -1858,7 +1738,7 @@ public final class SchemaUserBitShared
             fieldMap.put("state", 3);
             fieldMap.put("user", 4);
             fieldMap.put("foreman", 5);
-            fieldMap.put("options", 6);
+            fieldMap.put("optionsJson", 6);
         }
     }
 
@@ -1908,9 +1788,8 @@ public final class SchemaUserBitShared
                     output.writeString(15, message.getErrorId(), false);
                 if(message.hasErrorNode())
                     output.writeString(16, message.getErrorNode(), false);
-                for(org.apache.drill.exec.proto.UserBitShared.Option options : message.getOptionsList())
-                    output.writeObject(17, options, org.apache.drill.exec.proto.SchemaUserBitShared.Option.WRITE, true);
-
+                if(message.hasOptionsJson())
+                    output.writeString(17, message.getOptionsJson(), false);
             }
             public boolean isInitialized(org.apache.drill.exec.proto.UserBitShared.QueryProfile message)
             {
@@ -2002,8 +1881,7 @@ public final class SchemaUserBitShared
                             builder.setErrorNode(input.readString());
                             break;
                         case 17:
-                            builder.addOptions(input.mergeObject(org.apache.drill.exec.proto.UserBitShared.Option.newBuilder(), org.apache.drill.exec.proto.SchemaUserBitShared.Option.MERGE));
-
+                            builder.setOptionsJson(input.readString());
                             break;
                         default:
                             input.handleUnknownField(number, this);
@@ -2061,7 +1939,7 @@ public final class SchemaUserBitShared
                 case 14: return "verboseError";
                 case 15: return "errorId";
                 case 16: return "errorNode";
-                case 17: return "options";
+                case 17: return "optionsJson";
                 default: return null;
             }
         }
@@ -2089,7 +1967,7 @@ public final class SchemaUserBitShared
             fieldMap.put("verboseError", 14);
             fieldMap.put("errorId", 15);
             fieldMap.put("errorNode", 16);
-            fieldMap.put("options", 17);
+            fieldMap.put("optionsJson", 17);
         }
     }
 

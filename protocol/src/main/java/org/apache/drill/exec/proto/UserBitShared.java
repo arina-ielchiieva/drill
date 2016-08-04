@@ -11916,633 +11916,6 @@ public final class UserBitShared {
     // @@protoc_insertion_point(class_scope:exec.shared.QueryData)
   }
 
-  public interface OptionOrBuilder
-      extends com.google.protobuf.MessageOrBuilder {
-
-    // optional string name = 1;
-    /**
-     * <code>optional string name = 1;</code>
-     */
-    boolean hasName();
-    /**
-     * <code>optional string name = 1;</code>
-     */
-    java.lang.String getName();
-    /**
-     * <code>optional string name = 1;</code>
-     */
-    com.google.protobuf.ByteString
-        getNameBytes();
-
-    // optional string value = 2;
-    /**
-     * <code>optional string value = 2;</code>
-     */
-    boolean hasValue();
-    /**
-     * <code>optional string value = 2;</code>
-     */
-    java.lang.String getValue();
-    /**
-     * <code>optional string value = 2;</code>
-     */
-    com.google.protobuf.ByteString
-        getValueBytes();
-  }
-  /**
-   * Protobuf type {@code exec.shared.Option}
-   */
-  public static final class Option extends
-      com.google.protobuf.GeneratedMessage
-      implements OptionOrBuilder {
-    // Use Option.newBuilder() to construct.
-    private Option(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
-      super(builder);
-      this.unknownFields = builder.getUnknownFields();
-    }
-    private Option(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
-
-    private static final Option defaultInstance;
-    public static Option getDefaultInstance() {
-      return defaultInstance;
-    }
-
-    public Option getDefaultInstanceForType() {
-      return defaultInstance;
-    }
-
-    private final com.google.protobuf.UnknownFieldSet unknownFields;
-    @java.lang.Override
-    public final com.google.protobuf.UnknownFieldSet
-        getUnknownFields() {
-      return this.unknownFields;
-    }
-    private Option(
-        com.google.protobuf.CodedInputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      initFields();
-      int mutable_bitField0_ = 0;
-      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder();
-      try {
-        boolean done = false;
-        while (!done) {
-          int tag = input.readTag();
-          switch (tag) {
-            case 0:
-              done = true;
-              break;
-            default: {
-              if (!parseUnknownField(input, unknownFields,
-                                     extensionRegistry, tag)) {
-                done = true;
-              }
-              break;
-            }
-            case 10: {
-              bitField0_ |= 0x00000001;
-              name_ = input.readBytes();
-              break;
-            }
-            case 18: {
-              bitField0_ |= 0x00000002;
-              value_ = input.readBytes();
-              break;
-            }
-          }
-        }
-      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-        throw e.setUnfinishedMessage(this);
-      } catch (java.io.IOException e) {
-        throw new com.google.protobuf.InvalidProtocolBufferException(
-            e.getMessage()).setUnfinishedMessage(this);
-      } finally {
-        this.unknownFields = unknownFields.build();
-        makeExtensionsImmutable();
-      }
-    }
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return org.apache.drill.exec.proto.UserBitShared.internal_static_exec_shared_Option_descriptor;
-    }
-
-    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-        internalGetFieldAccessorTable() {
-      return org.apache.drill.exec.proto.UserBitShared.internal_static_exec_shared_Option_fieldAccessorTable
-          .ensureFieldAccessorsInitialized(
-              org.apache.drill.exec.proto.UserBitShared.Option.class, org.apache.drill.exec.proto.UserBitShared.Option.Builder.class);
-    }
-
-    public static com.google.protobuf.Parser<Option> PARSER =
-        new com.google.protobuf.AbstractParser<Option>() {
-      public Option parsePartialFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        return new Option(input, extensionRegistry);
-      }
-    };
-
-    @java.lang.Override
-    public com.google.protobuf.Parser<Option> getParserForType() {
-      return PARSER;
-    }
-
-    private int bitField0_;
-    // optional string name = 1;
-    public static final int NAME_FIELD_NUMBER = 1;
-    private java.lang.Object name_;
-    /**
-     * <code>optional string name = 1;</code>
-     */
-    public boolean hasName() {
-      return ((bitField0_ & 0x00000001) == 0x00000001);
-    }
-    /**
-     * <code>optional string name = 1;</code>
-     */
-    public java.lang.String getName() {
-      java.lang.Object ref = name_;
-      if (ref instanceof java.lang.String) {
-        return (java.lang.String) ref;
-      } else {
-        com.google.protobuf.ByteString bs = 
-            (com.google.protobuf.ByteString) ref;
-        java.lang.String s = bs.toStringUtf8();
-        if (bs.isValidUtf8()) {
-          name_ = s;
-        }
-        return s;
-      }
-    }
-    /**
-     * <code>optional string name = 1;</code>
-     */
-    public com.google.protobuf.ByteString
-        getNameBytes() {
-      java.lang.Object ref = name_;
-      if (ref instanceof java.lang.String) {
-        com.google.protobuf.ByteString b = 
-            com.google.protobuf.ByteString.copyFromUtf8(
-                (java.lang.String) ref);
-        name_ = b;
-        return b;
-      } else {
-        return (com.google.protobuf.ByteString) ref;
-      }
-    }
-
-    // optional string value = 2;
-    public static final int VALUE_FIELD_NUMBER = 2;
-    private java.lang.Object value_;
-    /**
-     * <code>optional string value = 2;</code>
-     */
-    public boolean hasValue() {
-      return ((bitField0_ & 0x00000002) == 0x00000002);
-    }
-    /**
-     * <code>optional string value = 2;</code>
-     */
-    public java.lang.String getValue() {
-      java.lang.Object ref = value_;
-      if (ref instanceof java.lang.String) {
-        return (java.lang.String) ref;
-      } else {
-        com.google.protobuf.ByteString bs = 
-            (com.google.protobuf.ByteString) ref;
-        java.lang.String s = bs.toStringUtf8();
-        if (bs.isValidUtf8()) {
-          value_ = s;
-        }
-        return s;
-      }
-    }
-    /**
-     * <code>optional string value = 2;</code>
-     */
-    public com.google.protobuf.ByteString
-        getValueBytes() {
-      java.lang.Object ref = value_;
-      if (ref instanceof java.lang.String) {
-        com.google.protobuf.ByteString b = 
-            com.google.protobuf.ByteString.copyFromUtf8(
-                (java.lang.String) ref);
-        value_ = b;
-        return b;
-      } else {
-        return (com.google.protobuf.ByteString) ref;
-      }
-    }
-
-    private void initFields() {
-      name_ = "";
-      value_ = "";
-    }
-    private byte memoizedIsInitialized = -1;
-    public final boolean isInitialized() {
-      byte isInitialized = memoizedIsInitialized;
-      if (isInitialized != -1) return isInitialized == 1;
-
-      memoizedIsInitialized = 1;
-      return true;
-    }
-
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
-      getSerializedSize();
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        output.writeBytes(1, getNameBytes());
-      }
-      if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        output.writeBytes(2, getValueBytes());
-      }
-      getUnknownFields().writeTo(output);
-    }
-
-    private int memoizedSerializedSize = -1;
-    public int getSerializedSize() {
-      int size = memoizedSerializedSize;
-      if (size != -1) return size;
-
-      size = 0;
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(1, getNameBytes());
-      }
-      if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(2, getValueBytes());
-      }
-      size += getUnknownFields().getSerializedSize();
-      memoizedSerializedSize = size;
-      return size;
-    }
-
-    private static final long serialVersionUID = 0L;
-    @java.lang.Override
-    protected java.lang.Object writeReplace()
-        throws java.io.ObjectStreamException {
-      return super.writeReplace();
-    }
-
-    public static org.apache.drill.exec.proto.UserBitShared.Option parseFrom(
-        com.google.protobuf.ByteString data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data);
-    }
-    public static org.apache.drill.exec.proto.UserBitShared.Option parseFrom(
-        com.google.protobuf.ByteString data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data, extensionRegistry);
-    }
-    public static org.apache.drill.exec.proto.UserBitShared.Option parseFrom(byte[] data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data);
-    }
-    public static org.apache.drill.exec.proto.UserBitShared.Option parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data, extensionRegistry);
-    }
-    public static org.apache.drill.exec.proto.UserBitShared.Option parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return PARSER.parseFrom(input);
-    }
-    public static org.apache.drill.exec.proto.UserBitShared.Option parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return PARSER.parseFrom(input, extensionRegistry);
-    }
-    public static org.apache.drill.exec.proto.UserBitShared.Option parseDelimitedFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return PARSER.parseDelimitedFrom(input);
-    }
-    public static org.apache.drill.exec.proto.UserBitShared.Option parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return PARSER.parseDelimitedFrom(input, extensionRegistry);
-    }
-    public static org.apache.drill.exec.proto.UserBitShared.Option parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return PARSER.parseFrom(input);
-    }
-    public static org.apache.drill.exec.proto.UserBitShared.Option parseFrom(
-        com.google.protobuf.CodedInputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return PARSER.parseFrom(input, extensionRegistry);
-    }
-
-    public static Builder newBuilder() { return Builder.create(); }
-    public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(org.apache.drill.exec.proto.UserBitShared.Option prototype) {
-      return newBuilder().mergeFrom(prototype);
-    }
-    public Builder toBuilder() { return newBuilder(this); }
-
-    @java.lang.Override
-    protected Builder newBuilderForType(
-        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
-      Builder builder = new Builder(parent);
-      return builder;
-    }
-    /**
-     * Protobuf type {@code exec.shared.Option}
-     */
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder>
-       implements org.apache.drill.exec.proto.UserBitShared.OptionOrBuilder {
-      public static final com.google.protobuf.Descriptors.Descriptor
-          getDescriptor() {
-        return org.apache.drill.exec.proto.UserBitShared.internal_static_exec_shared_Option_descriptor;
-      }
-
-      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-          internalGetFieldAccessorTable() {
-        return org.apache.drill.exec.proto.UserBitShared.internal_static_exec_shared_Option_fieldAccessorTable
-            .ensureFieldAccessorsInitialized(
-                org.apache.drill.exec.proto.UserBitShared.Option.class, org.apache.drill.exec.proto.UserBitShared.Option.Builder.class);
-      }
-
-      // Construct using org.apache.drill.exec.proto.UserBitShared.Option.newBuilder()
-      private Builder() {
-        maybeForceBuilderInitialization();
-      }
-
-      private Builder(
-          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
-        super(parent);
-        maybeForceBuilderInitialization();
-      }
-      private void maybeForceBuilderInitialization() {
-        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
-        }
-      }
-      private static Builder create() {
-        return new Builder();
-      }
-
-      public Builder clear() {
-        super.clear();
-        name_ = "";
-        bitField0_ = (bitField0_ & ~0x00000001);
-        value_ = "";
-        bitField0_ = (bitField0_ & ~0x00000002);
-        return this;
-      }
-
-      public Builder clone() {
-        return create().mergeFrom(buildPartial());
-      }
-
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return org.apache.drill.exec.proto.UserBitShared.internal_static_exec_shared_Option_descriptor;
-      }
-
-      public org.apache.drill.exec.proto.UserBitShared.Option getDefaultInstanceForType() {
-        return org.apache.drill.exec.proto.UserBitShared.Option.getDefaultInstance();
-      }
-
-      public org.apache.drill.exec.proto.UserBitShared.Option build() {
-        org.apache.drill.exec.proto.UserBitShared.Option result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(result);
-        }
-        return result;
-      }
-
-      public org.apache.drill.exec.proto.UserBitShared.Option buildPartial() {
-        org.apache.drill.exec.proto.UserBitShared.Option result = new org.apache.drill.exec.proto.UserBitShared.Option(this);
-        int from_bitField0_ = bitField0_;
-        int to_bitField0_ = 0;
-        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
-          to_bitField0_ |= 0x00000001;
-        }
-        result.name_ = name_;
-        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
-          to_bitField0_ |= 0x00000002;
-        }
-        result.value_ = value_;
-        result.bitField0_ = to_bitField0_;
-        onBuilt();
-        return result;
-      }
-
-      public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof org.apache.drill.exec.proto.UserBitShared.Option) {
-          return mergeFrom((org.apache.drill.exec.proto.UserBitShared.Option)other);
-        } else {
-          super.mergeFrom(other);
-          return this;
-        }
-      }
-
-      public Builder mergeFrom(org.apache.drill.exec.proto.UserBitShared.Option other) {
-        if (other == org.apache.drill.exec.proto.UserBitShared.Option.getDefaultInstance()) return this;
-        if (other.hasName()) {
-          bitField0_ |= 0x00000001;
-          name_ = other.name_;
-          onChanged();
-        }
-        if (other.hasValue()) {
-          bitField0_ |= 0x00000002;
-          value_ = other.value_;
-          onChanged();
-        }
-        this.mergeUnknownFields(other.getUnknownFields());
-        return this;
-      }
-
-      public final boolean isInitialized() {
-        return true;
-      }
-
-      public Builder mergeFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws java.io.IOException {
-        org.apache.drill.exec.proto.UserBitShared.Option parsedMessage = null;
-        try {
-          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
-        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-          parsedMessage = (org.apache.drill.exec.proto.UserBitShared.Option) e.getUnfinishedMessage();
-          throw e;
-        } finally {
-          if (parsedMessage != null) {
-            mergeFrom(parsedMessage);
-          }
-        }
-        return this;
-      }
-      private int bitField0_;
-
-      // optional string name = 1;
-      private java.lang.Object name_ = "";
-      /**
-       * <code>optional string name = 1;</code>
-       */
-      public boolean hasName() {
-        return ((bitField0_ & 0x00000001) == 0x00000001);
-      }
-      /**
-       * <code>optional string name = 1;</code>
-       */
-      public java.lang.String getName() {
-        java.lang.Object ref = name_;
-        if (!(ref instanceof java.lang.String)) {
-          java.lang.String s = ((com.google.protobuf.ByteString) ref)
-              .toStringUtf8();
-          name_ = s;
-          return s;
-        } else {
-          return (java.lang.String) ref;
-        }
-      }
-      /**
-       * <code>optional string name = 1;</code>
-       */
-      public com.google.protobuf.ByteString
-          getNameBytes() {
-        java.lang.Object ref = name_;
-        if (ref instanceof String) {
-          com.google.protobuf.ByteString b = 
-              com.google.protobuf.ByteString.copyFromUtf8(
-                  (java.lang.String) ref);
-          name_ = b;
-          return b;
-        } else {
-          return (com.google.protobuf.ByteString) ref;
-        }
-      }
-      /**
-       * <code>optional string name = 1;</code>
-       */
-      public Builder setName(
-          java.lang.String value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000001;
-        name_ = value;
-        onChanged();
-        return this;
-      }
-      /**
-       * <code>optional string name = 1;</code>
-       */
-      public Builder clearName() {
-        bitField0_ = (bitField0_ & ~0x00000001);
-        name_ = getDefaultInstance().getName();
-        onChanged();
-        return this;
-      }
-      /**
-       * <code>optional string name = 1;</code>
-       */
-      public Builder setNameBytes(
-          com.google.protobuf.ByteString value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000001;
-        name_ = value;
-        onChanged();
-        return this;
-      }
-
-      // optional string value = 2;
-      private java.lang.Object value_ = "";
-      /**
-       * <code>optional string value = 2;</code>
-       */
-      public boolean hasValue() {
-        return ((bitField0_ & 0x00000002) == 0x00000002);
-      }
-      /**
-       * <code>optional string value = 2;</code>
-       */
-      public java.lang.String getValue() {
-        java.lang.Object ref = value_;
-        if (!(ref instanceof java.lang.String)) {
-          java.lang.String s = ((com.google.protobuf.ByteString) ref)
-              .toStringUtf8();
-          value_ = s;
-          return s;
-        } else {
-          return (java.lang.String) ref;
-        }
-      }
-      /**
-       * <code>optional string value = 2;</code>
-       */
-      public com.google.protobuf.ByteString
-          getValueBytes() {
-        java.lang.Object ref = value_;
-        if (ref instanceof String) {
-          com.google.protobuf.ByteString b = 
-              com.google.protobuf.ByteString.copyFromUtf8(
-                  (java.lang.String) ref);
-          value_ = b;
-          return b;
-        } else {
-          return (com.google.protobuf.ByteString) ref;
-        }
-      }
-      /**
-       * <code>optional string value = 2;</code>
-       */
-      public Builder setValue(
-          java.lang.String value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000002;
-        value_ = value;
-        onChanged();
-        return this;
-      }
-      /**
-       * <code>optional string value = 2;</code>
-       */
-      public Builder clearValue() {
-        bitField0_ = (bitField0_ & ~0x00000002);
-        value_ = getDefaultInstance().getValue();
-        onChanged();
-        return this;
-      }
-      /**
-       * <code>optional string value = 2;</code>
-       */
-      public Builder setValueBytes(
-          com.google.protobuf.ByteString value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000002;
-        value_ = value;
-        onChanged();
-        return this;
-      }
-
-      // @@protoc_insertion_point(builder_scope:exec.shared.Option)
-    }
-
-    static {
-      defaultInstance = new Option(true);
-      defaultInstance.initFields();
-    }
-
-    // @@protoc_insertion_point(class_scope:exec.shared.Option)
-  }
-
   public interface QueryInfoOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
 
@@ -12610,30 +11983,20 @@ public final class UserBitShared {
      */
     org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpointOrBuilder getForemanOrBuilder();
 
-    // repeated .exec.shared.Option options = 6;
+    // optional string options_json = 6;
     /**
-     * <code>repeated .exec.shared.Option options = 6;</code>
+     * <code>optional string options_json = 6;</code>
      */
-    java.util.List<org.apache.drill.exec.proto.UserBitShared.Option> 
-        getOptionsList();
+    boolean hasOptionsJson();
     /**
-     * <code>repeated .exec.shared.Option options = 6;</code>
+     * <code>optional string options_json = 6;</code>
      */
-    org.apache.drill.exec.proto.UserBitShared.Option getOptions(int index);
+    java.lang.String getOptionsJson();
     /**
-     * <code>repeated .exec.shared.Option options = 6;</code>
+     * <code>optional string options_json = 6;</code>
      */
-    int getOptionsCount();
-    /**
-     * <code>repeated .exec.shared.Option options = 6;</code>
-     */
-    java.util.List<? extends org.apache.drill.exec.proto.UserBitShared.OptionOrBuilder> 
-        getOptionsOrBuilderList();
-    /**
-     * <code>repeated .exec.shared.Option options = 6;</code>
-     */
-    org.apache.drill.exec.proto.UserBitShared.OptionOrBuilder getOptionsOrBuilder(
-        int index);
+    com.google.protobuf.ByteString
+        getOptionsJsonBytes();
   }
   /**
    * Protobuf type {@code exec.shared.QueryInfo}
@@ -12726,11 +12089,8 @@ public final class UserBitShared {
               break;
             }
             case 50: {
-              if (!((mutable_bitField0_ & 0x00000020) == 0x00000020)) {
-                options_ = new java.util.ArrayList<org.apache.drill.exec.proto.UserBitShared.Option>();
-                mutable_bitField0_ |= 0x00000020;
-              }
-              options_.add(input.readMessage(org.apache.drill.exec.proto.UserBitShared.Option.PARSER, extensionRegistry));
+              bitField0_ |= 0x00000020;
+              optionsJson_ = input.readBytes();
               break;
             }
           }
@@ -12741,9 +12101,6 @@ public final class UserBitShared {
         throw new com.google.protobuf.InvalidProtocolBufferException(
             e.getMessage()).setUnfinishedMessage(this);
       } finally {
-        if (((mutable_bitField0_ & 0x00000020) == 0x00000020)) {
-          options_ = java.util.Collections.unmodifiableList(options_);
-        }
         this.unknownFields = unknownFields.build();
         makeExtensionsImmutable();
       }
@@ -12916,40 +12273,47 @@ public final class UserBitShared {
       return foreman_;
     }
 
-    // repeated .exec.shared.Option options = 6;
-    public static final int OPTIONS_FIELD_NUMBER = 6;
-    private java.util.List<org.apache.drill.exec.proto.UserBitShared.Option> options_;
+    // optional string options_json = 6;
+    public static final int OPTIONS_JSON_FIELD_NUMBER = 6;
+    private java.lang.Object optionsJson_;
     /**
-     * <code>repeated .exec.shared.Option options = 6;</code>
+     * <code>optional string options_json = 6;</code>
      */
-    public java.util.List<org.apache.drill.exec.proto.UserBitShared.Option> getOptionsList() {
-      return options_;
+    public boolean hasOptionsJson() {
+      return ((bitField0_ & 0x00000020) == 0x00000020);
     }
     /**
-     * <code>repeated .exec.shared.Option options = 6;</code>
+     * <code>optional string options_json = 6;</code>
      */
-    public java.util.List<? extends org.apache.drill.exec.proto.UserBitShared.OptionOrBuilder> 
-        getOptionsOrBuilderList() {
-      return options_;
+    public java.lang.String getOptionsJson() {
+      java.lang.Object ref = optionsJson_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        if (bs.isValidUtf8()) {
+          optionsJson_ = s;
+        }
+        return s;
+      }
     }
     /**
-     * <code>repeated .exec.shared.Option options = 6;</code>
+     * <code>optional string options_json = 6;</code>
      */
-    public int getOptionsCount() {
-      return options_.size();
-    }
-    /**
-     * <code>repeated .exec.shared.Option options = 6;</code>
-     */
-    public org.apache.drill.exec.proto.UserBitShared.Option getOptions(int index) {
-      return options_.get(index);
-    }
-    /**
-     * <code>repeated .exec.shared.Option options = 6;</code>
-     */
-    public org.apache.drill.exec.proto.UserBitShared.OptionOrBuilder getOptionsOrBuilder(
-        int index) {
-      return options_.get(index);
+    public com.google.protobuf.ByteString
+        getOptionsJsonBytes() {
+      java.lang.Object ref = optionsJson_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        optionsJson_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
     }
 
     private void initFields() {
@@ -12958,7 +12322,7 @@ public final class UserBitShared {
       state_ = org.apache.drill.exec.proto.UserBitShared.QueryResult.QueryState.STARTING;
       user_ = "-";
       foreman_ = org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint.getDefaultInstance();
-      options_ = java.util.Collections.emptyList();
+      optionsJson_ = "";
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -12987,8 +12351,8 @@ public final class UserBitShared {
       if (((bitField0_ & 0x00000010) == 0x00000010)) {
         output.writeMessage(5, foreman_);
       }
-      for (int i = 0; i < options_.size(); i++) {
-        output.writeMessage(6, options_.get(i));
+      if (((bitField0_ & 0x00000020) == 0x00000020)) {
+        output.writeBytes(6, getOptionsJsonBytes());
       }
       getUnknownFields().writeTo(output);
     }
@@ -13019,9 +12383,9 @@ public final class UserBitShared {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(5, foreman_);
       }
-      for (int i = 0; i < options_.size(); i++) {
+      if (((bitField0_ & 0x00000020) == 0x00000020)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(6, options_.get(i));
+          .computeBytesSize(6, getOptionsJsonBytes());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -13132,7 +12496,6 @@ public final class UserBitShared {
       private void maybeForceBuilderInitialization() {
         if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
           getForemanFieldBuilder();
-          getOptionsFieldBuilder();
         }
       }
       private static Builder create() {
@@ -13155,12 +12518,8 @@ public final class UserBitShared {
           foremanBuilder_.clear();
         }
         bitField0_ = (bitField0_ & ~0x00000010);
-        if (optionsBuilder_ == null) {
-          options_ = java.util.Collections.emptyList();
-          bitField0_ = (bitField0_ & ~0x00000020);
-        } else {
-          optionsBuilder_.clear();
-        }
+        optionsJson_ = "";
+        bitField0_ = (bitField0_ & ~0x00000020);
         return this;
       }
 
@@ -13213,15 +12572,10 @@ public final class UserBitShared {
         } else {
           result.foreman_ = foremanBuilder_.build();
         }
-        if (optionsBuilder_ == null) {
-          if (((bitField0_ & 0x00000020) == 0x00000020)) {
-            options_ = java.util.Collections.unmodifiableList(options_);
-            bitField0_ = (bitField0_ & ~0x00000020);
-          }
-          result.options_ = options_;
-        } else {
-          result.options_ = optionsBuilder_.build();
+        if (((from_bitField0_ & 0x00000020) == 0x00000020)) {
+          to_bitField0_ |= 0x00000020;
         }
+        result.optionsJson_ = optionsJson_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -13257,31 +12611,10 @@ public final class UserBitShared {
         if (other.hasForeman()) {
           mergeForeman(other.getForeman());
         }
-        if (optionsBuilder_ == null) {
-          if (!other.options_.isEmpty()) {
-            if (options_.isEmpty()) {
-              options_ = other.options_;
-              bitField0_ = (bitField0_ & ~0x00000020);
-            } else {
-              ensureOptionsIsMutable();
-              options_.addAll(other.options_);
-            }
-            onChanged();
-          }
-        } else {
-          if (!other.options_.isEmpty()) {
-            if (optionsBuilder_.isEmpty()) {
-              optionsBuilder_.dispose();
-              optionsBuilder_ = null;
-              options_ = other.options_;
-              bitField0_ = (bitField0_ & ~0x00000020);
-              optionsBuilder_ = 
-                com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders ?
-                   getOptionsFieldBuilder() : null;
-            } else {
-              optionsBuilder_.addAllMessages(other.options_);
-            }
-          }
+        if (other.hasOptionsJson()) {
+          bitField0_ |= 0x00000020;
+          optionsJson_ = other.optionsJson_;
+          onChanged();
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -13644,244 +12977,78 @@ public final class UserBitShared {
         return foremanBuilder_;
       }
 
-      // repeated .exec.shared.Option options = 6;
-      private java.util.List<org.apache.drill.exec.proto.UserBitShared.Option> options_ =
-        java.util.Collections.emptyList();
-      private void ensureOptionsIsMutable() {
-        if (!((bitField0_ & 0x00000020) == 0x00000020)) {
-          options_ = new java.util.ArrayList<org.apache.drill.exec.proto.UserBitShared.Option>(options_);
-          bitField0_ |= 0x00000020;
-         }
-      }
-
-      private com.google.protobuf.RepeatedFieldBuilder<
-          org.apache.drill.exec.proto.UserBitShared.Option, org.apache.drill.exec.proto.UserBitShared.Option.Builder, org.apache.drill.exec.proto.UserBitShared.OptionOrBuilder> optionsBuilder_;
-
+      // optional string options_json = 6;
+      private java.lang.Object optionsJson_ = "";
       /**
-       * <code>repeated .exec.shared.Option options = 6;</code>
+       * <code>optional string options_json = 6;</code>
        */
-      public java.util.List<org.apache.drill.exec.proto.UserBitShared.Option> getOptionsList() {
-        if (optionsBuilder_ == null) {
-          return java.util.Collections.unmodifiableList(options_);
+      public boolean hasOptionsJson() {
+        return ((bitField0_ & 0x00000020) == 0x00000020);
+      }
+      /**
+       * <code>optional string options_json = 6;</code>
+       */
+      public java.lang.String getOptionsJson() {
+        java.lang.Object ref = optionsJson_;
+        if (!(ref instanceof java.lang.String)) {
+          java.lang.String s = ((com.google.protobuf.ByteString) ref)
+              .toStringUtf8();
+          optionsJson_ = s;
+          return s;
         } else {
-          return optionsBuilder_.getMessageList();
+          return (java.lang.String) ref;
         }
       }
       /**
-       * <code>repeated .exec.shared.Option options = 6;</code>
+       * <code>optional string options_json = 6;</code>
        */
-      public int getOptionsCount() {
-        if (optionsBuilder_ == null) {
-          return options_.size();
+      public com.google.protobuf.ByteString
+          getOptionsJsonBytes() {
+        java.lang.Object ref = optionsJson_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          optionsJson_ = b;
+          return b;
         } else {
-          return optionsBuilder_.getCount();
+          return (com.google.protobuf.ByteString) ref;
         }
       }
       /**
-       * <code>repeated .exec.shared.Option options = 6;</code>
+       * <code>optional string options_json = 6;</code>
        */
-      public org.apache.drill.exec.proto.UserBitShared.Option getOptions(int index) {
-        if (optionsBuilder_ == null) {
-          return options_.get(index);
-        } else {
-          return optionsBuilder_.getMessage(index);
-        }
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 6;</code>
-       */
-      public Builder setOptions(
-          int index, org.apache.drill.exec.proto.UserBitShared.Option value) {
-        if (optionsBuilder_ == null) {
-          if (value == null) {
-            throw new NullPointerException();
-          }
-          ensureOptionsIsMutable();
-          options_.set(index, value);
-          onChanged();
-        } else {
-          optionsBuilder_.setMessage(index, value);
-        }
+      public Builder setOptionsJson(
+          java.lang.String value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000020;
+        optionsJson_ = value;
+        onChanged();
         return this;
       }
       /**
-       * <code>repeated .exec.shared.Option options = 6;</code>
+       * <code>optional string options_json = 6;</code>
        */
-      public Builder setOptions(
-          int index, org.apache.drill.exec.proto.UserBitShared.Option.Builder builderForValue) {
-        if (optionsBuilder_ == null) {
-          ensureOptionsIsMutable();
-          options_.set(index, builderForValue.build());
-          onChanged();
-        } else {
-          optionsBuilder_.setMessage(index, builderForValue.build());
-        }
+      public Builder clearOptionsJson() {
+        bitField0_ = (bitField0_ & ~0x00000020);
+        optionsJson_ = getDefaultInstance().getOptionsJson();
+        onChanged();
         return this;
       }
       /**
-       * <code>repeated .exec.shared.Option options = 6;</code>
+       * <code>optional string options_json = 6;</code>
        */
-      public Builder addOptions(org.apache.drill.exec.proto.UserBitShared.Option value) {
-        if (optionsBuilder_ == null) {
-          if (value == null) {
-            throw new NullPointerException();
-          }
-          ensureOptionsIsMutable();
-          options_.add(value);
-          onChanged();
-        } else {
-          optionsBuilder_.addMessage(value);
-        }
+      public Builder setOptionsJsonBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000020;
+        optionsJson_ = value;
+        onChanged();
         return this;
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 6;</code>
-       */
-      public Builder addOptions(
-          int index, org.apache.drill.exec.proto.UserBitShared.Option value) {
-        if (optionsBuilder_ == null) {
-          if (value == null) {
-            throw new NullPointerException();
-          }
-          ensureOptionsIsMutable();
-          options_.add(index, value);
-          onChanged();
-        } else {
-          optionsBuilder_.addMessage(index, value);
-        }
-        return this;
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 6;</code>
-       */
-      public Builder addOptions(
-          org.apache.drill.exec.proto.UserBitShared.Option.Builder builderForValue) {
-        if (optionsBuilder_ == null) {
-          ensureOptionsIsMutable();
-          options_.add(builderForValue.build());
-          onChanged();
-        } else {
-          optionsBuilder_.addMessage(builderForValue.build());
-        }
-        return this;
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 6;</code>
-       */
-      public Builder addOptions(
-          int index, org.apache.drill.exec.proto.UserBitShared.Option.Builder builderForValue) {
-        if (optionsBuilder_ == null) {
-          ensureOptionsIsMutable();
-          options_.add(index, builderForValue.build());
-          onChanged();
-        } else {
-          optionsBuilder_.addMessage(index, builderForValue.build());
-        }
-        return this;
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 6;</code>
-       */
-      public Builder addAllOptions(
-          java.lang.Iterable<? extends org.apache.drill.exec.proto.UserBitShared.Option> values) {
-        if (optionsBuilder_ == null) {
-          ensureOptionsIsMutable();
-          super.addAll(values, options_);
-          onChanged();
-        } else {
-          optionsBuilder_.addAllMessages(values);
-        }
-        return this;
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 6;</code>
-       */
-      public Builder clearOptions() {
-        if (optionsBuilder_ == null) {
-          options_ = java.util.Collections.emptyList();
-          bitField0_ = (bitField0_ & ~0x00000020);
-          onChanged();
-        } else {
-          optionsBuilder_.clear();
-        }
-        return this;
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 6;</code>
-       */
-      public Builder removeOptions(int index) {
-        if (optionsBuilder_ == null) {
-          ensureOptionsIsMutable();
-          options_.remove(index);
-          onChanged();
-        } else {
-          optionsBuilder_.remove(index);
-        }
-        return this;
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 6;</code>
-       */
-      public org.apache.drill.exec.proto.UserBitShared.Option.Builder getOptionsBuilder(
-          int index) {
-        return getOptionsFieldBuilder().getBuilder(index);
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 6;</code>
-       */
-      public org.apache.drill.exec.proto.UserBitShared.OptionOrBuilder getOptionsOrBuilder(
-          int index) {
-        if (optionsBuilder_ == null) {
-          return options_.get(index);  } else {
-          return optionsBuilder_.getMessageOrBuilder(index);
-        }
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 6;</code>
-       */
-      public java.util.List<? extends org.apache.drill.exec.proto.UserBitShared.OptionOrBuilder> 
-           getOptionsOrBuilderList() {
-        if (optionsBuilder_ != null) {
-          return optionsBuilder_.getMessageOrBuilderList();
-        } else {
-          return java.util.Collections.unmodifiableList(options_);
-        }
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 6;</code>
-       */
-      public org.apache.drill.exec.proto.UserBitShared.Option.Builder addOptionsBuilder() {
-        return getOptionsFieldBuilder().addBuilder(
-            org.apache.drill.exec.proto.UserBitShared.Option.getDefaultInstance());
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 6;</code>
-       */
-      public org.apache.drill.exec.proto.UserBitShared.Option.Builder addOptionsBuilder(
-          int index) {
-        return getOptionsFieldBuilder().addBuilder(
-            index, org.apache.drill.exec.proto.UserBitShared.Option.getDefaultInstance());
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 6;</code>
-       */
-      public java.util.List<org.apache.drill.exec.proto.UserBitShared.Option.Builder> 
-           getOptionsBuilderList() {
-        return getOptionsFieldBuilder().getBuilderList();
-      }
-      private com.google.protobuf.RepeatedFieldBuilder<
-          org.apache.drill.exec.proto.UserBitShared.Option, org.apache.drill.exec.proto.UserBitShared.Option.Builder, org.apache.drill.exec.proto.UserBitShared.OptionOrBuilder> 
-          getOptionsFieldBuilder() {
-        if (optionsBuilder_ == null) {
-          optionsBuilder_ = new com.google.protobuf.RepeatedFieldBuilder<
-              org.apache.drill.exec.proto.UserBitShared.Option, org.apache.drill.exec.proto.UserBitShared.Option.Builder, org.apache.drill.exec.proto.UserBitShared.OptionOrBuilder>(
-                  options_,
-                  ((bitField0_ & 0x00000020) == 0x00000020),
-                  getParentForChildren(),
-                  isClean());
-          options_ = null;
-        }
-        return optionsBuilder_;
       }
 
       // @@protoc_insertion_point(builder_scope:exec.shared.QueryInfo)
@@ -14116,30 +13283,20 @@ public final class UserBitShared {
     com.google.protobuf.ByteString
         getErrorNodeBytes();
 
-    // repeated .exec.shared.Option options = 17;
+    // optional string options_json = 17;
     /**
-     * <code>repeated .exec.shared.Option options = 17;</code>
+     * <code>optional string options_json = 17;</code>
      */
-    java.util.List<org.apache.drill.exec.proto.UserBitShared.Option> 
-        getOptionsList();
+    boolean hasOptionsJson();
     /**
-     * <code>repeated .exec.shared.Option options = 17;</code>
+     * <code>optional string options_json = 17;</code>
      */
-    org.apache.drill.exec.proto.UserBitShared.Option getOptions(int index);
+    java.lang.String getOptionsJson();
     /**
-     * <code>repeated .exec.shared.Option options = 17;</code>
+     * <code>optional string options_json = 17;</code>
      */
-    int getOptionsCount();
-    /**
-     * <code>repeated .exec.shared.Option options = 17;</code>
-     */
-    java.util.List<? extends org.apache.drill.exec.proto.UserBitShared.OptionOrBuilder> 
-        getOptionsOrBuilderList();
-    /**
-     * <code>repeated .exec.shared.Option options = 17;</code>
-     */
-    org.apache.drill.exec.proto.UserBitShared.OptionOrBuilder getOptionsOrBuilder(
-        int index);
+    com.google.protobuf.ByteString
+        getOptionsJsonBytes();
   }
   /**
    * Protobuf type {@code exec.shared.QueryProfile}
@@ -14304,11 +13461,8 @@ public final class UserBitShared {
               break;
             }
             case 138: {
-              if (!((mutable_bitField0_ & 0x00010000) == 0x00010000)) {
-                options_ = new java.util.ArrayList<org.apache.drill.exec.proto.UserBitShared.Option>();
-                mutable_bitField0_ |= 0x00010000;
-              }
-              options_.add(input.readMessage(org.apache.drill.exec.proto.UserBitShared.Option.PARSER, extensionRegistry));
+              bitField0_ |= 0x00008000;
+              optionsJson_ = input.readBytes();
               break;
             }
           }
@@ -14321,9 +13475,6 @@ public final class UserBitShared {
       } finally {
         if (((mutable_bitField0_ & 0x00000400) == 0x00000400)) {
           fragmentProfile_ = java.util.Collections.unmodifiableList(fragmentProfile_);
-        }
-        if (((mutable_bitField0_ & 0x00010000) == 0x00010000)) {
-          options_ = java.util.Collections.unmodifiableList(options_);
         }
         this.unknownFields = unknownFields.build();
         makeExtensionsImmutable();
@@ -14834,40 +13985,47 @@ public final class UserBitShared {
       }
     }
 
-    // repeated .exec.shared.Option options = 17;
-    public static final int OPTIONS_FIELD_NUMBER = 17;
-    private java.util.List<org.apache.drill.exec.proto.UserBitShared.Option> options_;
+    // optional string options_json = 17;
+    public static final int OPTIONS_JSON_FIELD_NUMBER = 17;
+    private java.lang.Object optionsJson_;
     /**
-     * <code>repeated .exec.shared.Option options = 17;</code>
+     * <code>optional string options_json = 17;</code>
      */
-    public java.util.List<org.apache.drill.exec.proto.UserBitShared.Option> getOptionsList() {
-      return options_;
+    public boolean hasOptionsJson() {
+      return ((bitField0_ & 0x00008000) == 0x00008000);
     }
     /**
-     * <code>repeated .exec.shared.Option options = 17;</code>
+     * <code>optional string options_json = 17;</code>
      */
-    public java.util.List<? extends org.apache.drill.exec.proto.UserBitShared.OptionOrBuilder> 
-        getOptionsOrBuilderList() {
-      return options_;
+    public java.lang.String getOptionsJson() {
+      java.lang.Object ref = optionsJson_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        if (bs.isValidUtf8()) {
+          optionsJson_ = s;
+        }
+        return s;
+      }
     }
     /**
-     * <code>repeated .exec.shared.Option options = 17;</code>
+     * <code>optional string options_json = 17;</code>
      */
-    public int getOptionsCount() {
-      return options_.size();
-    }
-    /**
-     * <code>repeated .exec.shared.Option options = 17;</code>
-     */
-    public org.apache.drill.exec.proto.UserBitShared.Option getOptions(int index) {
-      return options_.get(index);
-    }
-    /**
-     * <code>repeated .exec.shared.Option options = 17;</code>
-     */
-    public org.apache.drill.exec.proto.UserBitShared.OptionOrBuilder getOptionsOrBuilder(
-        int index) {
-      return options_.get(index);
+    public com.google.protobuf.ByteString
+        getOptionsJsonBytes() {
+      java.lang.Object ref = optionsJson_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        optionsJson_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
     }
 
     private void initFields() {
@@ -14887,7 +14045,7 @@ public final class UserBitShared {
       verboseError_ = "";
       errorId_ = "";
       errorNode_ = "";
-      options_ = java.util.Collections.emptyList();
+      optionsJson_ = "";
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -14949,8 +14107,8 @@ public final class UserBitShared {
       if (((bitField0_ & 0x00004000) == 0x00004000)) {
         output.writeBytes(16, getErrorNodeBytes());
       }
-      for (int i = 0; i < options_.size(); i++) {
-        output.writeMessage(17, options_.get(i));
+      if (((bitField0_ & 0x00008000) == 0x00008000)) {
+        output.writeBytes(17, getOptionsJsonBytes());
       }
       getUnknownFields().writeTo(output);
     }
@@ -15025,9 +14183,9 @@ public final class UserBitShared {
         size += com.google.protobuf.CodedOutputStream
           .computeBytesSize(16, getErrorNodeBytes());
       }
-      for (int i = 0; i < options_.size(); i++) {
+      if (((bitField0_ & 0x00008000) == 0x00008000)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(17, options_.get(i));
+          .computeBytesSize(17, getOptionsJsonBytes());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -15140,7 +14298,6 @@ public final class UserBitShared {
           getIdFieldBuilder();
           getForemanFieldBuilder();
           getFragmentProfileFieldBuilder();
-          getOptionsFieldBuilder();
         }
       }
       private static Builder create() {
@@ -15193,12 +14350,8 @@ public final class UserBitShared {
         bitField0_ = (bitField0_ & ~0x00004000);
         errorNode_ = "";
         bitField0_ = (bitField0_ & ~0x00008000);
-        if (optionsBuilder_ == null) {
-          options_ = java.util.Collections.emptyList();
-          bitField0_ = (bitField0_ & ~0x00010000);
-        } else {
-          optionsBuilder_.clear();
-        }
+        optionsJson_ = "";
+        bitField0_ = (bitField0_ & ~0x00010000);
         return this;
       }
 
@@ -15304,15 +14457,10 @@ public final class UserBitShared {
           to_bitField0_ |= 0x00004000;
         }
         result.errorNode_ = errorNode_;
-        if (optionsBuilder_ == null) {
-          if (((bitField0_ & 0x00010000) == 0x00010000)) {
-            options_ = java.util.Collections.unmodifiableList(options_);
-            bitField0_ = (bitField0_ & ~0x00010000);
-          }
-          result.options_ = options_;
-        } else {
-          result.options_ = optionsBuilder_.build();
+        if (((from_bitField0_ & 0x00010000) == 0x00010000)) {
+          to_bitField0_ |= 0x00008000;
         }
+        result.optionsJson_ = optionsJson_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -15414,31 +14562,10 @@ public final class UserBitShared {
           errorNode_ = other.errorNode_;
           onChanged();
         }
-        if (optionsBuilder_ == null) {
-          if (!other.options_.isEmpty()) {
-            if (options_.isEmpty()) {
-              options_ = other.options_;
-              bitField0_ = (bitField0_ & ~0x00010000);
-            } else {
-              ensureOptionsIsMutable();
-              options_.addAll(other.options_);
-            }
-            onChanged();
-          }
-        } else {
-          if (!other.options_.isEmpty()) {
-            if (optionsBuilder_.isEmpty()) {
-              optionsBuilder_.dispose();
-              optionsBuilder_ = null;
-              options_ = other.options_;
-              bitField0_ = (bitField0_ & ~0x00010000);
-              optionsBuilder_ = 
-                com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders ?
-                   getOptionsFieldBuilder() : null;
-            } else {
-              optionsBuilder_.addAllMessages(other.options_);
-            }
-          }
+        if (other.hasOptionsJson()) {
+          bitField0_ |= 0x00010000;
+          optionsJson_ = other.optionsJson_;
+          onChanged();
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -16663,244 +15790,78 @@ public final class UserBitShared {
         return this;
       }
 
-      // repeated .exec.shared.Option options = 17;
-      private java.util.List<org.apache.drill.exec.proto.UserBitShared.Option> options_ =
-        java.util.Collections.emptyList();
-      private void ensureOptionsIsMutable() {
-        if (!((bitField0_ & 0x00010000) == 0x00010000)) {
-          options_ = new java.util.ArrayList<org.apache.drill.exec.proto.UserBitShared.Option>(options_);
-          bitField0_ |= 0x00010000;
-         }
-      }
-
-      private com.google.protobuf.RepeatedFieldBuilder<
-          org.apache.drill.exec.proto.UserBitShared.Option, org.apache.drill.exec.proto.UserBitShared.Option.Builder, org.apache.drill.exec.proto.UserBitShared.OptionOrBuilder> optionsBuilder_;
-
+      // optional string options_json = 17;
+      private java.lang.Object optionsJson_ = "";
       /**
-       * <code>repeated .exec.shared.Option options = 17;</code>
+       * <code>optional string options_json = 17;</code>
        */
-      public java.util.List<org.apache.drill.exec.proto.UserBitShared.Option> getOptionsList() {
-        if (optionsBuilder_ == null) {
-          return java.util.Collections.unmodifiableList(options_);
+      public boolean hasOptionsJson() {
+        return ((bitField0_ & 0x00010000) == 0x00010000);
+      }
+      /**
+       * <code>optional string options_json = 17;</code>
+       */
+      public java.lang.String getOptionsJson() {
+        java.lang.Object ref = optionsJson_;
+        if (!(ref instanceof java.lang.String)) {
+          java.lang.String s = ((com.google.protobuf.ByteString) ref)
+              .toStringUtf8();
+          optionsJson_ = s;
+          return s;
         } else {
-          return optionsBuilder_.getMessageList();
+          return (java.lang.String) ref;
         }
       }
       /**
-       * <code>repeated .exec.shared.Option options = 17;</code>
+       * <code>optional string options_json = 17;</code>
        */
-      public int getOptionsCount() {
-        if (optionsBuilder_ == null) {
-          return options_.size();
+      public com.google.protobuf.ByteString
+          getOptionsJsonBytes() {
+        java.lang.Object ref = optionsJson_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          optionsJson_ = b;
+          return b;
         } else {
-          return optionsBuilder_.getCount();
+          return (com.google.protobuf.ByteString) ref;
         }
       }
       /**
-       * <code>repeated .exec.shared.Option options = 17;</code>
+       * <code>optional string options_json = 17;</code>
        */
-      public org.apache.drill.exec.proto.UserBitShared.Option getOptions(int index) {
-        if (optionsBuilder_ == null) {
-          return options_.get(index);
-        } else {
-          return optionsBuilder_.getMessage(index);
-        }
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 17;</code>
-       */
-      public Builder setOptions(
-          int index, org.apache.drill.exec.proto.UserBitShared.Option value) {
-        if (optionsBuilder_ == null) {
-          if (value == null) {
-            throw new NullPointerException();
-          }
-          ensureOptionsIsMutable();
-          options_.set(index, value);
-          onChanged();
-        } else {
-          optionsBuilder_.setMessage(index, value);
-        }
+      public Builder setOptionsJson(
+          java.lang.String value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00010000;
+        optionsJson_ = value;
+        onChanged();
         return this;
       }
       /**
-       * <code>repeated .exec.shared.Option options = 17;</code>
+       * <code>optional string options_json = 17;</code>
        */
-      public Builder setOptions(
-          int index, org.apache.drill.exec.proto.UserBitShared.Option.Builder builderForValue) {
-        if (optionsBuilder_ == null) {
-          ensureOptionsIsMutable();
-          options_.set(index, builderForValue.build());
-          onChanged();
-        } else {
-          optionsBuilder_.setMessage(index, builderForValue.build());
-        }
+      public Builder clearOptionsJson() {
+        bitField0_ = (bitField0_ & ~0x00010000);
+        optionsJson_ = getDefaultInstance().getOptionsJson();
+        onChanged();
         return this;
       }
       /**
-       * <code>repeated .exec.shared.Option options = 17;</code>
+       * <code>optional string options_json = 17;</code>
        */
-      public Builder addOptions(org.apache.drill.exec.proto.UserBitShared.Option value) {
-        if (optionsBuilder_ == null) {
-          if (value == null) {
-            throw new NullPointerException();
-          }
-          ensureOptionsIsMutable();
-          options_.add(value);
-          onChanged();
-        } else {
-          optionsBuilder_.addMessage(value);
-        }
+      public Builder setOptionsJsonBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00010000;
+        optionsJson_ = value;
+        onChanged();
         return this;
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 17;</code>
-       */
-      public Builder addOptions(
-          int index, org.apache.drill.exec.proto.UserBitShared.Option value) {
-        if (optionsBuilder_ == null) {
-          if (value == null) {
-            throw new NullPointerException();
-          }
-          ensureOptionsIsMutable();
-          options_.add(index, value);
-          onChanged();
-        } else {
-          optionsBuilder_.addMessage(index, value);
-        }
-        return this;
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 17;</code>
-       */
-      public Builder addOptions(
-          org.apache.drill.exec.proto.UserBitShared.Option.Builder builderForValue) {
-        if (optionsBuilder_ == null) {
-          ensureOptionsIsMutable();
-          options_.add(builderForValue.build());
-          onChanged();
-        } else {
-          optionsBuilder_.addMessage(builderForValue.build());
-        }
-        return this;
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 17;</code>
-       */
-      public Builder addOptions(
-          int index, org.apache.drill.exec.proto.UserBitShared.Option.Builder builderForValue) {
-        if (optionsBuilder_ == null) {
-          ensureOptionsIsMutable();
-          options_.add(index, builderForValue.build());
-          onChanged();
-        } else {
-          optionsBuilder_.addMessage(index, builderForValue.build());
-        }
-        return this;
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 17;</code>
-       */
-      public Builder addAllOptions(
-          java.lang.Iterable<? extends org.apache.drill.exec.proto.UserBitShared.Option> values) {
-        if (optionsBuilder_ == null) {
-          ensureOptionsIsMutable();
-          super.addAll(values, options_);
-          onChanged();
-        } else {
-          optionsBuilder_.addAllMessages(values);
-        }
-        return this;
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 17;</code>
-       */
-      public Builder clearOptions() {
-        if (optionsBuilder_ == null) {
-          options_ = java.util.Collections.emptyList();
-          bitField0_ = (bitField0_ & ~0x00010000);
-          onChanged();
-        } else {
-          optionsBuilder_.clear();
-        }
-        return this;
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 17;</code>
-       */
-      public Builder removeOptions(int index) {
-        if (optionsBuilder_ == null) {
-          ensureOptionsIsMutable();
-          options_.remove(index);
-          onChanged();
-        } else {
-          optionsBuilder_.remove(index);
-        }
-        return this;
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 17;</code>
-       */
-      public org.apache.drill.exec.proto.UserBitShared.Option.Builder getOptionsBuilder(
-          int index) {
-        return getOptionsFieldBuilder().getBuilder(index);
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 17;</code>
-       */
-      public org.apache.drill.exec.proto.UserBitShared.OptionOrBuilder getOptionsOrBuilder(
-          int index) {
-        if (optionsBuilder_ == null) {
-          return options_.get(index);  } else {
-          return optionsBuilder_.getMessageOrBuilder(index);
-        }
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 17;</code>
-       */
-      public java.util.List<? extends org.apache.drill.exec.proto.UserBitShared.OptionOrBuilder> 
-           getOptionsOrBuilderList() {
-        if (optionsBuilder_ != null) {
-          return optionsBuilder_.getMessageOrBuilderList();
-        } else {
-          return java.util.Collections.unmodifiableList(options_);
-        }
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 17;</code>
-       */
-      public org.apache.drill.exec.proto.UserBitShared.Option.Builder addOptionsBuilder() {
-        return getOptionsFieldBuilder().addBuilder(
-            org.apache.drill.exec.proto.UserBitShared.Option.getDefaultInstance());
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 17;</code>
-       */
-      public org.apache.drill.exec.proto.UserBitShared.Option.Builder addOptionsBuilder(
-          int index) {
-        return getOptionsFieldBuilder().addBuilder(
-            index, org.apache.drill.exec.proto.UserBitShared.Option.getDefaultInstance());
-      }
-      /**
-       * <code>repeated .exec.shared.Option options = 17;</code>
-       */
-      public java.util.List<org.apache.drill.exec.proto.UserBitShared.Option.Builder> 
-           getOptionsBuilderList() {
-        return getOptionsFieldBuilder().getBuilderList();
-      }
-      private com.google.protobuf.RepeatedFieldBuilder<
-          org.apache.drill.exec.proto.UserBitShared.Option, org.apache.drill.exec.proto.UserBitShared.Option.Builder, org.apache.drill.exec.proto.UserBitShared.OptionOrBuilder> 
-          getOptionsFieldBuilder() {
-        if (optionsBuilder_ == null) {
-          optionsBuilder_ = new com.google.protobuf.RepeatedFieldBuilder<
-              org.apache.drill.exec.proto.UserBitShared.Option, org.apache.drill.exec.proto.UserBitShared.Option.Builder, org.apache.drill.exec.proto.UserBitShared.OptionOrBuilder>(
-                  options_,
-                  ((bitField0_ & 0x00010000) == 0x00010000),
-                  getParentForChildren(),
-                  isClean());
-          options_ = null;
-        }
-        return optionsBuilder_;
       }
 
       // @@protoc_insertion_point(builder_scope:exec.shared.QueryProfile)
@@ -22092,11 +21053,6 @@ public final class UserBitShared {
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_exec_shared_QueryData_fieldAccessorTable;
   private static com.google.protobuf.Descriptors.Descriptor
-    internal_static_exec_shared_Option_descriptor;
-  private static
-    com.google.protobuf.GeneratedMessage.FieldAccessorTable
-      internal_static_exec_shared_Option_fieldAccessorTable;
-  private static com.google.protobuf.Descriptors.Descriptor
     internal_static_exec_shared_QueryInfo_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
@@ -22188,73 +21144,71 @@ public final class UserBitShared {
       "ENQUEUED\020\006\"p\n\tQueryData\022&\n\010query_id\030\001 \001(" +
       "\0132\024.exec.shared.QueryId\022\021\n\trow_count\030\002 \001" +
       "(\005\022(\n\003def\030\003 \001(\0132\033.exec.shared.RecordBatc" +
-      "hDef\"%\n\006Option\022\014\n\004name\030\001 \001(\t\022\r\n\005value\030\002 " +
-      "\001(\t\"\275\001\n\tQueryInfo\022\r\n\005query\030\001 \001(\t\022\r\n\005star",
-      "t\030\002 \001(\003\0222\n\005state\030\003 \001(\0162#.exec.shared.Que" +
-      "ryResult.QueryState\022\017\n\004user\030\004 \001(\t:\001-\022\'\n\007" +
-      "foreman\030\005 \001(\0132\026.exec.DrillbitEndpoint\022$\n" +
-      "\007options\030\006 \003(\0132\023.exec.shared.Option\"\340\003\n\014" +
-      "QueryProfile\022 \n\002id\030\001 \001(\0132\024.exec.shared.Q" +
-      "ueryId\022$\n\004type\030\002 \001(\0162\026.exec.shared.Query" +
-      "Type\022\r\n\005start\030\003 \001(\003\022\013\n\003end\030\004 \001(\003\022\r\n\005quer" +
-      "y\030\005 \001(\t\022\014\n\004plan\030\006 \001(\t\022\'\n\007foreman\030\007 \001(\0132\026" +
-      ".exec.DrillbitEndpoint\0222\n\005state\030\010 \001(\0162#." +
-      "exec.shared.QueryResult.QueryState\022\027\n\017to",
-      "tal_fragments\030\t \001(\005\022\032\n\022finished_fragment" +
-      "s\030\n \001(\005\022;\n\020fragment_profile\030\013 \003(\0132!.exec" +
-      ".shared.MajorFragmentProfile\022\017\n\004user\030\014 \001" +
-      "(\t:\001-\022\r\n\005error\030\r \001(\t\022\024\n\014verboseError\030\016 \001" +
-      "(\t\022\020\n\010error_id\030\017 \001(\t\022\022\n\nerror_node\030\020 \001(\t" +
-      "\022$\n\007options\030\021 \003(\0132\023.exec.shared.Option\"t" +
-      "\n\024MajorFragmentProfile\022\031\n\021major_fragment" +
-      "_id\030\001 \001(\005\022A\n\026minor_fragment_profile\030\002 \003(" +
-      "\0132!.exec.shared.MinorFragmentProfile\"\350\002\n" +
-      "\024MinorFragmentProfile\022)\n\005state\030\001 \001(\0162\032.e",
-      "xec.shared.FragmentState\022(\n\005error\030\002 \001(\0132" +
-      "\031.exec.shared.DrillPBError\022\031\n\021minor_frag" +
-      "ment_id\030\003 \001(\005\0226\n\020operator_profile\030\004 \003(\0132" +
-      "\034.exec.shared.OperatorProfile\022\022\n\nstart_t" +
-      "ime\030\005 \001(\003\022\020\n\010end_time\030\006 \001(\003\022\023\n\013memory_us" +
-      "ed\030\007 \001(\003\022\027\n\017max_memory_used\030\010 \001(\003\022(\n\010end" +
-      "point\030\t \001(\0132\026.exec.DrillbitEndpoint\022\023\n\013l" +
-      "ast_update\030\n \001(\003\022\025\n\rlast_progress\030\013 \001(\003\"" +
-      "\377\001\n\017OperatorProfile\0221\n\rinput_profile\030\001 \003" +
-      "(\0132\032.exec.shared.StreamProfile\022\023\n\013operat",
-      "or_id\030\003 \001(\005\022\025\n\roperator_type\030\004 \001(\005\022\023\n\013se" +
-      "tup_nanos\030\005 \001(\003\022\025\n\rprocess_nanos\030\006 \001(\003\022#" +
-      "\n\033peak_local_memory_allocated\030\007 \001(\003\022(\n\006m" +
-      "etric\030\010 \003(\0132\030.exec.shared.MetricValue\022\022\n" +
-      "\nwait_nanos\030\t \001(\003\"B\n\rStreamProfile\022\017\n\007re" +
-      "cords\030\001 \001(\003\022\017\n\007batches\030\002 \001(\003\022\017\n\007schemas\030" +
-      "\003 \001(\003\"J\n\013MetricValue\022\021\n\tmetric_id\030\001 \001(\005\022" +
-      "\022\n\nlong_value\030\002 \001(\003\022\024\n\014double_value\030\003 \001(" +
-      "\001*5\n\nRpcChannel\022\017\n\013BIT_CONTROL\020\000\022\014\n\010BIT_" +
-      "DATA\020\001\022\010\n\004USER\020\002*>\n\tQueryType\022\007\n\003SQL\020\001\022\013",
-      "\n\007LOGICAL\020\002\022\014\n\010PHYSICAL\020\003\022\r\n\tEXECUTION\020\004" +
-      "*\207\001\n\rFragmentState\022\013\n\007SENDING\020\000\022\027\n\023AWAIT" +
-      "ING_ALLOCATION\020\001\022\013\n\007RUNNING\020\002\022\014\n\010FINISHE" +
-      "D\020\003\022\r\n\tCANCELLED\020\004\022\n\n\006FAILED\020\005\022\032\n\026CANCEL" +
-      "LATION_REQUESTED\020\006*\335\005\n\020CoreOperatorType\022" +
-      "\021\n\rSINGLE_SENDER\020\000\022\024\n\020BROADCAST_SENDER\020\001" +
-      "\022\n\n\006FILTER\020\002\022\022\n\016HASH_AGGREGATE\020\003\022\r\n\tHASH" +
-      "_JOIN\020\004\022\016\n\nMERGE_JOIN\020\005\022\031\n\025HASH_PARTITIO" +
-      "N_SENDER\020\006\022\t\n\005LIMIT\020\007\022\024\n\020MERGING_RECEIVE" +
-      "R\020\010\022\034\n\030ORDERED_PARTITION_SENDER\020\t\022\013\n\007PRO",
-      "JECT\020\n\022\026\n\022UNORDERED_RECEIVER\020\013\022\020\n\014RANGE_" +
-      "SENDER\020\014\022\n\n\006SCREEN\020\r\022\034\n\030SELECTION_VECTOR" +
-      "_REMOVER\020\016\022\027\n\023STREAMING_AGGREGATE\020\017\022\016\n\nT" +
-      "OP_N_SORT\020\020\022\021\n\rEXTERNAL_SORT\020\021\022\t\n\005TRACE\020" +
-      "\022\022\t\n\005UNION\020\023\022\014\n\010OLD_SORT\020\024\022\032\n\026PARQUET_RO" +
-      "W_GROUP_SCAN\020\025\022\021\n\rHIVE_SUB_SCAN\020\026\022\025\n\021SYS" +
-      "TEM_TABLE_SCAN\020\027\022\021\n\rMOCK_SUB_SCAN\020\030\022\022\n\016P" +
-      "ARQUET_WRITER\020\031\022\023\n\017DIRECT_SUB_SCAN\020\032\022\017\n\013" +
-      "TEXT_WRITER\020\033\022\021\n\rTEXT_SUB_SCAN\020\034\022\021\n\rJSON" +
-      "_SUB_SCAN\020\035\022\030\n\024INFO_SCHEMA_SUB_SCAN\020\036\022\023\n",
-      "\017COMPLEX_TO_JSON\020\037\022\025\n\021PRODUCER_CONSUMER\020" +
-      " \022\022\n\016HBASE_SUB_SCAN\020!\022\n\n\006WINDOW\020\"\022\024\n\020NES" +
-      "TED_LOOP_JOIN\020#\022\021\n\rAVRO_SUB_SCAN\020$B.\n\033or" +
-      "g.apache.drill.exec.protoB\rUserBitShared" +
-      "H\001"
+      "hDef\"\255\001\n\tQueryInfo\022\r\n\005query\030\001 \001(\t\022\r\n\005sta" +
+      "rt\030\002 \001(\003\0222\n\005state\030\003 \001(\0162#.exec.shared.Qu",
+      "eryResult.QueryState\022\017\n\004user\030\004 \001(\t:\001-\022\'\n" +
+      "\007foreman\030\005 \001(\0132\026.exec.DrillbitEndpoint\022\024" +
+      "\n\014options_json\030\006 \001(\t\"\320\003\n\014QueryProfile\022 \n" +
+      "\002id\030\001 \001(\0132\024.exec.shared.QueryId\022$\n\004type\030" +
+      "\002 \001(\0162\026.exec.shared.QueryType\022\r\n\005start\030\003" +
+      " \001(\003\022\013\n\003end\030\004 \001(\003\022\r\n\005query\030\005 \001(\t\022\014\n\004plan" +
+      "\030\006 \001(\t\022\'\n\007foreman\030\007 \001(\0132\026.exec.DrillbitE" +
+      "ndpoint\0222\n\005state\030\010 \001(\0162#.exec.shared.Que" +
+      "ryResult.QueryState\022\027\n\017total_fragments\030\t" +
+      " \001(\005\022\032\n\022finished_fragments\030\n \001(\005\022;\n\020frag",
+      "ment_profile\030\013 \003(\0132!.exec.shared.MajorFr" +
+      "agmentProfile\022\017\n\004user\030\014 \001(\t:\001-\022\r\n\005error\030" +
+      "\r \001(\t\022\024\n\014verboseError\030\016 \001(\t\022\020\n\010error_id\030" +
+      "\017 \001(\t\022\022\n\nerror_node\030\020 \001(\t\022\024\n\014options_jso" +
+      "n\030\021 \001(\t\"t\n\024MajorFragmentProfile\022\031\n\021major" +
+      "_fragment_id\030\001 \001(\005\022A\n\026minor_fragment_pro" +
+      "file\030\002 \003(\0132!.exec.shared.MinorFragmentPr" +
+      "ofile\"\350\002\n\024MinorFragmentProfile\022)\n\005state\030" +
+      "\001 \001(\0162\032.exec.shared.FragmentState\022(\n\005err" +
+      "or\030\002 \001(\0132\031.exec.shared.DrillPBError\022\031\n\021m",
+      "inor_fragment_id\030\003 \001(\005\0226\n\020operator_profi" +
+      "le\030\004 \003(\0132\034.exec.shared.OperatorProfile\022\022" +
+      "\n\nstart_time\030\005 \001(\003\022\020\n\010end_time\030\006 \001(\003\022\023\n\013" +
+      "memory_used\030\007 \001(\003\022\027\n\017max_memory_used\030\010 \001" +
+      "(\003\022(\n\010endpoint\030\t \001(\0132\026.exec.DrillbitEndp" +
+      "oint\022\023\n\013last_update\030\n \001(\003\022\025\n\rlast_progre" +
+      "ss\030\013 \001(\003\"\377\001\n\017OperatorProfile\0221\n\rinput_pr" +
+      "ofile\030\001 \003(\0132\032.exec.shared.StreamProfile\022" +
+      "\023\n\013operator_id\030\003 \001(\005\022\025\n\roperator_type\030\004 " +
+      "\001(\005\022\023\n\013setup_nanos\030\005 \001(\003\022\025\n\rprocess_nano",
+      "s\030\006 \001(\003\022#\n\033peak_local_memory_allocated\030\007" +
+      " \001(\003\022(\n\006metric\030\010 \003(\0132\030.exec.shared.Metri" +
+      "cValue\022\022\n\nwait_nanos\030\t \001(\003\"B\n\rStreamProf" +
+      "ile\022\017\n\007records\030\001 \001(\003\022\017\n\007batches\030\002 \001(\003\022\017\n" +
+      "\007schemas\030\003 \001(\003\"J\n\013MetricValue\022\021\n\tmetric_" +
+      "id\030\001 \001(\005\022\022\n\nlong_value\030\002 \001(\003\022\024\n\014double_v" +
+      "alue\030\003 \001(\001*5\n\nRpcChannel\022\017\n\013BIT_CONTROL\020" +
+      "\000\022\014\n\010BIT_DATA\020\001\022\010\n\004USER\020\002*>\n\tQueryType\022\007" +
+      "\n\003SQL\020\001\022\013\n\007LOGICAL\020\002\022\014\n\010PHYSICAL\020\003\022\r\n\tEX" +
+      "ECUTION\020\004*\207\001\n\rFragmentState\022\013\n\007SENDING\020\000",
+      "\022\027\n\023AWAITING_ALLOCATION\020\001\022\013\n\007RUNNING\020\002\022\014" +
+      "\n\010FINISHED\020\003\022\r\n\tCANCELLED\020\004\022\n\n\006FAILED\020\005\022" +
+      "\032\n\026CANCELLATION_REQUESTED\020\006*\335\005\n\020CoreOper" +
+      "atorType\022\021\n\rSINGLE_SENDER\020\000\022\024\n\020BROADCAST" +
+      "_SENDER\020\001\022\n\n\006FILTER\020\002\022\022\n\016HASH_AGGREGATE\020" +
+      "\003\022\r\n\tHASH_JOIN\020\004\022\016\n\nMERGE_JOIN\020\005\022\031\n\025HASH" +
+      "_PARTITION_SENDER\020\006\022\t\n\005LIMIT\020\007\022\024\n\020MERGIN" +
+      "G_RECEIVER\020\010\022\034\n\030ORDERED_PARTITION_SENDER" +
+      "\020\t\022\013\n\007PROJECT\020\n\022\026\n\022UNORDERED_RECEIVER\020\013\022" +
+      "\020\n\014RANGE_SENDER\020\014\022\n\n\006SCREEN\020\r\022\034\n\030SELECTI",
+      "ON_VECTOR_REMOVER\020\016\022\027\n\023STREAMING_AGGREGA" +
+      "TE\020\017\022\016\n\nTOP_N_SORT\020\020\022\021\n\rEXTERNAL_SORT\020\021\022" +
+      "\t\n\005TRACE\020\022\022\t\n\005UNION\020\023\022\014\n\010OLD_SORT\020\024\022\032\n\026P" +
+      "ARQUET_ROW_GROUP_SCAN\020\025\022\021\n\rHIVE_SUB_SCAN" +
+      "\020\026\022\025\n\021SYSTEM_TABLE_SCAN\020\027\022\021\n\rMOCK_SUB_SC" +
+      "AN\020\030\022\022\n\016PARQUET_WRITER\020\031\022\023\n\017DIRECT_SUB_S" +
+      "CAN\020\032\022\017\n\013TEXT_WRITER\020\033\022\021\n\rTEXT_SUB_SCAN\020" +
+      "\034\022\021\n\rJSON_SUB_SCAN\020\035\022\030\n\024INFO_SCHEMA_SUB_" +
+      "SCAN\020\036\022\023\n\017COMPLEX_TO_JSON\020\037\022\025\n\021PRODUCER_" +
+      "CONSUMER\020 \022\022\n\016HBASE_SUB_SCAN\020!\022\n\n\006WINDOW",
+      "\020\"\022\024\n\020NESTED_LOOP_JOIN\020#\022\021\n\rAVRO_SUB_SCA" +
+      "N\020$B.\n\033org.apache.drill.exec.protoB\rUser" +
+      "BitSharedH\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -22333,50 +21287,44 @@ public final class UserBitShared {
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_exec_shared_QueryData_descriptor,
               new java.lang.String[] { "QueryId", "RowCount", "Def", });
-          internal_static_exec_shared_Option_descriptor =
-            getDescriptor().getMessageTypes().get(12);
-          internal_static_exec_shared_Option_fieldAccessorTable = new
-            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_exec_shared_Option_descriptor,
-              new java.lang.String[] { "Name", "Value", });
           internal_static_exec_shared_QueryInfo_descriptor =
-            getDescriptor().getMessageTypes().get(13);
+            getDescriptor().getMessageTypes().get(12);
           internal_static_exec_shared_QueryInfo_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_exec_shared_QueryInfo_descriptor,
-              new java.lang.String[] { "Query", "Start", "State", "User", "Foreman", "Options", });
+              new java.lang.String[] { "Query", "Start", "State", "User", "Foreman", "OptionsJson", });
           internal_static_exec_shared_QueryProfile_descriptor =
-            getDescriptor().getMessageTypes().get(14);
+            getDescriptor().getMessageTypes().get(13);
           internal_static_exec_shared_QueryProfile_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_exec_shared_QueryProfile_descriptor,
-              new java.lang.String[] { "Id", "Type", "Start", "End", "Query", "Plan", "Foreman", "State", "TotalFragments", "FinishedFragments", "FragmentProfile", "User", "Error", "VerboseError", "ErrorId", "ErrorNode", "Options", });
+              new java.lang.String[] { "Id", "Type", "Start", "End", "Query", "Plan", "Foreman", "State", "TotalFragments", "FinishedFragments", "FragmentProfile", "User", "Error", "VerboseError", "ErrorId", "ErrorNode", "OptionsJson", });
           internal_static_exec_shared_MajorFragmentProfile_descriptor =
-            getDescriptor().getMessageTypes().get(15);
+            getDescriptor().getMessageTypes().get(14);
           internal_static_exec_shared_MajorFragmentProfile_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_exec_shared_MajorFragmentProfile_descriptor,
               new java.lang.String[] { "MajorFragmentId", "MinorFragmentProfile", });
           internal_static_exec_shared_MinorFragmentProfile_descriptor =
-            getDescriptor().getMessageTypes().get(16);
+            getDescriptor().getMessageTypes().get(15);
           internal_static_exec_shared_MinorFragmentProfile_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_exec_shared_MinorFragmentProfile_descriptor,
               new java.lang.String[] { "State", "Error", "MinorFragmentId", "OperatorProfile", "StartTime", "EndTime", "MemoryUsed", "MaxMemoryUsed", "Endpoint", "LastUpdate", "LastProgress", });
           internal_static_exec_shared_OperatorProfile_descriptor =
-            getDescriptor().getMessageTypes().get(17);
+            getDescriptor().getMessageTypes().get(16);
           internal_static_exec_shared_OperatorProfile_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_exec_shared_OperatorProfile_descriptor,
               new java.lang.String[] { "InputProfile", "OperatorId", "OperatorType", "SetupNanos", "ProcessNanos", "PeakLocalMemoryAllocated", "Metric", "WaitNanos", });
           internal_static_exec_shared_StreamProfile_descriptor =
-            getDescriptor().getMessageTypes().get(18);
+            getDescriptor().getMessageTypes().get(17);
           internal_static_exec_shared_StreamProfile_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_exec_shared_StreamProfile_descriptor,
               new java.lang.String[] { "Records", "Batches", "Schemas", });
           internal_static_exec_shared_MetricValue_descriptor =
-            getDescriptor().getMessageTypes().get(19);
+            getDescriptor().getMessageTypes().get(18);
           internal_static_exec_shared_MetricValue_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_exec_shared_MetricValue_descriptor,

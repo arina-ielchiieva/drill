@@ -67,7 +67,7 @@ public final class QueryProfile implements Externalizable, Message<QueryProfile>
     private String verboseError;
     private String errorId;
     private String errorNode;
-    private List<Option> options;
+    private String optionsJson;
 
     public QueryProfile()
     {
@@ -284,16 +284,16 @@ public final class QueryProfile implements Externalizable, Message<QueryProfile>
         return this;
     }
 
-    // options
+    // optionsJson
 
-    public List<Option> getOptionsList()
+    public String getOptionsJson()
     {
-        return options;
+        return optionsJson;
     }
 
-    public QueryProfile setOptionsList(List<Option> options)
+    public QueryProfile setOptionsJson(String optionsJson)
     {
-        this.options = options;
+        this.optionsJson = optionsJson;
         return this;
     }
 
@@ -405,11 +405,8 @@ public final class QueryProfile implements Externalizable, Message<QueryProfile>
                     message.errorNode = input.readString();
                     break;
                 case 17:
-                    if(message.options == null)
-                        message.options = new ArrayList<Option>();
-                    message.options.add(input.mergeObject(null, Option.getSchema()));
+                    message.optionsJson = input.readString();
                     break;
-
                 default:
                     input.handleUnknownField(number, this);
             }   
@@ -476,15 +473,8 @@ public final class QueryProfile implements Externalizable, Message<QueryProfile>
         if(message.errorNode != null)
             output.writeString(16, message.errorNode, false);
 
-        if(message.options != null)
-        {
-            for(Option options : message.options)
-            {
-                if(options != null)
-                    output.writeObject(17, options, Option.getSchema(), true);
-            }
-        }
-
+        if(message.optionsJson != null)
+            output.writeString(17, message.optionsJson, false);
     }
 
     public String getFieldName(int number)
@@ -507,7 +497,7 @@ public final class QueryProfile implements Externalizable, Message<QueryProfile>
             case 14: return "verboseError";
             case 15: return "errorId";
             case 16: return "errorNode";
-            case 17: return "options";
+            case 17: return "optionsJson";
             default: return null;
         }
     }
@@ -537,7 +527,7 @@ public final class QueryProfile implements Externalizable, Message<QueryProfile>
         __fieldMap.put("verboseError", 14);
         __fieldMap.put("errorId", 15);
         __fieldMap.put("errorNode", 16);
-        __fieldMap.put("options", 17);
+        __fieldMap.put("optionsJson", 17);
     }
     
 }
