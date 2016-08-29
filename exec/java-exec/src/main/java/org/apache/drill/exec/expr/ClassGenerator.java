@@ -20,10 +20,14 @@ package org.apache.drill.exec.expr;
 import static org.apache.drill.exec.compile.sig.GeneratorMapping.GM;
 
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import com.beust.jcommander.internal.Sets;
+import com.sun.codemodel.JArray;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.DataMode;
@@ -55,6 +59,7 @@ import com.sun.codemodel.JMethod;
 import com.sun.codemodel.JMod;
 import com.sun.codemodel.JType;
 import com.sun.codemodel.JVar;
+import org.apache.drill.exec.record.VectorAccessible;
 import org.apache.drill.exec.server.options.OptionManager;
 
 public class ClassGenerator<T>{
@@ -81,6 +86,8 @@ public class ClassGenerator<T>{
   private int index = 0;
   private int labelIndex = 0;
   private MappingSet mappings;
+
+  private final Set<String> privateMethods = Sets.newHashSet();
 
   public static MappingSet getDefaultMapping() {
     return new MappingSet("inIndex", "outIndex", DEFAULT_CONSTANT_MAP, DEFAULT_SCALAR_MAP);
@@ -174,7 +181,7 @@ public class ClassGenerator<T>{
     return declareVectorValueSetupAndMember( DirectExpression.direct(batchName), fieldId);
   }
 
-  public JVar declareVectorValueSetupAndMember(DirectExpression batchName, TypedFieldId fieldId) {
+  public JVar declareVectorValueSetupAndMember_2(DirectExpression batchName, TypedFieldId fieldId) {
     final ValueVectorSetup setup = new ValueVectorSetup(batchName, fieldId);
 //    JVar var = this.vvDeclaration.get(setup);
 //    if(var != null) return var;
@@ -212,11 +219,86 @@ public class ClassGenerator<T>{
 
     b._if(obj.eq(JExpr._null()))._then()._throw(JExpr._new(t).arg(JExpr.lit(String.format("Failure while loading vector %s with id: %s.", vv.name(), fieldId.toString()))));
     //b.assign(vv, JExpr.cast(retClass, ((JExpression) JExpr.cast(wrapperClass, obj) ).invoke(vectorAccess)));
-    b.assign(vv, JExpr.cast(retClass, obj ));
+    b.assign(vv, JExpr.cast(retClass, obj));
     vvDeclaration.put(setup, vv);
 
     return vv;
   }
+
+  public JVar declareVectorValueSetupAndMember(DirectExpression batchName, TypedFieldId fieldId) {
+    // final ValueVectorSetup setup = new ValueVectorSetup(batchName, fieldId); //todo do we need this?
+
+    Class<?> valueVectorClass = fieldId.getIntermediateClass();
+    JClass vvClass = model.ref(valueVectorClass);
+    JClass retClass = vvClass;
+    String vectorAccess = "getValueVector";
+
+    if (fieldId.isHyperReader()) {
+      retClass = retClass.array();
+      vectorAccess = "getValueVectors";
+    }
+
+    prepareVVGetter(vectorAccess);
+
+    JVar vv = declareClassField("vv", retClass);
+
+    JBlock b = getSetupBlock(); // common setup block
+
+    JArray array = JExpr.newArray(model.INT);
+    int[] fieldIndices = fieldId.getFieldIds();
+    for (int fieldIndice : fieldIndices) {
+      array.add(JExpr.lit(fieldIndice));
+    }
+
+    JVar obj = b.decl(model.ref(Object.class), getNextVar("tmp"),
+        JExpr.invoke(vectorAccess)
+            .arg(batchName)
+            .arg(vvClass.dotclass())
+            .arg(array));
+
+    b.assign(vv, JExpr.cast(retClass, obj));
+
+    // vvDeclaration.put(setup, vv); //todo do we need this?
+
+    return vv;
+  }
+
+  public void prepareVVGetter(String vectorAccess) {
+    if (!privateMethods.contains(vectorAccess)) {
+      generateVVGetter(vectorAccess);
+      privateMethods.add(vectorAccess);
+    }
+  }
+
+  private void generateVVGetter(String method) {
+    // private Object createVector(VectorAccessible vectorAccessible, Class clazz, int[] fieldIndices) throws SchemaChangeException
+    JClass obj = model.ref(Object.class);
+    JMethod getVV = clazz.method(JMod.PRIVATE, obj, method);
+    JClass exception = model.ref(SchemaChangeException.class);
+    getVV._throws(exception);
+    // add params
+    // VectorAccessible vectorAccessible
+    JVar vectorAccessible = getVV.param(VectorAccessible.class, "vectorAccessible");
+    // Class
+    JVar clazz = getVV.param(model.ref(Class.class), "clazz");
+    // int[] fieldIndices
+    JVar fieldIndices = getVV.param(model.INT.array(), "fieldIndices");
+
+    // body
+    JBlock body = getVV.body();
+    // Object tmp11 = (vectorAccessible).getValueAccessorById(clazz, fieldIds).getValueVector();
+    JInvocation invoke = vectorAccessible.invoke("getValueAccessorById").arg(clazz).arg(fieldIndices).invoke(method);
+    JVar o = body.decl(obj, "o", invoke);
+    // check for null
+    JInvocation format = model.ref(String.class)
+        .staticInvoke("format")
+        .arg("Failure while loading vector %s")
+        .arg(model.ref(Arrays.class).staticInvoke("toString").arg(fieldIndices));
+    body._if(o.eq(JExpr._null()))._then()._throw(JExpr._new(exception).arg(format));
+    // return o
+    body._return(o);
+  }
+
 
   public enum BlkCreateMode {
     TRUE,  // Create new block

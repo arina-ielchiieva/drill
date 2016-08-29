@@ -1196,6 +1196,15 @@ public class TestExampleQueries extends BaseTestQuery {
   }
 
   @Test
+  public void testSuperSimple() throws Exception {
+    test("select\n" +
+        "hash32(employee_id) as hash_employee_id,\n" +
+        "hash32(full_name) as hash_full_name,\n" +
+        "hash32(first_name) as hash_first_name\n" +
+        "from cp.`employee.json` LIMIT 20");
+  }
+
+  @Test
   public void testSimpleFunction() throws Exception {
     test("select\n" +
         "hash32(employee_id) as hash_employee_id,\n" +
@@ -1207,10 +1216,18 @@ public class TestExampleQueries extends BaseTestQuery {
   @Test
   public void testAggFunction() throws Exception {
     test("select\n" +
-        "max(employee_id) as hash_employee_id,\n" +
+        "count(employee_id) as hash_employee_id,\n" +
         "max(full_name) as hash_full_name,\n" +
         "max(first_name) as hash_first_name\n" +
         "from cp.`employee.json` LIMIT 20");
+  }
+
+  @Test
+  public void testOrderBy() throws Exception {
+    test("select\n" +
+        "employee_id\n" +
+        "from cp.`employee.json`\n" +
+        "order by employee_id");
   }
 
 }

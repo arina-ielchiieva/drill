@@ -213,7 +213,7 @@ public class ClassTransformer {
   public Class<?> getImplementationClass(
       final QueryClassLoader classLoader,
       final TemplateClassDefinition<?> templateDefinition,
-      final String entireClass,
+      String entireClass,
       final String materializedClassName) throws ClassTransformationException {
     // unfortunately, this hasn't been set up at construction time, so we have to do it here
     final ScalarReplacementOption scalarReplacementOption = ScalarReplacementOption.fromString(optionManager.getOption(SCALAR_REPLACEMENT_VALIDATOR));

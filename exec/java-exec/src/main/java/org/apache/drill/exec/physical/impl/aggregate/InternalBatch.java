@@ -19,15 +19,18 @@ package org.apache.drill.exec.physical.impl.aggregate;
 
 import java.util.Iterator;
 
+import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.ops.OperatorContext;
 import org.apache.drill.exec.record.BatchSchema;
 import org.apache.drill.exec.record.RecordBatch;
+import org.apache.drill.exec.record.TypedFieldId;
+import org.apache.drill.exec.record.VectorAccessible;
 import org.apache.drill.exec.record.VectorContainer;
 import org.apache.drill.exec.record.VectorWrapper;
 import org.apache.drill.exec.record.selection.SelectionVector2;
 import org.apache.drill.exec.record.selection.SelectionVector4;
 
-public class InternalBatch implements Iterable<VectorWrapper<?>>{
+public class InternalBatch implements VectorAccessible {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(InternalBatch.class);
 
   private final VectorContainer container;
@@ -57,15 +60,33 @@ public class InternalBatch implements Iterable<VectorWrapper<?>>{
     this.container = VectorContainer.getTransferClone(incoming, ignoreWrappers, oContext);
   }
 
+  @Override
+  public VectorWrapper<?> getValueAccessorById(Class<?> clazz, int[] fieldIds) {
+    return container.getValueAccessorById(clazz, fieldIds);
+  }
+
+  @Override
+  public TypedFieldId getValueVectorId(SchemaPath path) {
+    return container.getValueVectorId(path);
+  }
+
+  @Override
   public BatchSchema getSchema() {
     return schema;
   }
 
-  public SelectionVector2 getSv2() {
+  @Override //todo implement or throw unsupported exception exception
+  public int getRecordCount() {
+    return 0;
+  }
+
+  @Override
+  public SelectionVector2 getSelectionVector2() {
     return sv2;
   }
 
-  public SelectionVector4 getSv4() {
+  @Override
+  public SelectionVector4 getSelectionVector4() {
     return sv4;
   }
 
@@ -84,8 +105,6 @@ public class InternalBatch implements Iterable<VectorWrapper<?>>{
     container.clear();
   }
 
-  public VectorWrapper<?> getValueAccessorById(Class<?> clazz, int[] fieldIds) {
-    return container.getValueAccessorById(clazz, fieldIds);
-  }
+
 
 }
