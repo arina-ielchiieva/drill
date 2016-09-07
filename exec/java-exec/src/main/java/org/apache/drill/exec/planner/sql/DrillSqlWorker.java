@@ -30,6 +30,7 @@ import org.apache.drill.exec.physical.PhysicalPlan;
 import org.apache.drill.exec.planner.sql.handlers.AbstractSqlHandler;
 import org.apache.drill.exec.planner.sql.handlers.DefaultSqlHandler;
 import org.apache.drill.exec.planner.sql.handlers.ExplainHandler;
+import org.apache.drill.exec.planner.sql.handlers.InsertHandler;
 import org.apache.drill.exec.planner.sql.handlers.SetOptionHandler;
 import org.apache.drill.exec.planner.sql.handlers.SqlHandlerConfig;
 import org.apache.drill.exec.planner.sql.parser.DrillSqlCall;
@@ -74,6 +75,9 @@ public class DrillSqlWorker {
       break;
     case SET_OPTION:
       handler = new SetOptionHandler(context);
+      break;
+    case INSERT:
+      handler = new InsertHandler(config, textPlan);
       break;
     case OTHER:
       if(sqlNode instanceof SqlCreateTable) {

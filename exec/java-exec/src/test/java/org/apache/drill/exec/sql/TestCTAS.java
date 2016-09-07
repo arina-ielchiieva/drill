@@ -100,6 +100,41 @@ public class TestCTAS extends BaseTestQuery {
     }
   }
 
+  @Test
+  public void testCTAS_sys() throws Exception {
+    test("create table dfs_test.tmp.arina as select * from sys.version");
+  }
+
+  @Test
+  public void testCTAS_json() throws Exception {
+    test("create table dfs_test.tmp.arina as select * from cp.`employee.json`");
+  }
+
+  @Test
+  public void testCTAS_parquet() throws Exception {
+    test("create table dfs_test.tmp.arina as select n_nationkey from cp.`tpch/nation.parquet`");
+    test("create table dfs_test.tmp.arina as select n_nationkey from cp.`tpch/nation.parquet`");
+    System.out.println("arina");
+    // getDfsTestTmpSchemaLocation()
+  }
+
+  @Test
+  public void testCTAS_parquet_select() throws Exception {
+    test("select n_nationkey from cp.`tpch/nation.parquet`");
+  }
+
+  @Test
+  public void testInsert() throws Exception {
+    test("create table dfs_test.tmp.arina as select n_nationkey from cp.`tpch/nation.parquet`");
+    test("use dfs_test.tmp");
+    test("insert into arina (n_nationkey, val) select n_nationkey, 'ARINA' from cp.`tpch/nation.parquet`");
+  }
+
+  @Test
+  public void testInsertWithPartition() throws Exception {
+    test("insert into dfs_test.tmp.arina partition by (n_nationkey) select n_nationkey from cp.`tpch/nation.parquet`");
+  }
+
   @Test // DRILL-2422
   public void createTableWhenAViewWithSameNameAlreadyExists() throws Exception{
     final String newTblName = "createTableWhenAViewWithSameNameAlreadyExists";

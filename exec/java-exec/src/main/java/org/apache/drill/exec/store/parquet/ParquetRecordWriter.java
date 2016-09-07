@@ -24,6 +24,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.common.expression.SchemaPath;
@@ -47,7 +49,9 @@ import org.apache.drill.exec.vector.BitVector;
 import org.apache.drill.exec.vector.complex.reader.FieldReader;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.impl.ColumnWriteStoreV1;
@@ -102,7 +106,7 @@ public class ParquetRecordWriter extends ParquetOutputRecordWriter {
   private Configuration conf;
   private String location;
   private String prefix;
-  private int index = 0;
+  private int index;
   private OperatorContext oContext;
   private List<String> partitionColumns;
   private boolean hasPartitions;
@@ -147,6 +151,32 @@ public class ParquetRecordWriter extends ParquetOutputRecordWriter {
     }
 
     enableDictionary = Boolean.parseBoolean(writerOptions.get(ExecConstants.PARQUET_WRITER_ENABLE_DICTIONARY_ENCODING));
+
+    this.index = setIndex();
+
+  }
+
+  private int setIndex() throws IOException {
+    Path path = new Path(location);
+    FileSystem fs = FileSystem.get(conf);
+    int index = -1;
+    if (fs.exists(path)) {
+      Pattern pattern = Pattern.compile(prefix + "_(\\d+)" + "\\.parquet");
+      RemoteIterator<LocatedFileStatus> iterator = fs.listFiles(path, false);
+      while (iterator.hasNext()) {
+        LocatedFileStatus fileStatus = iterator.next();
+        String name = fileStatus.getPath().getName();
+        Matcher matcher = pattern.matcher(name);
+        if (matcher.find()) {
+          String group = matcher.group(1);
+          int i = Integer.parseInt(group);
+          if (i > index) {
+            index = i;
+          }
+        }
+      }
+    }
+    return ++index;
   }
 
   private boolean containsComplexVectors(BatchSchema schema) {
