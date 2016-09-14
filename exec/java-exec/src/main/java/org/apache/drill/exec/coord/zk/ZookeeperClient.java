@@ -187,6 +187,7 @@ public class ZookeeperClient implements AutoCloseable {
       // we make a consistent read to ensure this call won't fail upon consecutive calls on the same path
       // before cache is updated
       boolean hasNode = hasPath(path, true);
+      //////////////
       if (!hasNode) {
         try {
           curator.create().withMode(mode).forPath(target, data);
@@ -202,6 +203,35 @@ public class ZookeeperClient implements AutoCloseable {
         curator.setData().forPath(target, data);
       }
       getCache().rebuildNode(target);
+    } catch (final Exception e) {
+      throw new DrillRuntimeException("unable to put ", e);
+    }
+  }
+
+  /**
+   * Puts the given byte sequence into the given path if path is does not exist.
+   *
+   * @param path  target path
+   * @param data  data to store
+   * @return null if path was created, else data stored for the given path
+   */
+  public byte[] putIfAbsent(final String path, final byte[] data) {
+    Preconditions.checkNotNull(path, "path is required");
+    Preconditions.checkNotNull(data, "data is required");
+
+    final String target = PathUtils.join(root, path);
+    try {
+      boolean hasNode = hasPath(path, true);
+      if (!hasNode) {
+        try {
+          curator.create().withMode(mode).forPath(target, data);
+          getCache().rebuildNode(target);
+          return null;
+        } catch (NodeExistsException e) {
+          // do nothing
+        }
+      }
+      return curator.getData().forPath(path);
     } catch (final Exception e) {
       throw new DrillRuntimeException("unable to put ", e);
     }

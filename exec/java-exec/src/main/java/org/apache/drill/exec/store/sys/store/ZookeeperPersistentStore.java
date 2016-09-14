@@ -87,17 +87,13 @@ public class ZookeeperPersistentStore<V> extends BasePersistentStore<V> {
 
   @Override
   public boolean putIfAbsent(final String key, final V value) {
-    final V old = get(key);
-    if (old == null) {
-      try {
-        final byte[] bytes = config.getSerializer().serialize(value);
-        client.put(key, bytes);
-        return true;
-      } catch (final IOException e) {
-        throw new DrillRuntimeException(String.format("unable to serialize value of type %s", value.getClass()), e);
-      }
+    try {
+      final byte[] bytes = config.getSerializer().serialize(value);
+      final byte[] data = client.putIfAbsent(key, bytes);
+      return data == null;
+    } catch (final IOException e) {
+      throw new DrillRuntimeException(String.format("unable to serialize value of type %s", value.getClass()), e);
     }
-    return false;
   }
 
   @Override
