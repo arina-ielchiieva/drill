@@ -135,7 +135,7 @@ public class TextFormatPlugin extends EasyFormatPlugin<TextFormatPlugin.TextForm
   public static class TextFormatConfig implements FormatPluginConfig {
 
     public List<String> extensions = ImmutableList.of();
-    public String lineDelimiter = "\n";
+    public String lineDelimiter = "\r\n";
     public char fieldDelimiter = '\n';
     public char quote = '"';
     public char escape = '"';
