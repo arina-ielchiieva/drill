@@ -233,6 +233,7 @@ public class FragmentContext implements AutoCloseable, UdfUtilities {
             isImpersonationEnabled ? queryContext.getQueryUserName() : ImpersonationUtil.getProcessUserName(),
             queryContext)
         .setIgnoreAuthErrors(isImpersonationEnabled)
+        //todo is it the same uuid we had in foreman?
         .build();
 
     return queryContext.getRootSchema(schemaConfig);

@@ -48,8 +48,10 @@ public class SqlCreateTable extends DrillSqlCall {
   public static final SqlSpecialOperator OPERATOR = new SqlSpecialOperator("CREATE_TABLE", SqlKind.OTHER) {
     @Override
     public SqlCall createCall(SqlLiteral functionQualifier, SqlParserPos pos, SqlNode... operands) {
-      Preconditions.checkArgument(operands.length == 4, "SqlCreateTable.createCall() has to get 4 operands!");
-      return new SqlCreateTable(pos, (SqlIdentifier) operands[0], (SqlNodeList) operands[1], (SqlNodeList) operands[2], operands[3]);
+      Preconditions.checkArgument(operands.length == 5, "SqlCreateTable.createCall() has to get 5 operands!");
+      return new SqlCreateTable(pos, (SqlIdentifier) operands[0],
+          (SqlNodeList) operands[1], (SqlNodeList) operands[2],
+          operands[3], (SqlLiteral) operands[4]);
     }
   };
 
@@ -57,13 +59,19 @@ public class SqlCreateTable extends DrillSqlCall {
   private final SqlNodeList fieldList;
   private final SqlNodeList partitionColumns;
   private final SqlNode query;
+  private final boolean isTemporary;
 
-  public SqlCreateTable(SqlParserPos pos, SqlIdentifier tblName, SqlNodeList fieldList, SqlNodeList partitionColumns, SqlNode query) {
+  public SqlCreateTable(SqlParserPos pos, SqlIdentifier tblName, SqlNodeList fieldList, SqlNodeList partitionColumns, SqlNode query, SqlLiteral isTemporary) {
+    this(pos, tblName, fieldList, partitionColumns, query, isTemporary.booleanValue());
+  }
+
+  public SqlCreateTable(SqlParserPos pos, SqlIdentifier tblName, SqlNodeList fieldList, SqlNodeList partitionColumns, SqlNode query, boolean isTemporary) {
     super(pos);
     this.tblName = tblName;
     this.fieldList = fieldList;
     this.partitionColumns = partitionColumns;
     this.query = query;
+    this.isTemporary = isTemporary;
   }
 
   @Override
@@ -78,12 +86,16 @@ public class SqlCreateTable extends DrillSqlCall {
     ops.add(fieldList);
     ops.add(partitionColumns);
     ops.add(query);
+    ops.add(SqlLiteral.createBoolean(isTemporary, SqlParserPos.ZERO));
     return ops;
   }
 
   @Override
   public void unparse(SqlWriter writer, int leftPrec, int rightPrec) {
     writer.keyword("CREATE");
+    if (isTemporary) {
+      writer.keyword("TEMPORARY");
+    }
     writer.keyword("TABLE");
     tblName.unparse(writer, leftPrec, rightPrec);
     if (fieldList.size() > 0) {
@@ -141,5 +153,7 @@ public class SqlCreateTable extends DrillSqlCall {
   }
 
   public SqlNode getQuery() { return query; }
+
+  public boolean isTemporary() { return isTemporary; }
 
 }

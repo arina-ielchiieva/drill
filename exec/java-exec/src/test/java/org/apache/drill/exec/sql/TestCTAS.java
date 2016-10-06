@@ -19,9 +19,11 @@ package org.apache.drill.exec.sql;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.drill.BaseTestQuery;
+import org.apache.drill.exec.rpc.user.QueryDataBatch;
 import org.junit.Test;
 
 import java.io.File;
+import java.util.List;
 
 public class TestCTAS extends BaseTestQuery {
   @Test // DRILL-2589
@@ -233,6 +235,52 @@ public class TestCTAS extends BaseTestQuery {
           .sqlBaselineQuery(baselineQuery)
           .build()
           .run();
+    } finally {
+      FileUtils.deleteQuietly(new File(getDfsTestTmpSchemaLocation(), newTblName));
+    }
+  }
+
+  @Test
+  public void test() throws Exception {
+    final String newTblName = "nation_ctas";
+
+    try {
+      final String ctasQuery = String.format("CREATE temporary TABLE %s.%s   " +
+              "partition by (n_regionkey) AS SELECT n_nationkey, n_regionkey from cp.`tpch/nation.parquet` order by n_nationkey limit 1",
+          TEMP_SCHEMA, newTblName);
+
+      setColumnWidths(new int[] {40});
+      List<QueryDataBatch> res = testSqlWithResults(ctasQuery);
+      printResult(res);
+
+      final String ctasQuery1 = String.format("CREATE TABLE %s.%s   " + "partition by (n_regionkey) AS SELECT n_nationkey, n_regionkey from cp.`tpch/nation.parquet` " +
+          "order by n_nationkey limit 1", TEMP_SCHEMA, "mytable");
+     // test(ctasQuery1);
+
+      //final String selectFromCreatedTable = String.format(" select * from %s.%s", TEMP_SCHEMA, newTblName + "_arina");
+      final String selectFromCreatedTable = String.format(" select * from %s.%s", TEMP_SCHEMA, newTblName);
+      final String baselineQuery = "select n_nationkey, n_regionkey from cp.`tpch/nation.parquet` order by n_nationkey limit 1";
+
+      testBuilder()
+          .sqlQuery(selectFromCreatedTable)
+          .ordered()
+          .sqlBaselineQuery(baselineQuery)
+          .build()
+          .run();
+
+      setColumnWidths(new int[] {40});
+      List<QueryDataBatch> res2 = testSqlWithResults(String.format("drop table %s.%s", TEMP_SCHEMA, newTblName));
+      printResult(res2);
+
+/*      final String selectFromCreatedTable2 = String.format(" select * from %s.%s", TEMP_SCHEMA, newTblName + "_" + "1");
+
+      testBuilder()
+          .sqlQuery(selectFromCreatedTable2)
+          .ordered()
+          .sqlBaselineQuery(baselineQuery)
+          .build()
+          .run();*/
+
     } finally {
       FileUtils.deleteQuietly(new File(getDfsTestTmpSchemaLocation(), newTblName));
     }

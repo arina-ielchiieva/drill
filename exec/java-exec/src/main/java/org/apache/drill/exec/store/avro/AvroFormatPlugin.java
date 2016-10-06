@@ -103,7 +103,7 @@ public class AvroFormatPlugin extends EasyFormatPlugin<AvroFormatConfig> {
     @Override
     public DrillTable isReadable(DrillFileSystem fs,
         FileSelection selection, FileSystemPlugin fsPlugin,
-        String storageEngineName, String userName) throws IOException {
+        String storageEngineName, String userName, boolean isLocal) throws IOException {
       if (isFileReadable(fs, selection.getFirstPath(fs))) {
         if (plugin.getName() != null) {
           NamedFormatPluginConfig namedConfig = new NamedFormatPluginConfig();

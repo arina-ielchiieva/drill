@@ -66,24 +66,46 @@ public class DropTableHandler extends DefaultSqlHandler {
       drillSchema = SchemaUtilites.resolveToMutableDrillSchema(defaultSchema, dropTableNode.getSchema());
     }
 
-    String tableName = dropTableNode.getName();
+    String originalTableName = dropTableNode.getName();
     if (drillSchema == null) {
       throw UserException.validationError()
-          .message("Invalid table_name [%s]", tableName)
+          .message("Invalid table_name [%s]", originalTableName)
           .build(logger);
     }
 
-    if (dropTableNode.checkTableExistence()) {
-      final Table tableToDrop = SqlHandlerUtil.getTableFromSchema(drillSchema, tableName);
-      if (tableToDrop == null || tableToDrop.getJdbcTableType() != Schema.TableType.TABLE) {
-        return DirectPlan.createDirectPlan(context, true,
-            String.format("Table [%s] not found", tableName));
+    final Table tableToDrop = SqlHandlerUtil.getTableFromSchema(drillSchema, originalTableName);
+    final Schema.TableType tableType = tableToDrop != null ? tableToDrop.getJdbcTableType() : null;
+    final String tableName = getTableName(originalTableName, tableType, drillSchema.getFullSchemaName());
+
+    if (tableName == null) {
+      String errorMessage = String.format("Table [%s] not found", originalTableName);
+      if (dropTableNode.checkTableExistence()) {
+        return DirectPlan.createDirectPlan(context, false, errorMessage);
+      } else {
+        throw UserException.validationError()
+            .message(errorMessage)
+            .build(logger);
       }
     }
 
     drillSchema.dropTable(tableName);
+    context.getSession().removeTemporaryTable(drillSchema.getFullSchemaName(), tableName);
 
+    //todo can we enhance add temporary table was dropped message
     return DirectPlan.createDirectPlan(context, true,
-        String.format("Table [%s] %s", tableName, "dropped"));
+        String.format("Table [%s] %s", originalTableName, "dropped"));
   }
+
+  private String getTableName(String originalTableName, Schema.TableType tableType, String fullSchemaName) {
+    String tableName = null;
+      if (tableType == Schema.TableType.LOCAL_TEMPORARY) {
+        // if local table replace with local name
+        tableName = context.getSession().findTemporaryTable(fullSchemaName, originalTableName);
+      } else if (tableType == Schema.TableType.TABLE) {
+        // if regular table set original name
+        tableName = originalTableName;
+      }
+    return tableName;
+  }
+
 }

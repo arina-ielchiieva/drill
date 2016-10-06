@@ -28,7 +28,7 @@ public abstract class FormatMatcher {
   public abstract boolean supportDirectoryReads();
   public abstract DrillTable isReadable(DrillFileSystem fs,
       FileSelection selection, FileSystemPlugin fsPlugin,
-      String storageEngineName, String userName) throws IOException;
+      String storageEngineName, String userName, boolean isLocal) throws IOException;
   public abstract boolean isFileReadable(DrillFileSystem fs, FileStatus status) throws IOException;
   public abstract FormatPlugin getFormatPlugin();
 }

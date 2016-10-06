@@ -34,6 +34,7 @@ import com.google.common.collect.Maps;
 import org.apache.calcite.adapter.enumerable.EnumerableTableScan;
 import org.apache.calcite.prepare.RelOptTableImpl;
 import org.apache.calcite.rel.core.TableScan;
+import org.apache.calcite.schema.Schema;
 import org.apache.calcite.util.BitSets;
 import org.apache.calcite.util.Pair;
 import org.apache.drill.common.expression.SchemaPath;
@@ -258,7 +259,8 @@ public class FileSystemPartitionDescriptor extends AbstractPartitionDescriptor {
     final DrillTranslatableTable newTable = new DrillTranslatableTable(
             new DynamicDrillTable(table.getPlugin(), table.getStorageEngineName(),
             table.getUserName(),
-            newFormatSelection));
+            newFormatSelection,
+            table.getJdbcTableType() == Schema.TableType.LOCAL_TEMPORARY));
     final RelOptTableImpl newOptTableImpl = RelOptTableImpl.create(t.getRelOptSchema(), t.getRowType(), newTable);
 
     // return an EnumerableTableScan with fileSelection being part of digest of TableScan node.

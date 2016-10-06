@@ -164,6 +164,7 @@ public abstract class RpcBus<T extends EnumLite, C extends RemoteConnection> imp
       }
 
       final ChannelClosedException ex = future.cause() != null ? new ChannelClosedException(msg, future.cause()) : new ChannelClosedException(msg);
+      clientConnection.close();
       clientConnection.channelClosed(ex);
     }
 

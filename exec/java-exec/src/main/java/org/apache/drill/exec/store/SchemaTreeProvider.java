@@ -66,6 +66,7 @@ public class SchemaTreeProvider implements AutoCloseable {
    * @param schemaConfig
    * @return
    */
+  //todo do we need here uuid?
   public SchemaPlus createRootSchema(SchemaConfig schemaConfig) {
     try {
       final SchemaPlus rootSchema = SimpleCalciteSchema.createRootSchema(false);

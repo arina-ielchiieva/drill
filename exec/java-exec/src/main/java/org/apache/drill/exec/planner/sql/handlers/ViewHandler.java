@@ -79,6 +79,7 @@ public abstract class ViewHandler extends DefaultSqlHandler {
           SchemaUtilites.getSchemaPathAsList(defaultSchema));
 
       final Table existingTable = SqlHandlerUtil.getTableFromSchema(drillSchema, newViewName);
+      //todo make sure we can't create view over temporary table
 
       if (existingTable != null) {
         if (existingTable.getJdbcTableType() != Schema.TableType.VIEW) {

@@ -187,7 +187,7 @@ public class MongoSchemaFactory implements SchemaFactory {
 
     DrillTable getDrillTable(String dbName, String collectionName) {
       MongoScanSpec mongoScanSpec = new MongoScanSpec(dbName, collectionName);
-      return new DynamicDrillTable(plugin, schemaName, null, mongoScanSpec);
+      return new DynamicDrillTable(plugin, schemaName, null, mongoScanSpec, false);
     }
 
     @Override

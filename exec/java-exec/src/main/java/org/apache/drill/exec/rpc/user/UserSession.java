@@ -20,6 +20,8 @@ package org.apache.drill.exec.rpc.user;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Preconditions;
@@ -37,8 +39,9 @@ import org.apache.drill.exec.server.options.OptionManager;
 import org.apache.drill.exec.server.options.SessionOptionManager;
 
 import com.google.common.collect.Maps;
+import org.apache.drill.exec.store.AbstractSchema;
 
-public class UserSession {
+public class UserSession implements AutoCloseable {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(UserSession.class);
 
   public static final String SCHEMA = "schema";
@@ -54,6 +57,22 @@ public class UserSession {
   private Map<String, String> properties;
   private OptionManager sessionOptions;
   private final AtomicInteger queryCount;
+  private final String uuid;
+  //full schema name
+  private final ConcurrentMap<String, ConcurrentMap<String, AbstractSchema>> temporaryTables;
+
+  @Override
+  public void close() {
+    for (Map.Entry<String, ConcurrentMap<String, AbstractSchema>> schemaEntry : temporaryTables.entrySet()) {
+      for (Map.Entry<String, AbstractSchema> tableEntry : schemaEntry.getValue().entrySet()) {
+        try {
+          tableEntry.getValue().dropTable(tableEntry.getKey());
+        } catch (Exception e) {
+          logger.warn("Problem during temporary table drop", e);
+        }
+      }
+    }
+  }
 
   /**
    * Implementations of this interface are allowed to increment queryCount.
@@ -115,6 +134,8 @@ public class UserSession {
 
   private UserSession() {
     queryCount = new AtomicInteger(0);
+    uuid = UUID.randomUUID().toString();
+    temporaryTables = Maps.newConcurrentMap();
   }
 
   public boolean isSupportComplexTypes() {
@@ -159,6 +180,41 @@ public class UserSession {
   public int getQueryCount() {
     return queryCount.get();
   }
+
+  public String getUuid() { return uuid; }
+
+  public String addTemporaryTable(AbstractSchema schema, String tableName) {
+    final String temporaryTableName = generateTemporaryTableName(tableName);
+    final ConcurrentMap<String, AbstractSchema> newValues = Maps.newConcurrentMap();
+    newValues.put(temporaryTableName, schema);
+    final ConcurrentMap<String, AbstractSchema> oldValues = temporaryTables.putIfAbsent(schema.getFullSchemaName(), newValues);
+    if (oldValues != null) {
+      oldValues.putAll(newValues);
+    }
+    return temporaryTableName;
+  }
+
+  public String findTemporaryTable(String fullSchemaName, String tableName) {
+    final String temporaryTableName = generateTemporaryTableName(tableName);
+    final ConcurrentMap<String, AbstractSchema> tables = temporaryTables.get(fullSchemaName);
+    if (tables != null && tables.get(temporaryTableName) == null) {
+      return null;
+    }
+    return temporaryTableName;
+  }
+
+  public void removeTemporaryTable(String fullSchemaName, String temporaryTableName) {
+    final ConcurrentMap<String, AbstractSchema> tables = temporaryTables.get(fullSchemaName);
+    if (tables != null && tables.get(temporaryTableName) != null) {
+      tables.remove(temporaryTableName);
+    }
+  }
+
+
+  private String generateTemporaryTableName(String tableName) {
+    return tableName + "_" + uuid;
+  }
+
 
   /**
    * Update the schema path for the session.

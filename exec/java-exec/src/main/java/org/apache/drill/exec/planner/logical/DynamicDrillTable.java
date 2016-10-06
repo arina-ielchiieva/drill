@@ -17,6 +17,7 @@
  */
 package org.apache.drill.exec.planner.logical;
 
+import org.apache.calcite.schema.Schema.TableType;
 import org.apache.drill.exec.planner.types.RelDataTypeDrillImpl;
 import org.apache.drill.exec.planner.types.RelDataTypeHolder;
 import org.apache.drill.exec.store.StoragePlugin;
@@ -27,9 +28,12 @@ public class DynamicDrillTable extends DrillTable{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DynamicDrillTable.class);
 
   private RelDataTypeHolder holder = new RelDataTypeHolder();
+  private TableType type;
 
-  public DynamicDrillTable(StoragePlugin plugin, String storageEngineName, String userName, Object selection) {
+
+  public DynamicDrillTable(StoragePlugin plugin, String storageEngineName, String userName, Object selection, boolean isLocal) {
     super(storageEngineName, plugin, userName, selection);
+    this.type = defineTableType(isLocal);
   }
 
   /**
@@ -37,12 +41,23 @@ public class DynamicDrillTable extends DrillTable{
    * process. Once we add impersonation to non-FileSystem storage plugins such as Hive, HBase etc,
    * we can remove this constructor.
    */
-  public DynamicDrillTable(StoragePlugin plugin, String storageEngineName, Object selection) {
+  public DynamicDrillTable(StoragePlugin plugin, String storageEngineName, Object selection, boolean isLocal) {
     super(storageEngineName, plugin, selection);
+    this.type = defineTableType(isLocal);
+  }
+
+  @Override
+  public TableType getJdbcTableType() {
+    return type;
   }
 
   @Override
   public RelDataType getRowType(RelDataTypeFactory typeFactory) {
     return new RelDataTypeDrillImpl(holder, typeFactory);
   }
+
+  private TableType defineTableType(boolean isLocal) {
+    return isLocal ? TableType.LOCAL_TEMPORARY : TableType.TABLE;
+  }
+
 }

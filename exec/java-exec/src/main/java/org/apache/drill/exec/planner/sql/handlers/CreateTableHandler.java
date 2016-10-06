@@ -49,6 +49,7 @@ import org.apache.drill.exec.planner.physical.visitor.BasePrelVisitor;
 import org.apache.drill.exec.planner.sql.DrillSqlOperator;
 import org.apache.drill.exec.planner.sql.SchemaUtilites;
 import org.apache.drill.exec.planner.sql.parser.SqlCreateTable;
+import org.apache.drill.exec.rpc.user.UserSession;
 import org.apache.drill.exec.store.AbstractSchema;
 import org.apache.drill.exec.util.Pointer;
 import org.apache.drill.exec.work.foreman.ForemanSetupException;
@@ -67,7 +68,7 @@ public class CreateTableHandler extends DefaultSqlHandler {
   @Override
   public PhysicalPlan getPlan(SqlNode sqlNode) throws ValidationException, RelConversionException, IOException, ForemanSetupException {
     SqlCreateTable sqlCreateTable = unwrap(sqlNode, SqlCreateTable.class);
-    final String newTblName = sqlCreateTable.getName();
+    String newTblName = sqlCreateTable.getName();
 
     final ConvertedRelNode convertedRelNode = validateAndConvert(sqlCreateTable.getQuery());
     final RelDataType validatedRowType = convertedRelNode.getValidatedRowType();
@@ -86,6 +87,12 @@ public class CreateTableHandler extends DefaultSqlHandler {
       throw UserException.validationError()
           .message("A table or view with given name [%s] already exists in schema [%s]", newTblName, schemaPath)
           .build(logger);
+    }
+
+    // generating unique name for table and adding it to list of session tables
+    if (sqlCreateTable.isTemporary()) {
+      final UserSession session = context.getSession();
+      newTblName = session.addTemporaryTable(drillSchema, newTblName);
     }
 
     final RelNode newTblRelNodeWithPCol = SqlHandlerUtil.qualifyPartitionCol(newTblRelNode, sqlCreateTable.getPartitionColumns());

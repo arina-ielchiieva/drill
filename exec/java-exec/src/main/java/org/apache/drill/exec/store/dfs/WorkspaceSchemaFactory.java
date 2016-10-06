@@ -38,6 +38,7 @@ import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
 import org.apache.calcite.schema.Function;
 import org.apache.calcite.schema.FunctionParameter;
+import org.apache.calcite.schema.Schema;
 import org.apache.calcite.schema.Table;
 import org.apache.calcite.schema.TableMacro;
 import org.apache.calcite.schema.TranslatableTable;
@@ -219,7 +220,7 @@ public class WorkspaceSchemaFactory {
 
     @Override
     public TranslatableTable apply(List<Object> arguments) {
-      return new DrillTranslatableTable(schema.getDrillTable(new TableInstance(sig, arguments)));
+      return new DrillTranslatableTable(schema.getAnyDrillTable(sig, arguments));
     }
 
   }
@@ -231,8 +232,9 @@ public class WorkspaceSchemaFactory {
   static final class TableInstance {
     final TableSignature sig;
     final List<Object> params;
+    final boolean isLocal;
 
-    TableInstance(TableSignature sig, List<Object> params) {
+    TableInstance(TableSignature sig, List<Object> params, boolean isLocal) {
       super();
       if (params.size() != sig.params.size()) {
         throw UserException.parseError()
@@ -244,6 +246,7 @@ public class WorkspaceSchemaFactory {
       }
       this.sig = sig;
       this.params = unmodifiableList(params);
+      this.isLocal = isLocal;
     }
 
     String presentParams() {
@@ -266,7 +269,7 @@ public class WorkspaceSchemaFactory {
     }
 
     private Object[] toArray() {
-      return array(sig, params);
+      return array(sig, params, isLocal);
     }
 
     @Override
@@ -284,7 +287,8 @@ public class WorkspaceSchemaFactory {
 
     @Override
     public String toString() {
-      return sig.name + (params.size() == 0 ? "" : presentParams());
+      String type = isLocal ? "Temporary table " : "Table ";
+      return type + sig.name + (params.size() == 0 ? "" : presentParams());
     }
   }
 
@@ -380,6 +384,11 @@ public class WorkspaceSchemaFactory {
 
     DrillTable getDrillTable(TableInstance key) {
       return tables.get(key);
+    }
+
+    DrillTable getAnyDrillTable(TableSignature sig, List<Object> arguments) {
+      DrillTable table = getDrillTable(new TableInstance(sig, arguments, false));
+      return table == null ? getDrillTable(new TableInstance(sig, arguments, true)) : table;
     }
 
     @Override
@@ -478,10 +487,17 @@ public class WorkspaceSchemaFactory {
 
     @Override
     public Table getTable(String tableName) {
-      TableInstance tableKey = new TableInstance(new TableSignature(tableName), ImmutableList.of());
+      TableInstance tableKey = new TableInstance(new TableSignature(tableName), ImmutableList.of(), false);
       // first check existing tables.
       if (tables.alreadyContainsKey(tableKey)) {
         return tables.get(tableKey);
+      }
+
+      // look for temporary tables
+      final String tmpTable = tableName + "_" + schemaConfig.getUuid();
+      TableInstance tmpTableKey = new TableInstance(new TableSignature(tmpTable), ImmutableList.of(), true);
+      if (tables.alreadyContainsKey(tmpTableKey)) {
+        return tables.get(tmpTableKey);
       }
 
       // then look for files that start with this name and end in .drill.
@@ -521,7 +537,7 @@ public class WorkspaceSchemaFactory {
         logger.debug("The filesystem for this workspace does not support this operation.", e);
       }
 
-      return tables.get(tableKey);
+      return tables.get(tableKey) == null ? tables.get(tmpTableKey) : tables.get(tableKey);
     }
 
     @Override
@@ -559,8 +575,8 @@ public class WorkspaceSchemaFactory {
       return FileSystemConfig.NAME;
     }
 
-    private DrillTable isReadable(FormatMatcher m, FileSelection fileSelection) throws IOException {
-      return m.isReadable(fs, fileSelection, plugin, storageEngineName, schemaConfig.getUserName());
+    private DrillTable isReadable(FormatMatcher m, FileSelection fileSelection, boolean isLocal) throws IOException {
+      return m.isReadable(fs, fileSelection, plugin, storageEngineName, schemaConfig.getUserName(), isLocal);
     }
 
     @Override
@@ -576,12 +592,12 @@ public class WorkspaceSchemaFactory {
           FormatPluginConfig fconfig = optionExtractor.createConfigForTable(key);
           return new DynamicDrillTable(
               plugin, storageEngineName, schemaConfig.getUserName(),
-              new FormatSelection(fconfig, fileSelection));
+              new FormatSelection(fconfig, fileSelection), key.isLocal);
         }
         if (hasDirectories) {
           for (final FormatMatcher matcher : dirMatchers) {
             try {
-              DrillTable table = matcher.isReadable(fs, fileSelection, plugin, storageEngineName, schemaConfig.getUserName());
+              DrillTable table = matcher.isReadable(fs, fileSelection, plugin, storageEngineName, schemaConfig.getUserName(), key.isLocal);
               if (table != null) {
                 return table;
               }
@@ -597,7 +613,7 @@ public class WorkspaceSchemaFactory {
         }
 
         for (final FormatMatcher matcher : fileMatchers) {
-          DrillTable table = matcher.isReadable(fs, newSelection, plugin, storageEngineName, schemaConfig.getUserName());
+          DrillTable table = matcher.isReadable(fs, newSelection, plugin, storageEngineName, schemaConfig.getUserName(), key.isLocal);
           if (table != null) {
             return table;
           }

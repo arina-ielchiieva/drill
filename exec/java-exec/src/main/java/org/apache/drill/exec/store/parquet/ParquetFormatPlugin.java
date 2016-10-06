@@ -210,7 +210,7 @@ public class ParquetFormatPlugin implements FormatPlugin{
 
     @Override
     public DrillTable isReadable(DrillFileSystem fs, FileSelection selection,
-        FileSystemPlugin fsPlugin, String storageEngineName, String userName)
+        FileSystemPlugin fsPlugin, String storageEngineName, String userName, boolean isLocal)
         throws IOException {
       if(selection.containsDirectories(fs)) {
         Path dirMetaPath = new Path(selection.getSelectionRoot(), Metadata.METADATA_DIRECTORIES_FILENAME);
@@ -229,15 +229,15 @@ public class ParquetFormatPlugin implements FormatPlugin{
             dirSelection.setMetaContext(metaContext);
 
             return new DynamicDrillTable(fsPlugin, storageEngineName, userName,
-                new FormatSelection(plugin.getConfig(), dirSelection));
+                new FormatSelection(plugin.getConfig(), dirSelection), isLocal);
           }
         }
         if(isDirReadable(fs, selection.getFirstPath(fs))) {
           return new DynamicDrillTable(fsPlugin, storageEngineName, userName,
-              new FormatSelection(plugin.getConfig(), selection));
+              new FormatSelection(plugin.getConfig(), selection), isLocal);
         }
       }
-      return super.isReadable(fs, selection, fsPlugin, storageEngineName, userName);
+      return super.isReadable(fs, selection, fsPlugin, storageEngineName, userName, isLocal);
     }
 
     private Path getMetadataPath(FileStatus dir) {

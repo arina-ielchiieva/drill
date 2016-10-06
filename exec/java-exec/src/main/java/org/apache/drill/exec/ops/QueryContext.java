@@ -207,6 +207,11 @@ public class QueryContext implements AutoCloseable, OptimizerRulesContext, Schem
     return getOptions().getOption(optionKey);
   }
 
+  @Override
+  public String getUuid() {
+    return session.getUuid();
+  }
+
   public boolean isImpersonationEnabled() {
      return getConfig().getBoolean(ExecConstants.IMPERSONATION_ENABLED);
   }

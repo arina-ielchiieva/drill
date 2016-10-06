@@ -52,7 +52,7 @@ public abstract class TableFormatMatcher extends FormatMatcher {
     }
 
     return new DynamicDrillTable(fsPlugin, storageEngineName, userName,
-        new FormatSelection(getFormatPlugin().getConfig(), selection));
+        new FormatSelection(getFormatPlugin().getConfig(), selection), false);
   }
 
   @Override
