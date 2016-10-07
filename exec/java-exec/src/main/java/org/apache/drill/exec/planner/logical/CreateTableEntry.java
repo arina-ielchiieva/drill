@@ -41,4 +41,6 @@ public interface CreateTableEntry {
   Writer getWriter(PhysicalOperator child) throws IOException;
 
   List<String> getPartitionColumns();
+
+  String getPermissions();
 }

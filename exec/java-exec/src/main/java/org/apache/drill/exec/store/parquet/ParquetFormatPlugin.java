@@ -123,14 +123,15 @@ public class ParquetFormatPlugin implements FormatPlugin{
   }
 
   @Override
-  public AbstractWriter getWriter(PhysicalOperator child, String location, List<String> partitionColumns) throws IOException {
-    return new ParquetWriter(child, location, partitionColumns, this);
+  public AbstractWriter getWriter(PhysicalOperator child, String location, List<String> partitionColumns, String permissions) throws IOException {
+    return new ParquetWriter(child, location, partitionColumns, permissions, this);
   }
 
   public RecordWriter getRecordWriter(FragmentContext context, ParquetWriter writer) throws IOException, OutOfMemoryException {
     Map<String, String> options = Maps.newHashMap();
 
     options.put("location", writer.getLocation());
+    options.put("permissions", writer.getPermissions());
 
     FragmentHandle handle = context.getHandle();
     String fragmentId = String.format("%d_%d", handle.getMajorFragmentId(), handle.getMinorFragmentId());

@@ -46,8 +46,10 @@ import org.apache.drill.exec.store.ParquetOutputRecordWriter;
 import org.apache.drill.exec.vector.BitVector;
 import org.apache.drill.exec.vector.complex.reader.FieldReader;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.impl.ColumnWriteStoreV1;
@@ -101,6 +103,8 @@ public class ParquetRecordWriter extends ParquetOutputRecordWriter {
   private BatchSchema batchSchema;
 
   private Configuration conf;
+  private FileSystem fs;
+  private FsPermission permissions;
   private String location;
   private String prefix;
   private int index = 0;
@@ -126,6 +130,13 @@ public class ParquetRecordWriter extends ParquetOutputRecordWriter {
 
     conf = new Configuration();
     conf.set(FileSystem.FS_DEFAULT_NAME_KEY, writerOptions.get(FileSystem.FS_DEFAULT_NAME_KEY));
+    fs = FileSystem.get(conf);
+    permissions = new FsPermission(writerOptions.get("permissions"));
+
+/*    Path locationPath = new Path(location);
+    fs.create(locationPath);
+    fs.setPermission(locationPath, permissions);*/
+
     blockSize = Integer.parseInt(writerOptions.get(ExecConstants.PARQUET_BLOCK_SIZE));
     pageSize = Integer.parseInt(writerOptions.get(ExecConstants.PARQUET_PAGE_SIZE));
     dictionaryPageSize= Integer.parseInt(writerOptions.get(ExecConstants.PARQUET_DICT_PAGE_SIZE));
@@ -364,6 +375,7 @@ public class ParquetRecordWriter extends ParquetOutputRecordWriter {
     if (parquetFileWriter == null) {
       Path path = new Path(location, prefix + "_" + index + ".parquet");
       parquetFileWriter = new ParquetFileWriter(conf, schema, path);
+      fs.setPermission(path, permissions);
       parquetFileWriter.start();
     }
 

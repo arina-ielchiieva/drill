@@ -63,8 +63,8 @@ public class SubSchemaWrapper extends AbstractSchema {
   }
 
   @Override
-  public CreateTableEntry createNewTable(String tableName, List<String> partitionColumns) {
-    return innerSchema.createNewTable(tableName, partitionColumns);
+  public CreateTableEntry createNewTable(String tableName, List<String> partitionColumns, String permissions) {
+    return innerSchema.createNewTable(tableName, partitionColumns, permissions);
   }
 
   @Override

@@ -42,6 +42,7 @@ public class EasyWriter extends AbstractWriter {
   private final String location;
   private final List<String> partitionColumns;
   private final EasyFormatPlugin<?> formatPlugin;
+  private final String permissions;
 
   @JsonCreator
   public EasyWriter(
@@ -50,6 +51,7 @@ public class EasyWriter extends AbstractWriter {
       @JsonProperty("partitionColumns") List<String> partitionColumns,
       @JsonProperty("storage") StoragePluginConfig storageConfig,
       @JsonProperty("format") FormatPluginConfig formatConfig,
+      @JsonProperty("permissions") String permissions,
       @JacksonInject StoragePluginRegistry engineRegistry) throws IOException, ExecutionSetupException {
 
     super(child);
@@ -57,17 +59,20 @@ public class EasyWriter extends AbstractWriter {
     Preconditions.checkNotNull(formatPlugin, "Unable to load format plugin for provided format config.");
     this.location = location;
     this.partitionColumns = partitionColumns;
+    this.permissions = permissions;
   }
 
   public EasyWriter(PhysicalOperator child,
                          String location,
                          List<String> partitionColumns,
+                         String permissions,
                          EasyFormatPlugin<?> formatPlugin) {
 
     super(child);
     this.formatPlugin = formatPlugin;
     this.location = location;
     this.partitionColumns = partitionColumns;
+    this.permissions = permissions;
   }
 
   @JsonProperty("location")
@@ -85,6 +90,11 @@ public class EasyWriter extends AbstractWriter {
     return formatPlugin.getConfig();
   }
 
+  @JsonProperty("permissions")
+  public String getPermissions(){
+    return permissions;
+  }
+
   @JsonIgnore
   public EasyFormatPlugin<?> getFormatPlugin(){
     return formatPlugin;
@@ -92,7 +102,7 @@ public class EasyWriter extends AbstractWriter {
 
   @Override
   protected PhysicalOperator getNewWithChild(PhysicalOperator child) {
-    return new EasyWriter(child, location, partitionColumns, formatPlugin);
+    return new EasyWriter(child, location, partitionColumns, permissions, formatPlugin);
   }
 
   @Override

@@ -89,10 +89,13 @@ public class CreateTableHandler extends DefaultSqlHandler {
           .build(logger);
     }
 
+    String permissions = "775";
+
     // generating unique name for table and adding it to list of session tables
     if (sqlCreateTable.isTemporary()) {
       final UserSession session = context.getSession();
       newTblName = session.addTemporaryTable(drillSchema, newTblName);
+      permissions = "700";
     }
 
     final RelNode newTblRelNodeWithPCol = SqlHandlerUtil.qualifyPartitionCol(newTblRelNode, sqlCreateTable.getPartitionColumns());
@@ -100,7 +103,8 @@ public class CreateTableHandler extends DefaultSqlHandler {
     log("Calcite", newTblRelNodeWithPCol, logger, null);
 
     // Convert the query to Drill Logical plan and insert a writer operator on top.
-    DrillRel drel = convertToDrel(newTblRelNodeWithPCol, drillSchema, newTblName, sqlCreateTable.getPartitionColumns(), newTblRelNode.getRowType());
+    DrillRel drel = convertToDrel(newTblRelNodeWithPCol, drillSchema, newTblName,
+        sqlCreateTable.getPartitionColumns(), newTblRelNode.getRowType(), permissions);
     Prel prel = convertToPrel(drel, newTblRelNode.getRowType(), sqlCreateTable.getPartitionColumns());
     logAndSetTextPlan("Drill Physical", prel, logger);
     PhysicalOperator pop = convertToPop(prel);
@@ -110,7 +114,12 @@ public class CreateTableHandler extends DefaultSqlHandler {
     return plan;
   }
 
-  private DrillRel convertToDrel(RelNode relNode, AbstractSchema schema, String tableName, List<String> partitionColumns, RelDataType queryRowType)
+  private DrillRel convertToDrel(RelNode relNode,
+                                 AbstractSchema schema,
+                                 String tableName,
+                                 List<String> partitionColumns,
+                                 RelDataType queryRowType,
+                                 String permissions)
       throws RelConversionException, SqlUnsupportedException {
     final DrillRel convertedRelNode = convertToDrel(relNode);
 
@@ -121,7 +130,7 @@ public class CreateTableHandler extends DefaultSqlHandler {
 
     final RelTraitSet traits = convertedRelNode.getCluster().traitSet().plus(DrillRel.DRILL_LOGICAL);
     final DrillWriterRel writerRel = new DrillWriterRel(convertedRelNode.getCluster(),
-        traits, topPreservedNameProj, schema.createNewTable(tableName, partitionColumns));
+        traits, topPreservedNameProj, schema.createNewTable(tableName, partitionColumns, permissions));
     return new DrillScreenRel(writerRel.getCluster(), writerRel.getTraitSet(), writerRel);
   }
 

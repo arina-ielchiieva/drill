@@ -244,9 +244,15 @@ public class TestCTAS extends BaseTestQuery {
   public void test() throws Exception {
     final String newTblName = "nation_ctas";
 
+    //test("ALTER SESSION SET `store.format`='json';");
+
     try {
-      final String ctasQuery = String.format("CREATE temporary TABLE %s.%s   " +
+/*      final String ctasQuery = String.format("CREATE temporary TABLE %s.%s   " +
               "partition by (n_regionkey) AS SELECT n_nationkey, n_regionkey from cp.`tpch/nation.parquet` order by n_nationkey limit 1",
+          TEMP_SCHEMA, newTblName);*/
+
+      final String ctasQuery = String.format("CREATE temporary TABLE %s.%s   " +
+              "AS SELECT n_nationkey, n_regionkey from cp.`tpch/nation.parquet` order by n_nationkey limit 1",
           TEMP_SCHEMA, newTblName);
 
       setColumnWidths(new int[] {40});

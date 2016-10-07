@@ -122,7 +122,7 @@ public abstract class AbstractSchema implements Schema, SchemaPartitionExplorer,
    * @param partitionColumns : list of partition columns. Empty list if there is no partition columns.
    * @return
    */
-  public CreateTableEntry createNewTable(String tableName, List<String> partitionColumns) {
+  public CreateTableEntry createNewTable(String tableName, List<String> partitionColumns, String permissions) {
     throw UserException.unsupportedError()
         .message("Creating new tables is not supported in schema [%s]", getSchemaPath())
         .build(logger);

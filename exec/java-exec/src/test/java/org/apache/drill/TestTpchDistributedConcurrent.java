@@ -30,6 +30,7 @@ import org.apache.drill.common.util.TestTools;
 import org.apache.drill.exec.proto.UserBitShared;
 import org.apache.drill.exec.proto.UserBitShared.QueryResult.QueryState;
 import org.apache.drill.exec.rpc.user.UserResultsListener;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -174,6 +175,7 @@ public class TestTpchDistributedConcurrent extends BaseTestQuery {
   }
 
   @Test
+  @Ignore
   public void testConcurrentQueries() throws Exception {
     QueryTestUtil.testRunAndPrint(client, UserBitShared.QueryType.SQL, alterSession);
 

@@ -47,28 +47,33 @@ public class FileSystemCreateTableEntry implements CreateTableEntry {
   private FormatPlugin formatPlugin;
   private String location;
   private final List<String> partitionColumns;
+  private final String permissions;
 
   @JsonCreator
   public FileSystemCreateTableEntry(@JsonProperty("storageConfig") FileSystemConfig storageConfig,
                                     @JsonProperty("formatConfig") FormatPluginConfig formatConfig,
                                     @JsonProperty("location") String location,
                                     @JsonProperty("partitionColumn") List<String> partitionColumns,
+                                    @JsonProperty("permissions") String permissions,
                                     @JacksonInject StoragePluginRegistry engineRegistry)
       throws ExecutionSetupException {
     this.storageConfig = storageConfig;
     this.formatPlugin = engineRegistry.getFormatPlugin(storageConfig, formatConfig);
     this.location = location;
     this.partitionColumns = partitionColumns;
+    this.permissions = permissions;
   }
 
   public FileSystemCreateTableEntry(FileSystemConfig storageConfig,
                                     FormatPlugin formatPlugin,
                                     String location,
-                                    List<String> partitionColumns) {
+                                    List<String> partitionColumns,
+                                    String permissions) {
     this.storageConfig = storageConfig;
     this.formatPlugin = formatPlugin;
     this.location = location;
     this.partitionColumns = partitionColumns;
+    this.permissions = permissions;
   }
 
   @JsonProperty("storageConfig")
@@ -89,11 +94,16 @@ public class FileSystemCreateTableEntry implements CreateTableEntry {
           formatPlugin.getName())).build(logger);
     }
 
-    return formatPlugin.getWriter(child, location, partitionColumns);
+    return formatPlugin.getWriter(child, location, partitionColumns, permissions);
   }
 
   @Override
   public List<String> getPartitionColumns() {
     return partitionColumns;
+  }
+
+  @Override
+  public String getPermissions() {
+    return permissions;
   }
 }

@@ -81,7 +81,7 @@ public class KuduSchemaFactory implements SchemaFactory {
       try {
         KuduTable table = plugin.getClient().openTable(name);
         Schema schema = table.getSchema();
-        return new DrillKuduTable(schemaName, plugin, schema, scanSpec);
+        return new DrillKuduTable(schemaName, plugin, schema, scanSpec, false);
       } catch (Exception e) {
         logger.warn("Failure while retrieving kudu table {}", name, e);
         return null;
@@ -101,7 +101,7 @@ public class KuduSchemaFactory implements SchemaFactory {
     }
 
     @Override
-    public CreateTableEntry createNewTable(final String tableName, List<String> partitionColumns) {
+    public CreateTableEntry createNewTable(final String tableName, List<String> partitionColumns, String permissions) {
       return new CreateTableEntry(){
 
         @Override
@@ -112,6 +112,11 @@ public class KuduSchemaFactory implements SchemaFactory {
         @Override
         public List<String> getPartitionColumns() {
           return Collections.emptyList();
+        }
+
+        @Override
+        public String getPermissions() {
+          return "644";
         }
 
       };

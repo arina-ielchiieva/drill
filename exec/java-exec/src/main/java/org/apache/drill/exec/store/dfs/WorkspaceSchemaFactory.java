@@ -554,7 +554,7 @@ public class WorkspaceSchemaFactory {
     }
 
     @Override
-    public CreateTableEntry createNewTable(String tableName, List<String> partitonColumns) {
+    public CreateTableEntry createNewTable(String tableName, List<String> partitonColumns, String permissions) {
       String storage = schemaConfig.getOption(ExecConstants.OUTPUT_FORMAT_OPTION).string_val;
       FormatPlugin formatPlugin = plugin.getFormatPlugin(storage);
       if (formatPlugin == null) {
@@ -567,7 +567,8 @@ public class WorkspaceSchemaFactory {
           (FileSystemConfig) plugin.getConfig(),
           formatPlugin,
           config.getLocation() + Path.SEPARATOR + tableName,
-          partitonColumns);
+          partitonColumns,
+          permissions);
     }
 
     @Override

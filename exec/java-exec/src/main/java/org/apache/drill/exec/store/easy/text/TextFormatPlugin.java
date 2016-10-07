@@ -115,6 +115,7 @@ public class TextFormatPlugin extends EasyFormatPlugin<TextFormatPlugin.TextForm
     final Map<String, String> options = Maps.newHashMap();
 
     options.put("location", writer.getLocation());
+    options.put("permissions", writer.getPermissions());
 
     FragmentHandle handle = context.getHandle();
     String fragmentId = String.format("%d_%d", handle.getMajorFragmentId(), handle.getMinorFragmentId());

@@ -33,12 +33,14 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import com.google.common.base.Joiner;
+import org.apache.hadoop.fs.permission.FsPermission;
 
 public class DrillTextRecordWriter extends StringOutputRecordWriter {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillTextRecordWriter.class);
 
   private String location;
   private String prefix;
+  private FsPermission permissions;
 
   private String fieldDelimiter;
   private String extension;
@@ -60,12 +62,16 @@ public class DrillTextRecordWriter extends StringOutputRecordWriter {
   public void init(Map<String, String> writerOptions) throws IOException {
     this.location = writerOptions.get("location");
     this.prefix = writerOptions.get("prefix");
+    this.permissions = new FsPermission(writerOptions.get("permissions"));
     this.fieldDelimiter = writerOptions.get("separator");
     this.extension = writerOptions.get("extension");
 
     Configuration conf = new Configuration();
     conf.set(FileSystem.FS_DEFAULT_NAME_KEY, writerOptions.get(FileSystem.FS_DEFAULT_NAME_KEY));
     this.fs = FileSystem.get(conf);
+    Path locationPath = new Path(location);
+    fs.create(locationPath);
+    fs.setPermission(locationPath, permissions);
 
     this.currentRecord = new StringBuilder();
     this.index = 0;
@@ -80,6 +86,7 @@ public class DrillTextRecordWriter extends StringOutputRecordWriter {
     Path fileName = new Path(location, prefix + "_" + index + "." + extension);
     try {
       DataOutputStream fos = fs.create(fileName);
+      fs.setPermission(fileName, permissions);
       stream = new PrintStream(fos);
       logger.debug("Created file: {}", fileName);
     } catch (IOException ex) {

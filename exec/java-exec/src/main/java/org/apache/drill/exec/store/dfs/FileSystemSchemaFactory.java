@@ -150,8 +150,8 @@ public class FileSystemSchemaFactory implements SchemaFactory{
     }
 
     @Override
-    public CreateTableEntry createNewTable(String tableName, List<String> partitionColumns) {
-      return defaultSchema.createNewTable(tableName, partitionColumns);
+    public CreateTableEntry createNewTable(String tableName, List<String> partitionColumns, String permissions) {
+      return defaultSchema.createNewTable(tableName, partitionColumns, permissions);
     }
 
     @Override

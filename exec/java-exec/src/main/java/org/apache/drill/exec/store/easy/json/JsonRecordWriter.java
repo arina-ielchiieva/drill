@@ -33,6 +33,7 @@ import org.apache.drill.exec.vector.complex.fn.ExtendedJsonOutput;
 import org.apache.drill.exec.vector.complex.fn.JsonWriter;
 import org.apache.drill.exec.vector.complex.reader.FieldReader;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -40,6 +41,7 @@ import org.apache.hadoop.fs.Path;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.collect.Lists;
+import org.apache.hadoop.fs.permission.FsPermission;
 
 public class JsonRecordWriter extends JSONOutputRecordWriter implements RecordWriter {
 
@@ -82,6 +84,9 @@ public class JsonRecordWriter extends JSONOutputRecordWriter implements RecordWr
     Path fileName = new Path(location, prefix + "_" + index + "." + extension);
     try {
       stream = fs.create(fileName);
+      FsPermission permissions = new FsPermission(writerOptions.get("permissions"));
+      fs.setPermission(fileName, permissions);
+      fs.setPermission(fileName.getParent(), permissions);
       JsonGenerator generator = factory.createGenerator(stream).useDefaultPrettyPrinter();
       if (uglify) {
         generator = generator.setPrettyPrinter(new MinimalPrettyPrinter(LINE_FEED));

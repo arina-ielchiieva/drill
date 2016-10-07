@@ -34,8 +34,8 @@ public class DrillKuduTable extends DynamicDrillTable {
 
   private final Schema schema;
 
-  public DrillKuduTable(String storageEngineName, KuduStoragePlugin plugin, Schema schema, KuduScanSpec scanSpec) {
-    super(plugin, storageEngineName, scanSpec);
+  public DrillKuduTable(String storageEngineName, KuduStoragePlugin plugin, Schema schema, KuduScanSpec scanSpec, boolean isLocal) {
+    super(plugin, storageEngineName, scanSpec, isLocal);
     this.schema = schema;
   }
 

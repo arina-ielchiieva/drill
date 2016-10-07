@@ -192,7 +192,7 @@ public class TestDropTable extends PlanTestBase {
 
   @Test // DRILL-4673
   public void testDropTableIfExistsWhileTableDoesNotExist() throws Exception {
-    final String nonExistentTableName = "test_table";
+    final String nonExistentTableName = "non_existent_test_table";
     test("use dfs_test.tmp");
 
     // dropping of non existent table without error
@@ -200,7 +200,7 @@ public class TestDropTable extends PlanTestBase {
         .sqlQuery(String.format(DROP_TABLE_IF_EXISTS, nonExistentTableName))
         .unOrdered()
         .baselineColumns("ok", "summary")
-        .baselineValues(true, String.format("Table [%s] not found", nonExistentTableName))
+        .baselineValues(false, String.format("Table [%s] not found", nonExistentTableName))
         .go();
   }
 
@@ -216,7 +216,7 @@ public class TestDropTable extends PlanTestBase {
           .sqlQuery(String.format(DROP_TABLE_IF_EXISTS, viewName))
           .unOrdered()
           .baselineColumns("ok", "summary")
-          .baselineValues(true, String.format("Table [%s] not found", viewName))
+          .baselineValues(false, String.format("Table [%s] not found", viewName))
           .go();
     } finally {
       test(String.format(DROP_VIEW_IF_EXISTS, viewName));
