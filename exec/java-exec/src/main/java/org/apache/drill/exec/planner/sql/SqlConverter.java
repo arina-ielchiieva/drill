@@ -21,10 +21,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.avatica.util.Casing;
 import org.apache.calcite.avatica.util.Quoting;
+import org.apache.calcite.jdbc.CalciteSchema;
 import org.apache.calcite.jdbc.CalciteSchemaImpl;
 import org.apache.calcite.jdbc.JavaTypeFactoryImpl;
 import org.apache.calcite.plan.ConventionTraitDef;
@@ -33,6 +35,7 @@ import org.apache.calcite.plan.RelOptCostFactory;
 import org.apache.calcite.plan.RelOptTable;
 import org.apache.calcite.plan.volcano.VolcanoPlanner;
 import org.apache.calcite.prepare.CalciteCatalogReader;
+import org.apache.calcite.prepare.RelOptTableImpl;
 import org.apache.calcite.rel.RelCollationTraitDef;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.type.RelDataType;
@@ -41,17 +44,14 @@ import org.apache.calcite.rel.type.RelDataTypeSystemImpl;
 import org.apache.calcite.rex.RexBuilder;
 import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.schema.SchemaPlus;
-import org.apache.calcite.sql.SqlCall;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlOperatorTable;
-import org.apache.calcite.sql.SqlSelect;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.parser.SqlParserImplFactory;
 import org.apache.calcite.sql.parser.SqlParserPos;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.sql.util.ChainedSqlOperatorTable;
-import org.apache.calcite.sql.validate.AggregatingSelectScope;
 import org.apache.calcite.sql.validate.SqlConformance;
 import org.apache.calcite.sql.validate.SqlValidatorCatalogReader;
 import org.apache.calcite.sql.validate.SqlValidatorException;
@@ -62,14 +62,15 @@ import org.apache.calcite.sql2rel.SqlToRelConverter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.drill.common.exceptions.UserException;
+import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.exception.FunctionNotFoundException;
 import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
+import org.apache.drill.exec.ops.QueryContext;
 import org.apache.drill.exec.ops.UdfUtilities;
 import org.apache.drill.exec.planner.cost.DrillCostBase;
 import org.apache.drill.exec.planner.logical.DrillConstExecutor;
 import org.apache.drill.exec.planner.physical.DrillDistributionTraitDef;
 import org.apache.drill.exec.planner.physical.PlannerSettings;
-import org.apache.drill.exec.planner.physical.PrelUtil;
 import org.apache.drill.exec.planner.sql.parser.impl.DrillParserWithCompoundIdConverter;
 
 import com.google.common.base.Joiner;
@@ -101,23 +102,25 @@ public class SqlConverter {
   private VolcanoPlanner planner;
 
 
-  public SqlConverter(PlannerSettings settings, SchemaPlus defaultSchema,
-      final SqlOperatorTable operatorTable, UdfUtilities util, FunctionImplementationRegistry functions) {
-    this.settings = settings;
-    this.util = util;
-    this.functions = functions;
+  public SqlConverter(QueryContext context) {
+    this.settings = context.getPlannerSettings();
+    this.util = (UdfUtilities) context;
+    this.functions = context.getFunctionRegistry();
     this.parserConfig = new ParserConfig();
     this.sqlToRelConverterConfig = new SqlToRelConverterConfig();
     this.isInnerQuery = false;
     this.typeFactory = new JavaTypeFactoryImpl(DRILL_TYPE_SYSTEM);
-    this.defaultSchema = defaultSchema;
+    this.defaultSchema =  context.getNewDefaultSchema();
     this.rootSchema = rootSchema(defaultSchema);
-    this.catalog = new CalciteCatalogReader(
+    //todo do not forget to update in places where we create CalciteCatalogReader for views
+    this.catalog = new DrillCalciteCatalogReader(
         CalciteSchemaImpl.from(rootSchema),
         parserConfig.caseSensitive(),
         CalciteSchemaImpl.from(defaultSchema).path(null),
-        typeFactory);
-    this.opTab = new ChainedSqlOperatorTable(Arrays.asList(operatorTable, catalog));
+        typeFactory,
+        Lists.newArrayList(context.getConfig().getString(ExecConstants.DEFAULT_TEMPORARY_WORKSPACE)),
+        context.getSession().getUuid());
+    this.opTab = new ChainedSqlOperatorTable(Arrays.asList(context.getDrillOperatorTable(), catalog));
     this.costFactory = (settings.useDefaultCosting()) ? null : new DrillCostBase.DrillCostFactory();
     this.validator = new DrillValidator(opTab, catalog, typeFactory, SqlConformance.DEFAULT);
     validator.setIdentifierExpansion(true);
@@ -142,6 +145,36 @@ public class SqlConverter {
     validator.setIdentifierExpansion(true);
   }
 
+  private class DrillCalciteCatalogReader extends CalciteCatalogReader {
+
+    private final List<String> temporarySchema;
+    private final String uuid;
+
+    public DrillCalciteCatalogReader(CalciteSchema rootSchema,
+                                     boolean caseSensitive,
+                                     List<String> defaultSchema,
+                                     JavaTypeFactory typeFactory,
+                                     List<String> temporarySchema,
+                                     String uuid) {
+      super(rootSchema, caseSensitive, defaultSchema, typeFactory);
+      this.temporarySchema = temporarySchema;
+      this.uuid = uuid;
+      }
+
+    @Override
+    public RelOptTableImpl getTable(final List<String> names) {
+      // first check temporary table
+      RelOptTableImpl temporaryTable = null;
+      if (names.size() == 1) {
+        // look for temporary table
+        List<String> temporaryNames = Lists.newArrayList(temporarySchema);
+        temporaryNames.add(names.get(0) + "_" + uuid);
+        temporaryTable = super.getTable(temporaryNames);
+      }
+      return temporaryTable == null ? super.getTable(names) : temporaryTable;
+    }
+
+  }
 
   public SqlNode parse(String sql) {
     try {

@@ -36,6 +36,7 @@ import org.apache.calcite.tools.RelConversionException;
 import org.apache.calcite.tools.ValidationException;
 import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.common.types.TypeProtos.MajorType;
+import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.physical.PhysicalPlan;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.planner.logical.DrillRel;
@@ -74,13 +75,21 @@ public class CreateTableHandler extends DefaultSqlHandler {
     final RelDataType validatedRowType = convertedRelNode.getValidatedRowType();
     final RelNode queryRelNode = convertedRelNode.getConvertedNode();
 
-
     final RelNode newTblRelNode =
         SqlHandlerUtil.resolveNewTableRel(false, sqlCreateTable.getFieldNames(), validatedRowType, queryRelNode);
 
+    List<String> indicatedSchemaPath = sqlCreateTable.getSchemaPath();
+
+    // if temporary table and has no explicitly indicated schema
+     if (sqlCreateTable.isTemporary() && indicatedSchemaPath.size() == 0) {
+       // set to temporary workspace
+       indicatedSchemaPath = Lists.newArrayList();
+       indicatedSchemaPath.add(context.getConfig().getString(ExecConstants.DEFAULT_TEMPORARY_WORKSPACE));
+     }
+
     final AbstractSchema drillSchema =
         SchemaUtilites.resolveToMutableDrillSchema(config.getConverter().getDefaultSchema(),
-            sqlCreateTable.getSchemaPath());
+            indicatedSchemaPath);
     final String schemaPath = drillSchema.getFullSchemaName();
 
     if (SqlHandlerUtil.getTableFromSchema(drillSchema, newTblName) != null) {

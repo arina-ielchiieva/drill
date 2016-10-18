@@ -231,7 +231,7 @@ SqlNode SqlCreateTable() :
         partitionFieldList = SqlNodeList.EMPTY;
     }
     <CREATE> { pos = getPos(); }
-    ( <TEMPORARY>  { isTemporary = true; } )?
+    ( (<TEMPORARY> | <TEMP>)  { isTemporary = true; } )?
     <TABLE>
     tblName = CompoundIdentifier()
     fieldList = ParseOptionalFieldList("Table")

@@ -494,7 +494,10 @@ public class WorkspaceSchemaFactory {
       }
 
       // look for temporary tables
-      final String tmpTable = tableName + "_" + schemaConfig.getUuid();
+
+      // determine if we need to add uuid prefix
+      String tmpTable = tableName.endsWith("_" + schemaConfig.getUuid()) ?
+          tableName : tableName + "_" + schemaConfig.getUuid();
       TableInstance tmpTableKey = new TableInstance(new TableSignature(tmpTable), ImmutableList.of(), true);
       if (tables.alreadyContainsKey(tmpTableKey)) {
         return tables.get(tmpTableKey);

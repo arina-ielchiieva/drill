@@ -123,6 +123,11 @@ public interface ExecConstants {
    */
   String DRILL_TMP_DIR = "drill.tmp-dir";
 
+  /**
+   *
+   */
+  String DEFAULT_TEMPORARY_WORKSPACE = "drill.exec.default_temporary_workspace";
+
   String OUTPUT_FORMAT_OPTION = "store.format";
   OptionValidator OUTPUT_FORMAT_VALIDATOR = new StringValidator(OUTPUT_FORMAT_OPTION, "parquet");
   String PARQUET_BLOCK_SIZE = "store.parquet.block-size";

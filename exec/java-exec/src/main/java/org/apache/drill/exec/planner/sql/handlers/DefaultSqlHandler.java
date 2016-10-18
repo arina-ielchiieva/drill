@@ -201,7 +201,7 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
   /**
    *  Given a relNode tree for SELECT statement, convert to Drill Logical RelNode tree.
    * @param relNode
-   * @return
+   * @returnl
    * @throws SqlUnsupportedException
    * @throws RelConversionException
    */

@@ -39,7 +39,8 @@
     "METADATA",
     "DATABASE",
     "IF",
-    "JAR"
+    "JAR",
+    "TEMP"
   ]
 
   # List of methods for parsing custom SQL statements.

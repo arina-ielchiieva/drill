@@ -62,7 +62,7 @@ public class DropTableHandler extends DefaultSqlHandler {
     SchemaPlus defaultSchema = config.getConverter().getDefaultSchema();
     AbstractSchema drillSchema = null;
 
-    if (tableIdentifier != null) {
+    if (tableIdentifier != null) { //todo why we need this check? probably Calcite won't allow to pass null value
       drillSchema = SchemaUtilites.resolveToMutableDrillSchema(defaultSchema, dropTableNode.getSchema());
     }
 
@@ -72,6 +72,8 @@ public class DropTableHandler extends DefaultSqlHandler {
           .message("Invalid table_name [%s]", originalTableName)
           .build(logger);
     }
+
+    //todo drop table without specifying schema implementation
 
     final Table tableToDrop = SqlHandlerUtil.getTableFromSchema(drillSchema, originalTableName);
     final Schema.TableType tableType = tableToDrop != null ? tableToDrop.getJdbcTableType() : null;
