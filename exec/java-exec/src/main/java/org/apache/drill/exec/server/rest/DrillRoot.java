@@ -52,52 +52,52 @@ public class DrillRoot {
 
   @GET
   @Produces(MediaType.TEXT_HTML)
-  public Viewable getStats() {
-    return ViewableWithPermissions.create(authEnabled.get(), "/rest/index.ftl", sc, getStatsJSON());
+  public Viewable getClusterInfo() {
+    return ViewableWithPermissions.create(authEnabled.get(), "/rest/index.ftl", sc, getClusterInfoJSON());
   }
 
   @GET
-  @Path("/stats.json")
+  @Path("/cluster.json")
   @Produces(MediaType.APPLICATION_JSON)
-  public Stats getStatsJSON() {
-    final String version = work.getContext().getOptionManager().getOption(ExecConstants.CLUSTER_VERSION).string_val;
+  public ClusterInfo getClusterInfoJSON() {
+    final String clusterVersion = work.getContext().getOptionManager().getOption(ExecConstants.CLUSTER_VERSION).string_val;
 
-    final Map<String, Object> props = Maps.newLinkedHashMap();
-    props.put("Cluster Version", version);
-    props.put("Number of Drillbits", work.getContext().getBits().size());
+    final Map<String, Object> generalInfo = Maps.newLinkedHashMap();
+    generalInfo.put("Cluster Version", clusterVersion);
+    generalInfo.put("Number of Drillbits", work.getContext().getBits().size());
     CoordinationProtos.DrillbitEndpoint currentEndpoint = work.getContext().getEndpoint();
     final String address = currentEndpoint.getAddress();
-    props.put("Data Port Address", address + ":" + currentEndpoint.getDataPort());
-    props.put("User Port Address", address + ":" + currentEndpoint.getUserPort());
-    props.put("Control Port Address", address + ":" + currentEndpoint.getControlPort());
-    props.put("Maximum Direct Memory", DrillConfig.getMaxDirectMemory());
+    generalInfo.put("Data Port Address", address + ":" + currentEndpoint.getDataPort());
+    generalInfo.put("User Port Address", address + ":" + currentEndpoint.getUserPort());
+    generalInfo.put("Control Port Address", address + ":" + currentEndpoint.getControlPort());
+    generalInfo.put("Maximum Direct Memory", DrillConfig.getMaxDirectMemory());
 
-    return new Stats(props, collectDrillbits(version));
+    return new ClusterInfo(generalInfo, collectDrillbits(clusterVersion));
   }
 
   private Collection<DrillbitInfo> collectDrillbits(String version) {
     Set<DrillbitInfo> drillbits = Sets.newTreeSet();
     for (CoordinationProtos.DrillbitEndpoint endpoint : work.getContext().getBits()) {
       boolean versionMatch = version.equals(endpoint.getVersion());
-      DrillbitInfo drillbit = new DrillbitInfo(endpoint.getAddress(), endpoint.isInitialized(), endpoint.getVersion(), versionMatch);
+      DrillbitInfo drillbit = new DrillbitInfo(endpoint.getAddress(), endpoint.getVersion(), versionMatch);
       drillbits.add(drillbit);
     }
     return drillbits;
   }
 
   @XmlRootElement
-  public static class Stats {
-    private final Map<String, Object> props;
+  public static class ClusterInfo {
+    private final Map<String, Object> generalInfo;
     private final Collection<DrillbitInfo> drillbits;
 
     @JsonCreator
-    public Stats(Map<String, Object> props, Collection<DrillbitInfo> drillbits) {
-      this.props = props;
+    public ClusterInfo(Map<String, Object> generalInfo, Collection<DrillbitInfo> drillbits) {
+      this.generalInfo = generalInfo;
       this.drillbits = drillbits;
     }
 
-    public Map<String, Object> getProps() {
-      return props;
+    public Map<String, Object> getGeneralInfo() {
+      return generalInfo;
     }
 
     public Collection<DrillbitInfo> getDrillbits() {
@@ -107,24 +107,18 @@ public class DrillRoot {
 
   public static class DrillbitInfo implements Comparable<DrillbitInfo> {
     private final String address;
-    private final boolean initialized;
     private final String version;
     private final boolean versionMatch;
 
     @JsonCreator
-    public DrillbitInfo(String address, boolean initialized, String version, boolean versionMatch) {
+    public DrillbitInfo(String address, String version, boolean versionMatch) {
       this.address = address;
-      this.initialized = initialized;
       this.version = version;
       this.versionMatch = versionMatch;
     }
 
     public String getAddress() {
       return address;
-    }
-
-    public String isInitialized() {
-      return initialized ? "initialized" : "not initialized";
     }
 
     public String getVersion() {

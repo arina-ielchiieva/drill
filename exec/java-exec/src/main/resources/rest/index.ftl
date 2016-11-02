@@ -34,11 +34,11 @@
       <div class="table-responsive">
         <table class="table table-hover">
           <tbody>
-            <#assign props = model.getProps()>
-            <#list props?keys as key>
+            <#assign generalInfo = model.getGeneralInfo()>
+            <#list generalInfo?keys as key>
               <tr>
                 <td style="border:none;"><b>${key}</b></td>
-                <td style="border:none; font-family: Courier;">${props[key]}</td>
+                <td style="border:none; font-family: Courier;">${generalInfo[key]}</td>
               </tr>
             </#list>
           </tbody>
@@ -54,7 +54,7 @@
           <#list model.getDrillbits() as drillbit>
             <tr>
               <td style="border:none;"><b>Drillbit # ${i}</b></td>
-              <td style="border:none; font-family: Courier;">${drillbit.getAddress()} ${drillbit.isInitialized()}</td>
+              <td style="border:none; font-family: Courier;">${drillbit.getAddress()}</td>
               <td style="border:none;">
                 <span class="label <#if drillbit.isVersionMatch()>label-success<#else>label-danger</#if>">
                   <#if (drillbit.getVersion())?has_content>${drillbit.getVersion()}<#else>Undefined</#if>
