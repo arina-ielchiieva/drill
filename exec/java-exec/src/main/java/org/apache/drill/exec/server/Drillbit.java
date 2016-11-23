@@ -127,7 +127,6 @@ public class Drillbit implements AutoCloseable {
     javaPropertiesToSystemOptions();
     manager.getContext().getRemoteFunctionRegistry().init(context.getConfig(), storeProvider, coord);
     registrationHandle = coord.register(md);
-    checkAndUpdateClusterVersionOption(drillbitContext.getOptionManager(), md);
     webServer.start();
 
     Runtime.getRuntime().addShutdownHook(new ShutdownThread(this, new StackTrace()));
@@ -214,26 +213,6 @@ public class Drillbit implements AutoCloseable {
       final OptionValue optionValue = OptionValue.createOption(
           defaultValue.kind, OptionType.SYSTEM, optionName, optionString);
       optionManager.setOption(optionValue);
-    }
-  }
-
-  /**
-   * If cluster version is the same as default, updates option to current drillbit version.
-   * Since getOption and setOption are separate calls, raise condition might occur
-   * when several drillbits are registering at the same time.
-   * It is assumed that the first drillbit in cluster sets cluster version
-   * but when the raise condition occurs, it might be the second or the third etc.
-   * This behaviour does not impose significant impact, since the main goal is to detect mismatching versions.
-   */
-  private void checkAndUpdateClusterVersionOption(OptionManager systemOptions, DrillbitEndpoint drillbitEndpoint) {
-    OptionValue versionOption = systemOptions.getOption(ExecConstants.CLUSTER_VERSION);
-    OptionValidator validator = SystemOptionManager.getValidator(ExecConstants.CLUSTER_VERSION);
-    if (versionOption.equals(validator.getDefault())) {
-      systemOptions.setOption(OptionValue.createOption(
-          versionOption.kind,
-          versionOption.type,
-          versionOption.name,
-          drillbitEndpoint.getVersion()));
     }
   }
 
