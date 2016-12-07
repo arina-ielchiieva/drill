@@ -257,13 +257,13 @@ class MergeAdapter extends ClassVisitor {
       }
 
       // enable when you want all the generated merged class files to also be written to disk.
-//      try {
-//        File destDir = new File( "/tmp/scratch/drill-generated-classes" );
-//        destDir.mkdirs();
-//        Files.write(outputClass, new File(destDir, String.format("%s-output.class", set.generated.dot)));
-//      } catch (IOException e) {
-//        // Ignore;
-//      }
+     try {
+       File destDir = new File( "/tmp/scratch/drill-generated-classes" );
+      destDir.mkdirs();
+       Files.write(outputClass, new File(destDir, String.format("%s-output.class", set.generated.dot)));
+     } catch (IOException e) {
+       // Ignore;
+     }
 
       return new MergedClassResult(outputClass, re.getInnerClasses());
     } catch (Error | RuntimeException e) {

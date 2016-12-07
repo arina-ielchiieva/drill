@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
 import com.google.common.collect.MapMaker;
+import com.google.common.collect.Maps;
 
 /**
  * Class loader for "plain-old Java" generated classes.
@@ -42,6 +43,7 @@ public class CachedClassLoader extends URLClassLoader {
    */
 
   private ConcurrentMap<String, Class<?>> cache = new MapMaker().concurrencyLevel(4).makeMap();
+
 
   public CachedClassLoader( ) {
     super(new URL[0], Thread.currentThread().getContextClassLoader());

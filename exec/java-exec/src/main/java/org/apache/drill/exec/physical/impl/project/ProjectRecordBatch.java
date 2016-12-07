@@ -322,6 +322,8 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
     final List<TransferPair> transfers = Lists.newArrayList();
 
     final ClassGenerator<Projector> cg = CodeGenerator.getRoot(Projector.TEMPLATE_DEFINITION, context.getFunctionRegistry(), context.getOptions());
+    cg.getCodeGenerator().plainOldJavaCapable(true);
+    cg.getCodeGenerator().preferPlainOJava(true);
 
     final IntHashSet transferFieldIds = new IntHashSet();
 
