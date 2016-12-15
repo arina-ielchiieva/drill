@@ -129,8 +129,7 @@ public interface ExecConstants {
   String DRILL_TMP_DIR = "drill.tmp-dir";
 
   /**
-   * When during temporary table creation workspace is not specified,
-   * temporary table is created in default temporary workspace.
+   * Temporary tables can be created ONLY in default temporary workspace.
    */
   String DEFAULT_TEMPORARY_WORKSPACE = "drill.exec.default_temporary_workspace";
 

@@ -183,9 +183,10 @@ public class WriterRecordBatch extends AbstractRecordBatch<Writer> {
         } else {
           recordWriter.abort();
         }
-        recordWriter = null;
       } catch(IOException ex) {
         context.fail(ex);
+      } finally {
+        recordWriter = null;
       }
     }
   }

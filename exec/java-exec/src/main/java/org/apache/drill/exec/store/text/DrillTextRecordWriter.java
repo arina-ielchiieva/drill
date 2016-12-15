@@ -84,8 +84,8 @@ public class DrillTextRecordWriter extends StringOutputRecordWriter {
     try {
       DataOutputStream fos = fs.create(fileName);
       // apply storage strategy to folder and file
-      storageStrategy.apply(fs, fileName.getParent());
-      storageStrategy.apply(fs, fileName);
+      storageStrategy.applyToFolder(fs, fileName.getParent());
+      storageStrategy.applyToFile(fs, fileName);
       stream = new PrintStream(fos);
       logger.debug("Created file: {}", fileName);
     } catch (IOException ex) {

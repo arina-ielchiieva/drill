@@ -263,13 +263,4 @@ public abstract class AbstractSchema implements Schema, SchemaPartitionExplorer,
     return tableNamesAndTypes;
   }
 
-  /**
-   * Checks if schema is accessible.
-   *
-   * @return true if schema is accessible, false otherwise
-   */
-  public boolean isAccessible() {
-    return true;
-  }
-
 }

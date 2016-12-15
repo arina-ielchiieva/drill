@@ -156,10 +156,5 @@ public class FileSystemSchemaFactory implements SchemaFactory{
     public AbstractSchema getDefaultSchema() {
       return defaultSchema;
     }
-
-    @Override
-    public boolean isAccessible() {
-      return defaultSchema.isAccessible();
-    }
   }
 }

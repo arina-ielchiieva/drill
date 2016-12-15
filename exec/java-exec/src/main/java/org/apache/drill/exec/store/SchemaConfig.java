@@ -94,8 +94,6 @@ public class SchemaConfig {
     return provider.getViewExpansionContext();
   }
 
-  public String getUuid() { return provider.getUuid(); }
-
   /**
    * Interface to implement to provide required info for {@link org.apache.drill.exec.store.SchemaConfig}
    */
@@ -103,7 +101,5 @@ public class SchemaConfig {
     ViewExpansionContext getViewExpansionContext();
 
     OptionValue getOption(String optionKey);
-
-    String getUuid();
   }
 }
