@@ -17,12 +17,14 @@
  */
 package org.apache.drill.exec.rpc.user;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Preconditions;
@@ -32,8 +34,8 @@ import com.google.common.collect.Lists;
 
 import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.tools.ValidationException;
+import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.exec.planner.sql.SchemaUtilites;
-import org.apache.drill.exec.planner.sql.handlers.SqlHandlerUtil;
 import org.apache.drill.exec.proto.UserBitShared.UserCredentials;
 import org.apache.drill.exec.proto.UserProtos.Property;
 import org.apache.drill.exec.proto.UserProtos.UserProperties;
@@ -42,9 +44,13 @@ import org.apache.drill.exec.server.options.SessionOptionManager;
 
 import com.google.common.collect.Maps;
 import org.apache.drill.exec.store.AbstractSchema;
-import org.apache.drill.exec.util.BiConsumer;
+import org.apache.drill.exec.store.StorageStrategy;
+import org.apache.drill.exec.store.dfs.DrillFileSystem;
+import org.apache.drill.exec.store.dfs.WorkspaceSchemaFactory;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 
-public class UserSession implements AutoCloseable {
+public class UserSession implements Closeable {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(UserSession.class);
 
   public static final String SCHEMA = "schema";
@@ -60,29 +66,28 @@ public class UserSession implements AutoCloseable {
   private Map<String, String> properties;
   private OptionManager sessionOptions;
   private final AtomicInteger queryCount;
+  private final String sessionId;
 
-  /** Unique session identifier used as suffix in temporary table names. */
-  private final String uuid;
-  /** Cache that stores all temporary tables by schema names. */
-  private final TemporaryTablesCache temporaryTablesCache;
+  /** Stores list of temporary tables, key is original table name, value is generated table name. **/
+  private final ConcurrentMap<String, String> temporaryTables;
+  /** Stores list of session temporary locations, key is path to location, value is file system associated with location. **/
+  private final ConcurrentMap<Path, FileSystem> temporaryLocations;
 
-  /** On session close drops all temporary tables from their schemas and clears temporary tables cache. */
+  /** On session close deletes all session temporary locations recursively. */
   @Override
   public void close() {
-    temporaryTablesCache.removeAll(new BiConsumer<AbstractSchema, String>() {
-      @Override
-      public void accept(AbstractSchema schema, String tableName) {
-        try {
-          if (schema.isAccessible() && schema.getTable(tableName) != null) {
-            schema.dropTable(tableName);
-            logger.info("Temporary table [{}] was dropped from schema [{}]", tableName, schema.getFullSchemaName());
-          }
-        } catch (Exception e) {
-          logger.info("Problem during temporary table [{}] drop from schema [{}]",
-                  tableName, schema.getFullSchemaName(), e);
-        }
+    for (Map.Entry<Path, FileSystem> entry : temporaryLocations.entrySet()) {
+      Path path = entry.getKey();
+      FileSystem fs = entry.getValue();
+      try {
+        fs.delete(path, true);
+        logger.info("Deleted session temporary location [{}] from file system [{}]",
+            path.toUri().getPath(), fs.getUri());
+      } catch (Exception e) {
+        logger.debug("Error during session temporary location [{}] deletion from file system [{}]",
+            path.toUri().getPath(), fs.getUri());
       }
-    });
+    }
   }
 
   /**
@@ -95,7 +100,7 @@ public class UserSession implements AutoCloseable {
   }
 
   public static class Builder {
-    UserSession userSession;
+    private UserSession userSession;
 
     public static Builder newBuilder() {
       return new Builder();
@@ -145,8 +150,9 @@ public class UserSession implements AutoCloseable {
 
   private UserSession() {
     queryCount = new AtomicInteger(0);
-    uuid = UUID.randomUUID().toString();
-    temporaryTablesCache = new TemporaryTablesCache(uuid);
+    sessionId = UUID.randomUUID().toString();
+    temporaryTables = Maps.newConcurrentMap();
+    temporaryLocations = Maps.newConcurrentMap();
   }
 
   public boolean isSupportComplexTypes() {
@@ -249,50 +255,75 @@ public class UserSession implements AutoCloseable {
   /**
    * @return unique session identifier
    */
-  public String getUuid() { return uuid; }
+  public String getSessionId() { return sessionId; }
 
   /**
-   * Adds temporary table to temporary tables cache.
+   * Creates and adds session temporary location if absent using schema configuration.
+   * Generates temporary table name and stores it's original name as key
+   * and generated name as value in  session temporary tables cache.
+   * If original table name already exists, new name is not regenerated and is reused.
+   * This can happen if default temporary workspace was changed (file system or location) or
+   * orphan temporary table name has remained (name was registered but table creation did not succeed).
    *
    * @param schema table schema
    * @param tableName original table name
    * @return generated temporary table name
+   * @throws IOException if error during session temporary location creation
    */
-  public String registerTemporaryTable(AbstractSchema schema, String tableName) {
-    return temporaryTablesCache.add(schema, tableName);
+  public String registerTemporaryTable(AbstractSchema schema, String tableName) throws IOException {
+    if (schema instanceof WorkspaceSchemaFactory.WorkspaceSchema) {
+      addTemporaryLocation((WorkspaceSchemaFactory.WorkspaceSchema) schema);
+      String temporaryTableName = Paths.get(sessionId, UUID.randomUUID().toString()).toString();
+      String oldTemporaryTableName = temporaryTables.putIfAbsent(tableName, temporaryTableName);
+      return oldTemporaryTableName == null ? temporaryTableName : oldTemporaryTableName;
+    } else {
+      throw new DrillRuntimeException("Temporary workspace must be instance of WorkspaceSchemaFactory.WorkspaceSchema");
+    }
   }
 
   /**
-   * Looks for temporary table in temporary tables cache by its name in specified schema.
+   * Returns generated temporary table name from the list of session temporary tables, null otherwise.
    *
-   * @param fullSchemaName table full schema name (example, dfs.tmp)
    * @param tableName original table name
-   * @return temporary table name if found, null otherwise
+   * @return generated temporary table name
    */
-  public String findTemporaryTable(String fullSchemaName, String tableName) {
-    return temporaryTablesCache.find(fullSchemaName, tableName);
+  public String findTemporaryTable(String tableName) {
+    return temporaryTables.get(tableName);
   }
 
   /**
-   * Before removing temporary table from temporary tables cache,
-   * checks if table exists physically on disk, if yes, removes it.
+   * Removes temporary table name from the list of session temporary tables.
    *
-   * @param fullSchemaName full table schema name (example, dfs.tmp)
    * @param tableName original table name
-   * @return true if table was physically removed, false otherwise
    */
-  public boolean removeTemporaryTable(String fullSchemaName, String tableName) {
-    final AtomicBoolean result = new AtomicBoolean();
-    temporaryTablesCache.remove(fullSchemaName, tableName, new BiConsumer<AbstractSchema, String>() {
-      @Override
-      public void accept(AbstractSchema schema, String temporaryTableName) {
-        if (schema.getTable(temporaryTableName) != null) {
-          schema.dropTable(temporaryTableName);
-          result.set(true);
-        }
-      }
-    });
-    return result.get();
+  public void removeTemporaryTable(String tableName) {
+    temporaryTables.remove(tableName);
+  }
+
+  /**
+   * Session temporary tables are stored under temporary workspace location in session folder
+   * defined by unique session id. These session temporary locations are deleted on session close.
+   * If default temporary workspace file system or location is changed at runtime,
+   * new session temporary location will be added with corresponding file system
+   * to the list of session temporary locations. If location does not exist it will be created and
+   * {@link StorageStrategy#TEMPORARY} storage rules will be applied to it.
+   *
+   * @param temporaryWorkspace temporary workspace
+   * @throws IOException in case of error during temporary location creation
+   */
+  private void addTemporaryLocation(WorkspaceSchemaFactory.WorkspaceSchema temporaryWorkspace) throws IOException {
+    DrillFileSystem fs = temporaryWorkspace.getFS();
+    Path temporaryLocation = new Path(Paths.get(fs.getUri().toString(),
+        temporaryWorkspace.getDefaultLocation(), sessionId).toString());
+
+    FileSystem fileSystem = temporaryLocations.putIfAbsent(temporaryLocation, fs);
+
+    if (fileSystem == null && !fs.exists(temporaryLocation)) {
+      fs.mkdirs(temporaryLocation);
+      Preconditions.checkArgument(fs.exists(temporaryLocation),
+          String.format("Temporary location should exist [%s]", temporaryLocation.toUri().getPath()));
+      StorageStrategy.TEMPORARY.applyToFolder(fs, temporaryLocation);
+    }
   }
 
   private String getProp(String key) {
@@ -302,102 +333,4 @@ public class UserSession implements AutoCloseable {
   private void setProp(String key, String value) {
     properties.put(key, value);
   }
-
-  /**
-   * Temporary tables cache stores data by full schema name (schema and workspace separated by dot
-   * (example: dfs.tmp)) as key, and map of generated temporary tables names
-   * and its schemas represented by {@link AbstractSchema} as values.
-   * Schemas represented by {@link AbstractSchema} are used to drop temporary tables.
-   * Generated temporary tables consists of original table name and unique session id.
-   * Cache is represented by {@link ConcurrentMap} so if is thread-safe and can be used
-   * in multi-threaded environment.
-   *
-   * Temporary tables cache is used to find temporary table by its name and schema,
-   * to drop all existing temporary tables on session close
-   * or remove temporary table from cache on user demand.
-   */
-  public static class TemporaryTablesCache {
-
-    private final String uuid;
-    private final ConcurrentMap<String, ConcurrentMap<String, AbstractSchema>> temporaryTables;
-
-    public TemporaryTablesCache(String uuid) {
-      this.uuid = uuid;
-      this.temporaryTables = Maps.newConcurrentMap();
-    }
-
-    /**
-     * Generates temporary table name using its original table name and unique session identifier.
-     * Caches generated table name and its schema in temporary table cache.
-     *
-     * @param schema table schema
-     * @param tableName original table name
-     * @return generated temporary table name
-     */
-    public String add(AbstractSchema schema, String tableName) {
-      final String temporaryTableName = SqlHandlerUtil.generateTemporaryTableName(tableName, uuid);
-      final ConcurrentMap<String, AbstractSchema> newValues = Maps.newConcurrentMap();
-      newValues.put(temporaryTableName, schema);
-      final ConcurrentMap<String, AbstractSchema> oldValues = temporaryTables.putIfAbsent(schema.getFullSchemaName(), newValues);
-      if (oldValues != null) {
-        oldValues.putAll(newValues);
-      }
-      return temporaryTableName;
-    }
-
-    /**
-     * Looks for temporary table in temporary tables cache.
-     *
-     * @param fullSchemaName table schema name which is used as key in temporary tables cache
-     * @param tableName original table name
-     * @return generated temporary table name (original name with unique session id) if table is found,
-     *         null otherwise
-     */
-    public String find(String fullSchemaName, String tableName) {
-      final String temporaryTableName = SqlHandlerUtil.generateTemporaryTableName(tableName, uuid);
-      final ConcurrentMap<String, AbstractSchema> tables = temporaryTables.get(fullSchemaName);
-      if (tables == null || tables.get(temporaryTableName) == null) {
-        return null;
-      }
-      return temporaryTableName;
-    }
-
-    /**
-     * Removes temporary table from temporary tables cache
-     * by temporary table original name and its schema.
-     *
-     * @param fullSchemaName table schema name which is used as key in temporary tables cache
-     * @param tableName original table name
-     * @param action action applied to temporary table and its schema before removing from cache
-     */
-    public void remove(String fullSchemaName, String tableName, BiConsumer<AbstractSchema, String> action) {
-      final String temporaryTableName = SqlHandlerUtil.generateTemporaryTableName(tableName, uuid);
-      final ConcurrentMap<String, AbstractSchema> tables = temporaryTables.get(fullSchemaName);
-      AbstractSchema schema;
-      if (tables != null && (schema = tables.get(temporaryTableName)) != null) {
-        if (action != null) {
-          action.accept(schema, temporaryTableName);
-        }
-        tables.remove(temporaryTableName);
-      }
-    }
-
-    /**
-     * Removes all temporary tables from temporary tables cache.
-     * Before clearing cache applies table passed action to each table.
-     *
-     * @param action action applied to temporary table and its schema before cache clean up
-     */
-    public void removeAll(BiConsumer<AbstractSchema, String> action) {
-      if (action != null) {
-        for (Map.Entry<String, ConcurrentMap<String, AbstractSchema>> schemaEntry : temporaryTables.entrySet()) {
-          for (Map.Entry<String, AbstractSchema> tableEntry : schemaEntry.getValue().entrySet()) {
-            action.accept(tableEntry.getValue(), tableEntry.getKey());
-          }
-        }
-      }
-      temporaryTables.clear();
-    }
-  }
-
 }

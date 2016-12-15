@@ -31,6 +31,8 @@ import org.apache.calcite.rex.RexBuilder;
 import org.apache.calcite.rex.RexInputRef;
 import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.rex.RexUtil;
+import org.apache.calcite.schema.Schema;
+import org.apache.calcite.schema.Table;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.tools.RelConversionException;
 import org.apache.calcite.tools.ValidationException;
@@ -38,6 +40,7 @@ import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.physical.PhysicalPlan;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
+import org.apache.drill.exec.rpc.user.UserSession;
 import org.apache.drill.exec.store.StorageStrategy;
 import org.apache.drill.exec.planner.logical.DrillRel;
 import org.apache.drill.exec.planner.logical.DrillScreenRel;
@@ -68,7 +71,7 @@ public class CreateTableHandler extends DefaultSqlHandler {
   @Override
   public PhysicalPlan getPlan(SqlNode sqlNode) throws ValidationException, RelConversionException, IOException, ForemanSetupException {
     SqlCreateTable sqlCreateTable = unwrap(sqlNode, SqlCreateTable.class);
-    String newTblName = sqlCreateTable.getName();
+    String originalTableName = sqlCreateTable.getName();
 
     final ConvertedRelNode convertedRelNode = validateAndConvert(sqlCreateTable.getQuery());
     final RelDataType validatedRowType = convertedRelNode.getValidatedRowType();
@@ -77,19 +80,36 @@ public class CreateTableHandler extends DefaultSqlHandler {
     final RelNode newTblRelNode =
         SqlHandlerUtil.resolveNewTableRel(false, sqlCreateTable.getFieldNames(), validatedRowType, queryRelNode);
 
+    final String temporaryWorkspace = context.getConfig().getString(ExecConstants.DEFAULT_TEMPORARY_WORKSPACE);
+
     final AbstractSchema drillSchema =
-        SchemaUtilites.resolveToMutableDrillSchema(config.getConverter().getDefaultSchema(), getSchemaPath(sqlCreateTable));
+        SchemaUtilites.resolveToMutableDrillSchema(config.getConverter().getDefaultSchema(),
+                getSchemaPath(sqlCreateTable, temporaryWorkspace));
 
-    checkDuplicatedObjectExistence(drillSchema, newTblName);
+    boolean isTemporaryWorkspace = drillSchema.getFullSchemaName().equals(temporaryWorkspace);
 
-    final RelNode newTblRelNodeWithPCol = SqlHandlerUtil.qualifyPartitionCol(newTblRelNode, sqlCreateTable.getPartitionColumns());
+    if (sqlCreateTable.isTemporary() && !isTemporaryWorkspace) {
+      throw UserException
+          .validationError()
+          .message(String.format("Temporary tables are not allowed to be created " +
+              "outside of default temporary workspace [%s] defined by [%s] " +
+              "configuration parameter", temporaryWorkspace, ExecConstants.DEFAULT_TEMPORARY_WORKSPACE))
+          .build(logger);
+    }
+
+    checkDuplicatedObjectExistence(drillSchema, originalTableName, isTemporaryWorkspace, context.getSession());
+
+    final RelNode newTblRelNodeWithPCol = SqlHandlerUtil.qualifyPartitionCol(newTblRelNode,
+        sqlCreateTable.getPartitionColumns());
 
     log("Calcite", newTblRelNodeWithPCol, logger, null);
     // Convert the query to Drill Logical plan and insert a writer operator on top.
-    StorageStrategy storageStrategy = sqlCreateTable.isTemporary() ? StorageStrategy.TEMPORARY : StorageStrategy.PERSISTENT;
-    newTblName = sqlCreateTable.isTemporary() ? context.getSession().registerTemporaryTable(drillSchema, newTblName) : newTblName;
+    StorageStrategy storageStrategy = sqlCreateTable.isTemporary() ?
+        StorageStrategy.TEMPORARY : StorageStrategy.PERSISTENT;
+    String newTableName = sqlCreateTable.isTemporary() ?
+        context.getSession().registerTemporaryTable(drillSchema, originalTableName) : originalTableName;
 
-    DrillRel drel = convertToDrel(newTblRelNodeWithPCol, drillSchema, newTblName,
+    DrillRel drel = convertToDrel(newTblRelNodeWithPCol, drillSchema, newTableName,
         sqlCreateTable.getPartitionColumns(), newTblRelNode.getRowType(), storageStrategy);
     Prel prel = convertToPrel(drel, newTblRelNode.getRowType(), sqlCreateTable.getPartitionColumns());
     logAndSetTextPlan("Drill Physical", prel, logger);
@@ -97,6 +117,9 @@ public class CreateTableHandler extends DefaultSqlHandler {
     PhysicalPlan plan = convertToPlan(pop);
     log("Drill Plan", plan, logger);
 
+    String message = String.format("Creating %s table [%s].",
+        sqlCreateTable.isTemporary()  ? "temporary" : "persistent", originalTableName);
+    logger.info(message);
     return plan;
   }
 
@@ -188,7 +211,7 @@ public class CreateTableHandler extends DefaultSqlHandler {
         return (Prel) prel.copy(projectUnderWriter.getTraitSet(),
             Collections.singletonList( (RelNode) projectUnderWriter));
       } else {
-        // find list of partiiton columns.
+        // find list of partition columns.
         final List<RexNode> partitionColumnExprs = Lists.newArrayListWithExpectedSize(partitionColumns.size());
         for (final String colName : partitionColumns) {
           final RelDataTypeField field = childRowType.getField(colName, false, false);
@@ -246,17 +269,17 @@ public class CreateTableHandler extends DefaultSqlHandler {
 
   /**
    * Gets schema path defined in create table statement.
-   * If temporary table and schema is not indicated,
-   * set default temporary workspace.
+   * If temporary table is being created and schema is not indicated,
+   * uses default temporary workspace.
    *
    * @param sqlCreateTable create table call
+   * @param temporaryWorkspace default temporary workspace
    * @return table schema path
    */
-  private List<String> getSchemaPath(SqlCreateTable sqlCreateTable) {
+  private List<String> getSchemaPath(SqlCreateTable sqlCreateTable, String temporaryWorkspace) {
     List<String> indicatedSchemaPath = sqlCreateTable.getSchemaPath();
     if (sqlCreateTable.isTemporary() && indicatedSchemaPath.size() == 0) {
-      indicatedSchemaPath = Lists.newArrayList();
-      indicatedSchemaPath.add(context.getConfig().getString(ExecConstants.DEFAULT_TEMPORARY_WORKSPACE));
+      indicatedSchemaPath = Lists.newArrayList(temporaryWorkspace);
     }
     return indicatedSchemaPath;
   }
@@ -267,17 +290,30 @@ public class CreateTableHandler extends DefaultSqlHandler {
    *
    * @param drillSchema schema where table will be created
    * @param tableName table name
+   * @param isTemporaryWorkspace is default temporary workspace
+   * @param userSession current user session
    * @throws UserException if duplicate is found
    */
-  private void checkDuplicatedObjectExistence(AbstractSchema drillSchema, String tableName) {
+  private void checkDuplicatedObjectExistence(AbstractSchema drillSchema,
+                                              String tableName,
+                                              boolean isTemporaryWorkspace,
+                                              UserSession userSession) {
     String schemaPath = drillSchema.getFullSchemaName();
-    if (SqlHandlerUtil.getTableFromSchema(drillSchema, tableName) != null) {
+    boolean isTemporaryTable = false;
+    if (isTemporaryWorkspace) {
+      String temporaryTableName = userSession.findTemporaryTable(tableName);
+      if (temporaryTableName != null) {
+        Table temporaryTable = SqlHandlerUtil.getTableFromSchema(drillSchema, temporaryTableName);
+        isTemporaryTable = temporaryTable != null && temporaryTable.getJdbcTableType() == Schema.TableType.TABLE;
+      }
+    }
+
+    if (isTemporaryTable || SqlHandlerUtil.getTableFromSchema(drillSchema, tableName) != null) {
       throw UserException
           .validationError()
           .message("A table or view with given name [%s] already exists in schema [%s]",
-                  tableName, schemaPath)
+              tableName, schemaPath)
           .build(logger);
     }
   }
-
 }

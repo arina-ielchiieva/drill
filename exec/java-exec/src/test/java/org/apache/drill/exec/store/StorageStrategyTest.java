@@ -19,7 +19,9 @@ package org.apache.drill.exec.store;
 import com.google.common.io.Files;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.junit.Before;
 import org.junit.Test;
@@ -45,25 +47,33 @@ public class StorageStrategyTest {
   @Test
   public void testPermissionAndDeleteOnExitFalse() throws Exception {
     Path path = prepareStorageDirectory();
+    Path file = createFileWithFullPermission(path);
 
-    String storagePermission = "775";
-    StorageStrategy storageStrategy = new StorageStrategy(storagePermission, false);
-    storageStrategy.apply(fs, path);
-    checkPathAndPermission(fs, path, new FsPermission(storagePermission));
+    StorageStrategy storageStrategy = new StorageStrategy("775", "644", false);
+    storageStrategy.applyToFolder(fs, path);
+    storageStrategy.applyToFile(fs, file);
+
+    FsPermission folderPermission = new FsPermission(storageStrategy.getFolderPermission());
+    FsPermission filePermission = new FsPermission(storageStrategy.getFilePermission());
+    checkFolderAndFilePermission(fs, path, folderPermission, filePermission, 1);
 
     // close and open file system to check that path is present
     initFileSystem();
-    checkPathAndPermission(fs, path, new FsPermission(storagePermission));
+    checkFolderAndFilePermission(fs, path, folderPermission, filePermission, 1);
   }
 
   @Test
   public void testPermissionAndDeleteOnExitTrue() throws Exception {
     Path path = prepareStorageDirectory();
+    Path file = createFileWithFullPermission(path);
 
-    String storagePermission = "700";
-    StorageStrategy storageStrategy = new StorageStrategy(storagePermission, true);
-    storageStrategy.apply(fs, path);
-    checkPathAndPermission(fs, path, new FsPermission(storagePermission));
+    StorageStrategy storageStrategy = new StorageStrategy("700", "600", true);
+    storageStrategy.applyToFolder(fs, path);
+    storageStrategy.applyToFile(fs, file);
+
+    FsPermission folderPermission = new FsPermission(storageStrategy.getFolderPermission());
+    FsPermission filePermission = new FsPermission(storageStrategy.getFilePermission());
+    checkFolderAndFilePermission(fs, path, folderPermission, filePermission, 1);
 
     // close and open file system to check that path is absent
     initFileSystem();
@@ -73,13 +83,16 @@ public class StorageStrategyTest {
   private Path prepareStorageDirectory() throws IOException {
     File storageDirectory = Files.createTempDir();
     storageDirectory.deleteOnExit();
-    // add some files, so directory won't be empty
-    File.createTempFile(getClass().getSimpleName(), null, storageDirectory);
-    File.createTempFile(getClass().getSimpleName(), null, storageDirectory);
     Path path = new Path(storageDirectory.toURI().getPath());
     fs.setPermission(path, full_permission);
-    checkPathAndPermission(fs, path, full_permission);
     return path;
+  }
+
+  private Path createFileWithFullPermission(Path path) throws IOException {
+    File tempFile = File.createTempFile(getClass().getSimpleName(), null, new File(path.toUri().getPath()));
+    Path tempFilePath = new Path(tempFile.toURI().getPath());
+    fs.setPermission(tempFilePath, full_permission);
+    return tempFilePath;
   }
 
   private void initFileSystem() throws IOException {
@@ -93,8 +106,19 @@ public class StorageStrategyTest {
     fs = FileSystem.get(configuration);
   }
 
-  private void checkPathAndPermission(FileSystem fs, Path path, FsPermission expectedPermission) throws IOException {
+  private void checkFolderAndFilePermission(FileSystem fs,
+                                            Path path,
+                                            FsPermission expectedFolderPermission,
+                                            FsPermission expectedFilePermission,
+                                            int fileCount) throws IOException {
     assertTrue("Path should exist", fs.exists(path));
-    assertEquals("Permission should match", expectedPermission, fs.getFileStatus(path).getPermission());
+    assertEquals("Permission should match", expectedFolderPermission, fs.getFileStatus(path).getPermission());
+    int count = 0;
+    RemoteIterator<LocatedFileStatus> files = fs.listFiles(path, false);
+    while (files.hasNext()) {
+      count++;
+      assertEquals("Permission should match", expectedFilePermission, files.next().getPermission());
+    }
+    assertEquals("Number of files should match", fileCount, count);
   }
 }

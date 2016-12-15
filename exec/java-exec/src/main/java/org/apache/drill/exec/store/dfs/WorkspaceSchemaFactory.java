@@ -61,7 +61,6 @@ import org.apache.drill.exec.planner.logical.DrillViewTable;
 import org.apache.drill.exec.planner.logical.DynamicDrillTable;
 import org.apache.drill.exec.planner.logical.FileSystemCreateTableEntry;
 import org.apache.drill.exec.planner.sql.ExpandingConcurrentMap;
-import org.apache.drill.exec.planner.sql.handlers.SqlHandlerUtil;
 import org.apache.drill.exec.store.AbstractSchema;
 import org.apache.drill.exec.store.PartitionNotFoundException;
 import org.apache.drill.exec.store.SchemaConfig;
@@ -479,27 +478,10 @@ public class WorkspaceSchemaFactory {
       return f.getView(logicalPlanPersistence);
     }
 
-    /**
-     * Looks for table in this workspace. First check among temporary and persistent tables.
-     * If no cached tables are found, checks if passed table name corresponds to existing view name.
-     * If passed table name is not a view either, looks fo temporary / persistent table name
-     * directly on file system.
-     *
-     * @param tableName original table name
-     * @return table instance of temporary / persistent table or view
-     */
     @Override
     public Table getTable(String tableName) {
-
-      // check temporary tables
-      String temporaryTableName = SqlHandlerUtil.generateTemporaryTableName(tableName, schemaConfig.getUuid());
-      TableInstance temporaryTableKey = new TableInstance(new TableSignature(temporaryTableName), ImmutableList.of());
-      if (tables.alreadyContainsKey(temporaryTableKey)) {
-        return tables.get(temporaryTableKey);
-      }
-
-      // check persistent tables
       TableInstance tableKey = new TableInstance(new TableSignature(tableName), ImmutableList.of());
+      // first check existing tables.
       if (tables.alreadyContainsKey(tableKey)) {
         return tables.get(tableKey);
       }
@@ -540,8 +522,7 @@ public class WorkspaceSchemaFactory {
       } catch (UnsupportedOperationException e) {
         logger.debug("The filesystem for this workspace does not support this operation.", e);
       }
-
-      return tables.get(temporaryTableKey) == null ? tables.get(tableKey) : tables.get(temporaryTableKey);
+      return tables.get(tableKey);
     }
 
     @Override
@@ -801,23 +782,6 @@ public class WorkspaceSchemaFactory {
       }
 
       return tableNamesAndTypes;
-    }
-
-    /**
-     * This is file based schema, its accessibility depends on its file system status.
-     * If file system is open, schema is considered to be accessible.
-     *
-     * @return true schema is accessible, false otherwise
-     */
-    @Override
-    public boolean isAccessible() {
-      try {
-        fs.getStatus();
-        return true;
-      } catch (IOException e) {
-        logger.trace("File system in for schema [{}] is closed", name);
-        return false;
-      }
     }
 
   }

@@ -84,8 +84,8 @@ public class DrillTextRecordWriter extends StringOutputRecordWriter {
     try {
       DataOutputStream fos = fs.create(fileName);
       // apply storage strategy to folder and file
-      storageStrategy.apply(fs, fileName.getParent());
-      storageStrategy.apply(fs, fileName);
+      storageStrategy.applyToFolder(fs, fileName.getParent());
+      storageStrategy.applyToFile(fs, fileName);
       stream = new PrintStream(fos);
       logger.debug("Created file: {}", fileName);
     } catch (IOException ex) {
@@ -166,13 +166,8 @@ public class DrillTextRecordWriter extends StringOutputRecordWriter {
 
   @Override
   public void abort() throws IOException {
-    cleanup();
-    try {
-      fs.delete(new Path(location), true);
-    } catch (IOException ex) {
-      logger.error("Abort failed. There could be leftover output files");
-      throw ex;
-    }
+    fs.delete(new Path(location), true);
+    logger.info(String.format("Aborting writer. Location [%s] on file system [%s] is deleted.", location, fs.getUri()));
   }
 
 }

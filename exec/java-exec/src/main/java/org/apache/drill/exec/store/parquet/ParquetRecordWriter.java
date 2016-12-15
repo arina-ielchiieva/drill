@@ -370,7 +370,7 @@ public class ParquetRecordWriter extends ParquetOutputRecordWriter {
     if (parquetFileWriter == null) {
       Path path = new Path(prepareLocationPath(), prefix + "_" + index + ".parquet");
       parquetFileWriter = new ParquetFileWriter(conf, schema, path);
-      storageStrategy.apply(fs, path);
+      storageStrategy.applyToFile(fs, path);
       parquetFileWriter.start();
     }
 
@@ -381,13 +381,8 @@ public class ParquetRecordWriter extends ParquetOutputRecordWriter {
 
   @Override
   public void abort() throws IOException {
-    cleanup();
-    try {
-      fs.delete(new Path(location), true);
-    } catch (IOException ex) {
-      logger.error("Abort failed. There could be leftover output files");
-      throw ex;
-    }
+    fs.delete(new Path(location), true);
+    logger.info(String.format("Aborting writer. Location [%s] on file system [%s] is deleted.", location, fs.getUri()));
   }
 
   @Override
@@ -408,7 +403,7 @@ public class ParquetRecordWriter extends ParquetOutputRecordWriter {
     if (locationPath == null) {
       locationPath = new Path(location);
       fs.mkdirs(locationPath);
-      storageStrategy.apply(fs, locationPath);
+      storageStrategy.applyToFolder(fs, locationPath);
     }
     return locationPath;
   }

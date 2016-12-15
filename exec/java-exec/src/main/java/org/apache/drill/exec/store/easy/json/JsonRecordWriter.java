@@ -85,8 +85,8 @@ public class JsonRecordWriter extends JSONOutputRecordWriter implements RecordWr
     try {
       stream = fs.create(fileName);
       // set storage strategy for folder and file
-      storageStrategy.apply(fs, fileName.getParent());
-      storageStrategy.apply(fs, fileName);
+      storageStrategy.applyToFolder(fs, fileName.getParent());
+      storageStrategy.applyToFile(fs, fileName);
       JsonGenerator generator = factory.createGenerator(stream).useDefaultPrettyPrinter();
       if (uglify) {
         generator = generator.setPrettyPrinter(new MinimalPrettyPrinter(LINE_FEED));
@@ -243,13 +243,8 @@ public class JsonRecordWriter extends JSONOutputRecordWriter implements RecordWr
 
   @Override
   public void abort() throws IOException {
-    cleanup();
-    try {
-      fs.delete(new Path(location), true);
-    } catch (IOException ex) {
-      logger.error("Abort failed. There could be leftover output files");
-      throw ex;
-    }
+    fs.delete(new Path(location), true);
+    logger.info(String.format("Aborting writer. Location [%s] on file system [%s] is deleted.", location, fs.getUri()));
   }
 
   @Override

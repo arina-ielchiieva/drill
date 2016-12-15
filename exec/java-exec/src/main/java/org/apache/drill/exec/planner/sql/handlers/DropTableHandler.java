@@ -20,6 +20,7 @@ package org.apache.drill.exec.planner.sql.handlers;
 import java.io.IOException;
 import java.util.List;
 
+import com.google.common.collect.Lists;
 import org.apache.calcite.schema.Schema;
 import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.schema.Table;
@@ -62,14 +63,11 @@ public class DropTableHandler extends DefaultSqlHandler {
     SchemaPlus defaultSchema = config.getConverter().getDefaultSchema();
     List<String> tableSchema = dropTableNode.getSchema();
 
-    boolean removedTemporaryTable = removeTemporaryTable(tableSchema, originalTableName);
+    boolean removedTemporaryTable = removeTemporaryTable(defaultSchema, tableSchema, originalTableName);
+    // if table to be dropped is not temporary table, we need to check among persistent tables or views
     if (!removedTemporaryTable) {
       AbstractSchema drillSchema = SchemaUtilites.resolveToMutableDrillSchema(defaultSchema, tableSchema);
-      if (drillSchema == null) {
-        throw UserException.validationError().message("Invalid table_name [%s]", originalTableName).build(logger);
-      }
-
-      final Table tableToDrop = SqlHandlerUtil.getTableFromSchema(drillSchema, originalTableName);
+      Table tableToDrop = SqlHandlerUtil.getTableFromSchema(drillSchema, originalTableName);
       if (tableToDrop == null || tableToDrop.getJdbcTableType() != Schema.TableType.TABLE) {
         if (dropTableNode.checkTableExistence()) {
           return DirectPlan.createDirectPlan(context, false, String.format("Table [%s] not found", originalTableName));
@@ -77,28 +75,62 @@ public class DropTableHandler extends DefaultSqlHandler {
           throw UserException.validationError().message("Table [%s] not found", originalTableName).build(logger);
         }
       }
-      drillSchema.dropTable(originalTableName);
+
+      try {
+        drillSchema.dropTable(originalTableName);
+      } catch (Exception e) {
+        // concurrency check: we might have failed because somebody has already dropped the table
+        if (SqlHandlerUtil.getTableFromSchema(drillSchema, originalTableName) != null) {
+          throw e;
+        }
+      }
     }
 
     String message = String.format("%s [%s] dropped",
-            removedTemporaryTable ? "Temporary table" : "Table", originalTableName);
+        removedTemporaryTable ? "Temporary table" : "Table", originalTableName);
     logger.info(message);
     return DirectPlan.createDirectPlan(context, true, message);
   }
 
   /**
-   * Checks if table aimed to be dropped is temporary table.
-   * If table is temporary table, it is dropped from schema
-   * and removed from temporary tables session cache.
+   * If used workspace is default temporary workspace and temporary table is found,
+   * drops the table and removes it from session temporary tables list.
    *
+   * @param defaultSchema default schema
    * @param tableSchema table schema indicated in drop statement
    * @param tableName   table name to drop
    * @return true if temporary table existed and was dropped, false otherwise
    */
-  private boolean removeTemporaryTable(List<String> tableSchema, String tableName) {
-    String defaultTemporaryWorkspace = context.getConfig().getString(ExecConstants.DEFAULT_TEMPORARY_WORKSPACE);
-    String temporaryTableSchema = tableSchema.isEmpty() ?
-        defaultTemporaryWorkspace : SchemaUtilites.getSchemaPath(tableSchema);
-    return context.getSession().removeTemporaryTable(temporaryTableSchema, tableName);
+  private boolean removeTemporaryTable(SchemaPlus defaultSchema, List<String> tableSchema, String tableName) {
+    String temporaryWorkspace = context.getConfig().getString(ExecConstants.DEFAULT_TEMPORARY_WORKSPACE);
+
+    // look for temporary table only if default temporary workspace is used
+    if (!(tableSchema.isEmpty() || SchemaUtilites.getSchemaPath(tableSchema).equals(temporaryWorkspace))) {
+      return false;
+    }
+
+    String temporaryTable = context.getSession().findTemporaryTable(tableName);
+    if (temporaryTable == null) {
+      return false;
+    }
+
+    AbstractSchema drillSchema = SchemaUtilites.resolveToMutableDrillSchema(defaultSchema,
+        Lists.newArrayList(temporaryWorkspace));
+
+    Table tableToDrop = SqlHandlerUtil.getTableFromSchema(drillSchema, temporaryTable);
+    if (tableToDrop != null && tableToDrop.getJdbcTableType() == Schema.TableType.TABLE) {
+      try {
+          drillSchema.dropTable(temporaryTable);
+      } catch (Exception e) {
+          // concurrency check: we might have failed because somebody has already dropped the table
+        if (SqlHandlerUtil.getTableFromSchema(drillSchema, temporaryTable) != null) {
+          throw e;
+        }
+      }
+      context.getSession().removeTemporaryTable(tableName);
+      return true;
+    }
+    return false;
   }
+
 }

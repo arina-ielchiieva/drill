@@ -461,14 +461,15 @@ public class SqlConverter {
 
   /**
    * Extension of {@link CalciteCatalogReader} to add ability to check for temporary tables first
-   * if schema is not indicated near table name during query parsing.
+   * if schema is not indicated near table name during query parsing
+   * or indicated workspace is default temporary workspace.
    */
   private class DrillCalciteCatalogReader extends CalciteCatalogReader {
 
     private final String temporarySchema;
     private final UserSession session;
 
-    public DrillCalciteCatalogReader(CalciteSchema rootSchema,
+    DrillCalciteCatalogReader(CalciteSchema rootSchema,
                                      boolean caseSensitive,
                                      List<String> defaultSchema,
                                      JavaTypeFactory typeFactory,
@@ -480,7 +481,7 @@ public class SqlConverter {
     }
 
     /**
-     * If schema is not indicated (only one element in the list),
+     * If schema is not indicated (only one element in the list) or schema is default temporary workspace,
      * we need to check among session temporary tables first in default temporary workspace.
      * If temporary table is found, its table instance will be returned,
      * otherwise search will be conducted in original workspace.
@@ -491,8 +492,9 @@ public class SqlConverter {
     @Override
     public RelOptTableImpl getTable(final List<String> names) {
       RelOptTableImpl foundTemporaryTable = null;
-      if (names.size() == 1) {
-        String temporaryTable = session.findTemporaryTable(temporarySchema, names.get(0));
+      String schemaPath = SchemaUtilites.getSchemaPath(names.subList(0, names.size() - 1));
+      if (names.size() == 1 || schemaPath.equals(temporarySchema)) {
+        String temporaryTable = session.findTemporaryTable(names.get(names.size() - 1));
         if (temporaryTable != null) {
           List<String> temporaryNames = Lists.newArrayList(temporarySchema);
           temporaryNames.add(temporaryTable);

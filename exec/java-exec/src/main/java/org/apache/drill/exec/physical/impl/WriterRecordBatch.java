@@ -174,18 +174,23 @@ public class WriterRecordBatch extends AbstractRecordBatch<Writer> {
     schema = container.getSchema();
   }
 
-  /** Partially written data will be removed, otherwise clean up will be performed. */
+  /** Clean up needs to be performed before closing writer. Partially written data will be removed. */
   private void closeWriter() {
     if (recordWriter != null) {
       try {
-        if (processed) {
-          recordWriter.cleanup();
-        } else {
-          recordWriter.abort();
-        }
-        recordWriter = null;
+        recordWriter.cleanup();
       } catch(IOException ex) {
         context.fail(ex);
+      } finally {
+        try {
+          if (!processed) {
+            recordWriter.abort();
+          }
+        } catch (IOException e) {
+          logger.error("Abort failed. There could be leftover output files.");
+        } finally {
+          recordWriter = null;
+        }
       }
     }
   }

@@ -27,6 +27,7 @@ import org.apache.calcite.tools.RelConversionException;
 import org.apache.calcite.tools.ValidationException;
 
 import org.apache.drill.common.exceptions.UserException;
+import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.dotdrill.View;
 import org.apache.drill.exec.ops.QueryContext;
 import org.apache.drill.exec.physical.PhysicalPlan;
@@ -47,6 +48,24 @@ public abstract class ViewHandler extends DefaultSqlHandler {
   public ViewHandler(SqlHandlerConfig config) {
     super(config);
     this.context = config.getContext();
+  }
+
+  /**
+   * If view to be dropped is in default temporary workspace, checks if it's a temporary table or not.
+   *
+   * @param schema view schema
+   * @param viewName view name to be created
+   * @return true is object to be created is temporary table, false otherwise
+   */
+  protected boolean isTemporaryTable(AbstractSchema schema, String viewName) {
+    if (schema.getFullSchemaName().equals(context.getConfig().getString(ExecConstants.DEFAULT_TEMPORARY_WORKSPACE))) {
+      String temporaryTableName = context.getSession().findTemporaryTable(viewName);
+      if (temporaryTableName != null) {
+        Table temporaryTable = SqlHandlerUtil.getTableFromSchema(schema, temporaryTableName);
+        return temporaryTable != null && temporaryTable.getJdbcTableType() == Schema.TableType.TABLE;
+      }
+    }
+    return false;
   }
 
   /** Handler for Create View DDL command */
@@ -100,25 +119,23 @@ public abstract class ViewHandler extends DefaultSqlHandler {
       final String schemaPath = drillSchema.getFullSchemaName();
       final Table existingTable = SqlHandlerUtil.getTableFromSchema(drillSchema, viewName);
 
-      if (existingTable != null) {
-        if (existingTable.getJdbcTableType() != Schema.TableType.VIEW) {
-          // existing table is not a view
-          throw UserException.validationError()
-              .message("A non-view table with given name [%s] already exists in schema [%s]",
-                  viewName, schemaPath)
-              .build(logger);
-        }
+      if ((existingTable != null && existingTable.getJdbcTableType() != Schema.TableType.VIEW) ||
+          isTemporaryTable(drillSchema, viewName)) {
+        // existing table is not a view
+        throw UserException
+            .validationError()
+            .message("A non-view table with given name [%s] already exists in schema [%s]", viewName, schemaPath)
+            .build(logger);
+      }
 
-        if (existingTable.getJdbcTableType() == Schema.TableType.VIEW && !replaceView) {
+      if ((existingTable != null && existingTable.getJdbcTableType() == Schema.TableType.VIEW) && !replaceView) {
           // existing table is a view and create view has no "REPLACE" clause
-          throw UserException.validationError()
-              .message("A view with given name [%s] already exists in schema [%s]",
-                  viewName, schemaPath)
-              .build(logger);
-        }
+        throw UserException
+            .validationError()
+            .message("A view with given name [%s] already exists in schema [%s]", viewName, schemaPath)
+            .build(logger);
       }
     }
-
   }
 
   /** Handler for Drop View [If Exists] DDL command. */
@@ -137,24 +154,35 @@ public abstract class ViewHandler extends DefaultSqlHandler {
       final String schemaPath = drillSchema.getFullSchemaName();
 
       final Table viewToDrop = SqlHandlerUtil.getTableFromSchema(drillSchema, viewName);
+      final boolean isTemporaryTable = isTemporaryTable(drillSchema, viewName);
+
       if (dropView.checkViewExistence()) {
-        if (viewToDrop == null || viewToDrop.getJdbcTableType() != Schema.TableType.VIEW){
+        if (isTemporaryTable || (viewToDrop == null || viewToDrop.getJdbcTableType() != Schema.TableType.VIEW)) {
           return DirectPlan.createDirectPlan(context, false,
               String.format("View [%s] not found in schema [%s].", viewName, schemaPath));
         }
       } else {
-        if (viewToDrop != null && viewToDrop.getJdbcTableType() != Schema.TableType.VIEW) {
-          throw UserException.validationError()
+        if (isTemporaryTable || (viewToDrop != null && viewToDrop.getJdbcTableType() != Schema.TableType.VIEW)) {
+          throw UserException
+              .validationError()
               .message("[%s] is not a VIEW in schema [%s]", viewName, schemaPath)
               .build(logger);
         } else if (viewToDrop == null) {
-          throw UserException.validationError()
+          throw UserException
+              .validationError()
               .message("Unknown view [%s] in schema [%s].", viewName, schemaPath)
               .build(logger);
         }
       }
 
-      drillSchema.dropView(viewName);
+      try {
+        drillSchema.dropView(viewName);
+      } catch (Exception e) {
+        // concurrency check: we might have failed because somebody has already dropped the view
+        if (SqlHandlerUtil.getTableFromSchema(drillSchema, viewName) != null) {
+          throw e;
+        }
+      }
 
       return DirectPlan.createDirectPlan(context, true,
           String.format("View [%s] deleted successfully from schema [%s].", viewName, schemaPath));

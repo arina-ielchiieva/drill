@@ -235,15 +235,4 @@ public class SqlHandlerUtil {
     writer.keyword(")");
   }
 
-  /**
-   * Generates temporary table name using original table and unique identifies.
-   *
-   * @param tableName original table name
-   * @param uuid unique identifier
-   * @return generated temporary table name
-   */
-  public static String generateTemporaryTableName(String tableName, String uuid) {
-    return tableName + "_" + uuid;
-  }
-
 }
