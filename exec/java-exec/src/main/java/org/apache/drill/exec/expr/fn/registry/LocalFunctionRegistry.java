@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ListMultimap;
@@ -74,11 +73,11 @@ public class LocalFunctionRegistry {
   private final FunctionRegistryHolder registryHolder;
 
   /** Registers all functions present in Drill classpath on start-up. All functions will be marked as built-in.
-   * Built-in functions are not allowed to be unregistered. */
+   * Built-in functions are not allowed to be unregistered. Initially registry version is set to 0. */
   public LocalFunctionRegistry(ScanResult classpathScan) {
     registryHolder = new FunctionRegistryHolder();
     validate(BUILT_IN, classpathScan);
-    register(Lists.newArrayList(new JarScan(BUILT_IN, classpathScan, this.getClass().getClassLoader())));
+    register(Lists.newArrayList(new JarScan(BUILT_IN, classpathScan, this.getClass().getClassLoader())), 0);
     if (logger.isTraceEnabled()) {
       StringBuilder allFunctions = new StringBuilder();
       for (DrillFuncHolder method: registryHolder.getAllFunctionsWithHolders().values()) {
@@ -89,7 +88,7 @@ public class LocalFunctionRegistry {
   }
 
   /**
-   * @return local function registry version number
+   * @return remote function registry version number with which local function registry is synced
    */
   public long getVersion() {
     return registryHolder.getVersion();
@@ -147,14 +146,15 @@ public class LocalFunctionRegistry {
   }
 
   /**
-   * Registers all functions present in jar.
+   * Registers all functions present in jar and updates registry version.
    * If jar name is already registered, all jar related functions will be overridden.
    * To prevent classpath collisions during loading and unloading jars,
    * each jar is shipped with its own class loader.
    *
    * @param jars list of jars to be registered
+   * @param version remote function registry version number with which local function registry is synced
    */
-  public void register(List<JarScan> jars) {
+  public void register(List<JarScan> jars, long version) {
     Map<String, List<FunctionHolder>> newJars = Maps.newHashMap();
     for (JarScan jarScan : jars) {
       FunctionConverter converter = new FunctionConverter();
@@ -174,7 +174,7 @@ public class LocalFunctionRegistry {
         }
       }
     }
-    registryHolder.addJars(newJars);
+    registryHolder.addJars(newJars, version);
   }
 
   /**
@@ -209,33 +209,23 @@ public class LocalFunctionRegistry {
     return registryHolder.functionsSize();
   }
 
-  /**
-   * @param name function name
-   * @return all function holders associated with the function name. Function name is case insensitive.
-   */
-  public List<DrillFuncHolder> getMethods(String name, AtomicLong version) {
-    return registryHolder.getHoldersByFunctionName(name.toLowerCase(), version);
-  }
-
   public List<DrillFuncHolder> getMethods(String name) {
     return registryHolder.getHoldersByFunctionName(name.toLowerCase());
   }
 
   /**
-   * Registers all functions present in {@link DrillOperatorTable},
-   * also sets local registry version used at the moment of registering.
+   * Registers all functions present in {@link DrillOperatorTable}.
    *
    * @param operatorTable drill operator table
    */
   public void register(DrillOperatorTable operatorTable) {
-    AtomicLong versionHolder = new AtomicLong();
-    final Map<String, Collection<DrillFuncHolder>> registeredFunctions = registryHolder.getAllFunctionsWithHolders(versionHolder).asMap();
-    operatorTable.setFunctionRegistryVersion(versionHolder.get());
+    final Map<String, Collection<DrillFuncHolder>> registeredFunctions = registryHolder.getAllFunctionsWithHolders().asMap();
     registerOperatorsWithInference(operatorTable, registeredFunctions);
     registerOperatorsWithoutInference(operatorTable, registeredFunctions);
   }
 
-  private void registerOperatorsWithInference(DrillOperatorTable operatorTable, Map<String, Collection<DrillFuncHolder>> registeredFunctions) {
+  private void registerOperatorsWithInference(DrillOperatorTable operatorTable,
+                                              Map<String, Collection<DrillFuncHolder>> registeredFunctions) {
     final Map<String, DrillSqlOperator.DrillSqlOperatorBuilder> map = Maps.newHashMap();
     final Map<String, DrillSqlAggOperator.DrillSqlAggOperatorBuilder> mapAgg = Maps.newHashMap();
     for (Entry<String, Collection<DrillFuncHolder>> function : registeredFunctions.entrySet()) {

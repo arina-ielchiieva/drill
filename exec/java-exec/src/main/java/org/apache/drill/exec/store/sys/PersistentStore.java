@@ -34,6 +34,24 @@ public interface PersistentStore<V> extends AutoCloseable {
   PersistentStoreMode getMode();
 
   /**
+   * Checks if lookup key is present in store.
+   *
+   * @param key lookup key
+   * @return true if store contains lookup key, false otherwise
+   */
+  boolean contains(String key);
+
+  /**
+   * Checks if lookup key is present in store.
+   * Sets data change version number.
+   *
+   * @param key lookup key
+   * @param version version holder
+   * @return true if store contains lookup key, false otherwise
+   */
+  boolean contains(String key, DataChangeVersion version);
+
+  /**
    * Returns the value for the given key if exists, null otherwise.
    * @param key  lookup key
    */

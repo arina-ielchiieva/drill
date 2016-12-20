@@ -61,6 +61,18 @@ public class MongoPersistentStore<V> extends BasePersistentStore<V> {
   }
 
   @Override
+  public boolean contains(String key) {
+    try {
+      Bson query = Filters.eq(DrillMongoConstants.ID, key);
+      Document document = collection.find(query).first();
+      return document != null && document.containsKey(pKey);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      throw new DrillRuntimeException(e.getMessage(), e);
+    }
+  }
+
+  @Override
   public V get(String key) {
     try {
       Bson query = Filters.eq(DrillMongoConstants.ID, key);

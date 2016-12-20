@@ -25,11 +25,11 @@ import org.apache.drill.common.exceptions.UserRemoteException;
 import org.apache.drill.common.util.TestTools;
 import org.apache.drill.exec.exception.VersionMismatchException;
 import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
+import org.apache.drill.exec.expr.fn.registry.JarScan;
 import org.apache.drill.exec.expr.fn.registry.LocalFunctionRegistry;
 import org.apache.drill.exec.expr.fn.registry.RemoteFunctionRegistry;
 import org.apache.drill.exec.proto.UserBitShared.Jar;
 import org.apache.drill.exec.proto.UserBitShared.Registry;
-import org.apache.drill.exec.server.DrillbitContext;
 import org.apache.drill.exec.store.sys.store.DataChangeVersion;
 import org.apache.drill.exec.util.JarUtil;
 import org.apache.hadoop.fs.FileSystem;
@@ -55,6 +55,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyListOf;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -201,7 +202,7 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     assertTrue("Source should be present in registry area",
         fs.exists(new Path(remoteFunctionRegistry.getRegistryArea(), default_source_name)));
 
-    Registry registry = remoteFunctionRegistry.getRegistry();
+    Registry registry = remoteFunctionRegistry.getRegistry(new DataChangeVersion());
     assertEquals("Registry should contain one jar", registry.getJarList().size(), 1);
     assertEquals(registry.getJar(0).getName(), default_binary_name);
   }
@@ -304,7 +305,7 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     assertTrue("Source should be present in registry area",
             fs.exists(new Path(remoteFunctionRegistry.getRegistryArea(), default_source_name)));
 
-    Registry registry = remoteFunctionRegistry.getRegistry();
+    Registry registry = remoteFunctionRegistry.getRegistry(new DataChangeVersion());
     assertEquals("Registry should contain one jar", registry.getJarList().size(), 1);
     assertEquals(registry.getJar(0).getName(), default_binary_name);
   }
@@ -337,7 +338,8 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     FileSystem fs = remoteFunctionRegistry.getFs();
 
     assertFalse("Registry area should be empty", fs.listFiles(remoteFunctionRegistry.getRegistryArea(), false).hasNext());
-    assertEquals("Registry should be empty", remoteFunctionRegistry.getRegistry().getJarList().size(), 0);
+    assertEquals("Registry should be empty",
+        remoteFunctionRegistry.getRegistry(new DataChangeVersion()).getJarList().size(), 0);
   }
 
   @Test
@@ -370,7 +372,8 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     assertFalse("Registry area should be empty", fs.listFiles(remoteFunctionRegistry.getRegistryArea(), false).hasNext());
     assertFalse("Temporary area should be empty", fs.listFiles(remoteFunctionRegistry.getTmpArea(), false).hasNext());
 
-    assertEquals("Registry should be empty", remoteFunctionRegistry.getRegistry().getJarList().size(), 0);
+    assertEquals("Registry should be empty",
+        remoteFunctionRegistry.getRegistry(new DataChangeVersion()).getJarList().size(), 0);
   }
 
   @Test
@@ -402,7 +405,7 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     assertTrue("Source should be present in registry area",
             fs.exists(new Path(remoteFunctionRegistry.getRegistryArea(), default_source_name)));
 
-    Registry registry = remoteFunctionRegistry.getRegistry();
+    Registry registry = remoteFunctionRegistry.getRegistry(new DataChangeVersion());
     assertEquals("Registry should contain one jar", registry.getJarList().size(), 1);
     assertEquals(registry.getJar(0).getName(), default_binary_name);
   }
@@ -455,6 +458,38 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     }
   }
 
+  @Test
+  public void testLazyInitWithExistingFunction() throws Exception {
+    testBuilder()
+        .sqlQuery("select lower('A') as res from (values(1))")
+        .unOrdered()
+        .baselineColumns("res")
+        .baselineValues("a")
+        .go();
+
+    copyDefaultJarsToStagingArea();
+    test("create function using jar '%s'", default_binary_name);
+
+    testBuilder()
+        .sqlQuery("select lower('A') as res from (values(1))")
+        .unOrdered()
+        .baselineColumns("res")
+        .baselineValues("a")
+        .go();
+
+    Path localUdfDirPath = Deencapsulation.getField(getDrillbitContext().getFunctionImplementationRegistry(), "localUdfDir");
+    File localUdfDir = new File(localUdfDirPath.toUri().getPath());
+
+    assertTrue("Binary should exist in local udf directory", new File(localUdfDir, default_binary_name).exists());
+    assertTrue("Source should exist in local udf directory", new File(localUdfDir, default_source_name).exists());
+
+    testBuilder()
+        .sqlQuery("select custom_lower('A') as res from (values(1))")
+        .unOrdered()
+        .baselineColumns("res")
+        .baselineValues("a")
+        .go();
+  }
 
   @Test
   public void testDropFunction() throws Exception {
@@ -485,7 +520,8 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     }
 
     RemoteFunctionRegistry remoteFunctionRegistry = getDrillbitContext().getRemoteFunctionRegistry();
-    assertEquals("Remote registry should be empty", remoteFunctionRegistry.getRegistry().getJarList().size(), 0);
+    assertEquals("Remote registry should be empty",
+        remoteFunctionRegistry.getRegistry(new DataChangeVersion()).getJarList().size(), 0);
 
     FileSystem fs = remoteFunctionRegistry.getFs();
     assertFalse("Binary should not be present in registry area",
@@ -762,76 +798,12 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
   }
 
   @Test
-  public void testLazyInitConcurrent() throws Exception {
-    FunctionImplementationRegistry functionImplementationRegistry = spyFunctionImplementationRegistry();
-    copyDefaultJarsToStagingArea();
-    test("create function using jar '%s'", default_binary_name);
-
-    final CountDownLatch latch1 = new CountDownLatch(1);
-    final CountDownLatch latch2 = new CountDownLatch(1);
-
-    final String query = "select custom_lower('A') from (values(1))";
-
-    doAnswer(new Answer<Boolean>() {
-      @Override
-      public Boolean answer(InvocationOnMock invocation) throws Throwable {
-        latch1.await();
-        boolean result = (boolean) invocation.callRealMethod();
-        assertTrue("loadRemoteFunctions() should return true", result);
-        latch2.countDown();
-        return true;
-      }
-    })
-        .doAnswer(new Answer() {
-          @Override
-          public Boolean answer(InvocationOnMock invocation) throws Throwable {
-            latch1.countDown();
-            latch2.await();
-            boolean result = (boolean) invocation.callRealMethod();
-            assertTrue("loadRemoteFunctions() should return true", result);
-            return true;
-          }
-        })
-        .when(functionImplementationRegistry).loadRemoteFunctions(anyLong());
-
-    SimpleQueryRunner simpleQueryRunner = new SimpleQueryRunner(query);
-    Thread thread1 = new Thread(simpleQueryRunner);
-    Thread thread2 = new Thread(simpleQueryRunner);
-
-    thread1.start();
-    thread2.start();
-
-    thread1.join();
-    thread2.join();
-
-    verify(functionImplementationRegistry, times(2)).loadRemoteFunctions(anyLong());
-    LocalFunctionRegistry localFunctionRegistry = Deencapsulation.getField(functionImplementationRegistry, "localFunctionRegistry");
-    assertEquals("Local functionRegistry version should match", 2L, localFunctionRegistry.getVersion());
-  }
-
-  @Test
   public void testLazyInitNoReload() throws Exception {
-    FunctionImplementationRegistry functionImplementationRegistry = spyFunctionImplementationRegistry();
     copyDefaultJarsToStagingArea();
     test("create function using jar '%s'", default_binary_name);
 
-    doAnswer(new Answer<Boolean>() {
-      @Override
-      public Boolean answer(InvocationOnMock invocation) throws Throwable {
-        boolean result = (boolean) invocation.callRealMethod();
-        assertTrue("loadRemoteFunctions() should return true", result);
-        return true;
-      }
-    })
-        .doAnswer(new Answer() {
-          @Override
-          public Boolean answer(InvocationOnMock invocation) throws Throwable {
-            boolean result = (boolean) invocation.callRealMethod();
-            assertFalse("loadRemoteFunctions() should return false", result);
-            return false;
-          }
-        })
-        .when(functionImplementationRegistry).loadRemoteFunctions(anyLong());
+    RemoteFunctionRegistry remoteFunctionRegistry = spyRemoteFunctionRegistry();
+    LocalFunctionRegistry localFunctionRegistry = spyLocalFunctionRegistry();
 
     test("select custom_lower('A') from (values(1))");
 
@@ -841,9 +813,12 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
       assertThat(e.getMessage(), containsString("No match found for function signature unknown_lower(<CHARACTER>)"));
     }
 
-    verify(functionImplementationRegistry, times(2)).loadRemoteFunctions(anyLong());
-    LocalFunctionRegistry localFunctionRegistry = Deencapsulation.getField(functionImplementationRegistry, "localFunctionRegistry");
-    assertEquals("Local functionRegistry version should match", 2L, localFunctionRegistry.getVersion());
+    verify(remoteFunctionRegistry, times(5)).getRegistryVersion();
+    verify(localFunctionRegistry, times(5)).getVersion();
+    verify(remoteFunctionRegistry, times(1)).getRegistry(any(DataChangeVersion.class));
+    verify(localFunctionRegistry, times(1)).register(anyListOf(JarScan.class), anyLong());
+    assertEquals("Local and remote function registries versions should match",
+        remoteFunctionRegistry.getRegistryVersion(), localFunctionRegistry.getVersion());
   }
 
   private void copyDefaultJarsToStagingArea() throws IOException {
@@ -873,10 +848,12 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     return spy;
   }
 
-  private FunctionImplementationRegistry spyFunctionImplementationRegistry() {
-    DrillbitContext drillbitContext = getDrillbitContext();
-    FunctionImplementationRegistry spy = spy(drillbitContext.getFunctionImplementationRegistry());
-    Deencapsulation.setField(drillbitContext, "functionRegistry", spy);
+  private LocalFunctionRegistry spyLocalFunctionRegistry() {
+    FunctionImplementationRegistry functionImplementationRegistry = getDrillbitContext().getFunctionImplementationRegistry();
+    LocalFunctionRegistry localFunctionRegistry = Deencapsulation.getField(functionImplementationRegistry,
+        "localFunctionRegistry");
+    LocalFunctionRegistry spy = spy(localFunctionRegistry);
+    Deencapsulation.setField(functionImplementationRegistry, "localFunctionRegistry", spy);
     return spy;
   }
 

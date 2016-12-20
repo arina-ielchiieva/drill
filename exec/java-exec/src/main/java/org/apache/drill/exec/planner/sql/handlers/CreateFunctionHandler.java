@@ -186,6 +186,7 @@ public class CreateFunctionHandler extends DefaultSqlHandler {
           remoteRegistry.updateRegistry(updatedRegistry, version);
           return;
         } catch (VersionMismatchException ex) {
+          logger.debug("Failed to update function registry during registration, version mismatch was detected.", ex);
           retryAttempts--;
         }
       }

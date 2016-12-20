@@ -67,6 +67,20 @@ public class HBasePersistentStore<V> extends BasePersistentStore<V> {
   }
 
   @Override
+  public boolean contains(String key) {
+    try {
+      Get get = new Get(row(key));
+      get.addColumn(FAMILY, QUALIFIER);
+      return hbaseTable.exists(get);
+    } catch (IOException e) {
+      throw UserException
+          .dataReadError(e)
+          .message("Caught error while checking row existence '%s' for table '%s'", key, hbaseTableName)
+          .build(logger);
+    }
+  }
+
+  @Override
   public V get(String key) {
     return get(key, FAMILY);
   }

@@ -142,6 +142,7 @@ public class DropFunctionHandler extends DefaultSqlHandler {
         remoteFunctionRegistry.updateRegistry(updatedRegistry, version);
         return jarToBeDeleted;
       } catch (VersionMismatchException ex) {
+        logger.debug("Failed to update function registry during unregistration, version mismatch was detected.", ex);
         retryAttempts--;
       }
     }
