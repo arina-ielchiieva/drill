@@ -120,6 +120,8 @@ public class CompliantTextRecordReader extends AbstractRecordReader {
         //extract header and use that to setup a set of VarCharVectors
         String [] fieldNames = extractHeader();
         output = new FieldVarCharOutput(outputMutator, fieldNames, getColumns(), isStarQuery());
+        columns = output.getActualColumns();
+
       } else {
         //simply use RepeatedVarCharVector
         output = new RepeatedVarCharOutput(outputMutator, getColumns(), isStarQuery());

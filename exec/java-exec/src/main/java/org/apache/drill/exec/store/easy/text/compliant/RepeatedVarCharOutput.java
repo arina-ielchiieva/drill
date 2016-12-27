@@ -110,6 +110,8 @@ class RepeatedVarCharOutput extends TextOutput {
   // maximum number of fields/columns
   private final int maxField;
 
+  private Collection<SchemaPath> actualColumns;
+
   /**
    * We initialize and add the repeated varchar vector to the record batch in this
    * constructor. Perform some sanity checks if the selected columns are valid or not.
@@ -125,6 +127,8 @@ class RepeatedVarCharOutput extends TextOutput {
     this.vector = outputMutator.addField(field, RepeatedVarCharVector.class);
 
     this.mutator = vector.getMutator();
+
+    actualColumns = columns;
 
 
     { // setup fields
@@ -245,6 +249,11 @@ class RepeatedVarCharOutput extends TextOutput {
     fieldIndex = index;
     collect = collectedFields[index];
     fieldOpen = true;
+  }
+
+  @Override
+  public Collection<SchemaPath> getActualColumns() {
+    return actualColumns;
   }
 
   @Override

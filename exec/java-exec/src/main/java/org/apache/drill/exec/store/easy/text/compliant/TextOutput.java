@@ -17,6 +17,10 @@
  */
 package org.apache.drill.exec.store.easy.text.compliant;
 
+import org.apache.drill.common.expression.SchemaPath;
+
+import java.util.Collection;
+
 /* Base class for producing output record batches while dealing with
  * Text files.
  */
@@ -28,6 +32,8 @@ abstract class TextOutput {
    * @param index  index within the record
    */
   public abstract void startField(int index);
+
+  public abstract Collection<SchemaPath> getActualColumns();
 
   /**
    * End processing a field within a record.

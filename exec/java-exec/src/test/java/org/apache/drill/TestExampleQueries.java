@@ -21,12 +21,14 @@ import static org.apache.drill.TestBuilder.listOf;
 import static org.junit.Assert.assertEquals;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.util.FileUtils;
 import org.apache.drill.common.util.TestTools;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.compile.ClassTransformer;
+import org.apache.drill.exec.rpc.user.QueryDataBatch;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -1193,6 +1195,26 @@ public class TestExampleQueries extends BaseTestQuery {
         .baselineValues("1930-01-08")
         .build()
         .run();
+  }
+
+  @Test
+  public void test() throws Exception {
+    //test("select count(1) from dfs.`/home/arina/files/test.csvh`");
+    //test("select columns[0], a, b, w from dfs.`/home/arina/files/test.csvh`");
+
+    //String sql = "select columns[0], a, b, w from dfs.`/home/arina/files/test.csvh`";
+    String sql = "select columns[0] from dfs.`/home/arina/files/test.csvh`";
+    //String sql = "select columns[0] from dfs.`/home/arina/files/test.csv`";
+    //String sql = "select a from dfs.`/home/arina/files/test.csvh`";
+    setColumnWidths(new int[] {40});
+    List<QueryDataBatch> res = testSqlWithResults(sql);
+    printResult(res);
+
+    /*
+a,b,c,d
+1,2,3,4
+5,6,7,8
+     */
   }
 
 }

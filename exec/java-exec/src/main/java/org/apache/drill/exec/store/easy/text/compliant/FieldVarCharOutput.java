@@ -17,7 +17,9 @@
  */
 package org.apache.drill.exec.store.easy.text.compliant;
 
+import com.google.common.collect.Lists;
 import org.apache.drill.common.exceptions.UserException;
+import org.apache.drill.common.expression.PathSegment;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.Types;
@@ -63,6 +65,7 @@ class FieldVarCharOutput extends TextOutput {
   private int recordCount = 0;
   private int batchIndex = 0;
   private int maxField = 0;
+  public Collection<SchemaPath> actualColumns = Lists.newArrayList();
 
   /**
    * We initialize and add the varchar vector for each incoming field in this
@@ -82,8 +85,9 @@ class FieldVarCharOutput extends TextOutput {
       maxField = totalFields - 1;
       this.selectedFields = new boolean[totalFields];
       Arrays.fill(selectedFields, true);
+      actualColumns = columns;
     } else {
-      List<Integer> columnIds = new ArrayList<Integer>();
+      List<Integer> columnIds = new ArrayList<>();
       String pathStr;
       int index;
 
@@ -91,21 +95,27 @@ class FieldVarCharOutput extends TextOutput {
         pathStr = path.getRootSegment().getPath();
         if (pathStr.equals(COL_NAME) && path.getRootSegment().getChild() != null) {
           //TODO: support both field names and columns index along with predicate pushdown
-          throw UserException
-              .unsupportedError()
-              .message("With extractHeader enabled, only header names are supported")
-              .addContext("column name", pathStr)
-              .addContext("column index", path.getRootSegment().getChild())
-              .build(logger);
+          index = ((PathSegment.ArraySegment) path.getRootSegment().getChild()).getIndex();
+          if (outputColumns.size() < index && index > 0) {
+            // need to replace
+            String columnName = outputColumns.get(index);
+            SchemaPath newPath = new SchemaPath(new PathSegment.NameSegment(columnName, null), path.getPosition());
+            actualColumns.add(newPath);
+          } else {
+            index = -1;
+            actualColumns.add(path);
+          }
         } else {
           index = outputColumns.indexOf(pathStr);
-          if (index < 0) {
-            // found col that is not a part of fieldNames, add it
-            // this col might be part of some another scanner
-            index = totalFields++;
-            outputColumns.add(pathStr);
-          }
+          actualColumns.add(path);
         }
+        if (index < 0) {
+          // found col that is not a part of fieldNames, add it
+          // this col might be part of some another scanner
+          index = totalFields++;
+          outputColumns.add(pathStr);
+        }
+
         columnIds.add(index);
       }
       Collections.sort(columnIds);
@@ -149,6 +159,11 @@ class FieldVarCharOutput extends TextOutput {
     fieldOpen = true;
     collect = selectedFields[index];
     currentVector = vectors[index];
+  }
+
+  @Override
+  public Collection<SchemaPath> getActualColumns() {
+    return actualColumns;
   }
 
   @Override
