@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -176,21 +176,23 @@ public class WriterRecordBatch extends AbstractRecordBatch<Writer> {
 
   /** Clean up needs to be performed before closing writer. Partially written data will be removed. */
   private void closeWriter() {
-    if (recordWriter != null) {
+    if (recordWriter == null) {
+      return;
+    }
+
+    try {
+      recordWriter.cleanup();
+    } catch(IOException ex) {
+      context.fail(ex);
+    } finally {
       try {
-        recordWriter.cleanup();
-      } catch(IOException ex) {
-        context.fail(ex);
-      } finally {
-        try {
-          if (!processed) {
-            recordWriter.abort();
-          }
-        } catch (IOException e) {
-          logger.error("Abort failed. There could be leftover output files.");
-        } finally {
-          recordWriter = null;
+        if (!processed) {
+          recordWriter.abort();
         }
+      } catch (IOException e) {
+        logger.error("Abort failed. There could be leftover output files.", e);
+      } finally {
+        recordWriter = null;
       }
     }
   }

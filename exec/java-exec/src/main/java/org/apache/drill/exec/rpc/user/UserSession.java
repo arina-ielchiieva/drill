@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -32,10 +32,13 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 
+import org.apache.calcite.schema.Schema;
 import org.apache.calcite.schema.SchemaPlus;
+import org.apache.calcite.schema.Table;
 import org.apache.calcite.tools.ValidationException;
-import org.apache.drill.common.exceptions.DrillRuntimeException;
+import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.exec.planner.sql.SchemaUtilites;
+import org.apache.drill.exec.planner.sql.handlers.SqlHandlerUtil;
 import org.apache.drill.exec.proto.UserBitShared.UserCredentials;
 import org.apache.drill.exec.proto.UserProtos.Property;
 import org.apache.drill.exec.proto.UserProtos.UserProperties;
@@ -68,12 +71,13 @@ public class UserSession implements Closeable {
   private final AtomicInteger queryCount;
   private final String sessionId;
 
-  /** Stores list of temporary tables, key is original table name, value is generated table name. **/
+  /** Stores list of temporary tables, key is original table name converted to lower case to achieve case-insensitivity,
+   *  value is generated table name. **/
   private final ConcurrentMap<String, String> temporaryTables;
   /** Stores list of session temporary locations, key is path to location, value is file system associated with location. **/
   private final ConcurrentMap<Path, FileSystem> temporaryLocations;
 
-  /** On session close deletes all session temporary locations recursively. */
+  /** On session close deletes all session temporary locations recursively and clears temporary locations list. */
   @Override
   public void close() {
     for (Map.Entry<Path, FileSystem> entry : temporaryLocations.entrySet()) {
@@ -84,10 +88,11 @@ public class UserSession implements Closeable {
         logger.info("Deleted session temporary location [{}] from file system [{}]",
             path.toUri().getPath(), fs.getUri());
       } catch (Exception e) {
-        logger.debug("Error during session temporary location [{}] deletion from file system [{}]",
-            path.toUri().getPath(), fs.getUri());
+        logger.warn("Error during session temporary location [{}] deletion from file system [{}]: [{}]",
+            path.toUri().getPath(), fs.getUri(), e.getMessage());
       }
     }
+    temporaryLocations.clear();
   }
 
   /**
@@ -261,6 +266,7 @@ public class UserSession implements Closeable {
    * Creates and adds session temporary location if absent using schema configuration.
    * Generates temporary table name and stores it's original name as key
    * and generated name as value in  session temporary tables cache.
+   * Original temporary name is converted to lower case to achieve case-insensitivity.
    * If original table name already exists, new name is not regenerated and is reused.
    * This can happen if default temporary workspace was changed (file system or location) or
    * orphan temporary table name has remained (name was registered but table creation did not succeed).
@@ -271,33 +277,65 @@ public class UserSession implements Closeable {
    * @throws IOException if error during session temporary location creation
    */
   public String registerTemporaryTable(AbstractSchema schema, String tableName) throws IOException {
-    if (schema instanceof WorkspaceSchemaFactory.WorkspaceSchema) {
       addTemporaryLocation((WorkspaceSchemaFactory.WorkspaceSchema) schema);
       String temporaryTableName = Paths.get(sessionId, UUID.randomUUID().toString()).toString();
-      String oldTemporaryTableName = temporaryTables.putIfAbsent(tableName, temporaryTableName);
+      String oldTemporaryTableName = temporaryTables.putIfAbsent(tableName.toLowerCase(), temporaryTableName);
       return oldTemporaryTableName == null ? temporaryTableName : oldTemporaryTableName;
-    } else {
-      throw new DrillRuntimeException("Temporary workspace must be instance of WorkspaceSchemaFactory.WorkspaceSchema");
-    }
   }
 
   /**
    * Returns generated temporary table name from the list of session temporary tables, null otherwise.
+   * Original temporary name is converted to lower case to achieve case-insensitivity.
    *
    * @param tableName original table name
    * @return generated temporary table name
    */
-  public String findTemporaryTable(String tableName) {
-    return temporaryTables.get(tableName);
+  public String resolveTemporaryTableName(String tableName) {
+    return temporaryTables.get(tableName.toLowerCase());
+  }
+
+  /**
+   * Checks if passed table is temporary, table name is case-insensitive.
+   * Before looking for table checks if passed schema is temporary and returns false if not
+   * since temporary tables are allowed to be created in temporary workspace only.
+   * If passed workspace is temporary, looks for temporary table.
+   * First checks if table name is among temporary tables, if not returns false.
+   * If temporary table named was resolved, checks that temporary table exists on disk,
+   * to ensure that temporary table actually exists and resolved table name is not orphan
+   * (for example, in result of unsuccessful temporary table creation).
+   *
+   * @param drillSchema table schema
+   * @param config drill config
+   * @param tableName original table name
+   * @return true if temporary table exists in schema, false otherwise
+   */
+  public boolean isTemporaryTable(AbstractSchema drillSchema, DrillConfig config, String tableName) {
+    if (!SchemaUtilites.isTemporaryWorkspace(drillSchema.getFullSchemaName(), config)) {
+      return false;
+    }
+    String temporaryTableName = resolveTemporaryTableName(tableName);
+    if (temporaryTableName != null) {
+      Table temporaryTable = SqlHandlerUtil.getTableFromSchema(drillSchema, temporaryTableName);
+      if (temporaryTable != null && temporaryTable.getJdbcTableType() == Schema.TableType.TABLE) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
    * Removes temporary table name from the list of session temporary tables.
+   * Original temporary name is converted to lower case to achieve case-insensitivity.
    *
    * @param tableName original table name
    */
-  public void removeTemporaryTable(String tableName) {
-    temporaryTables.remove(tableName);
+  public void removeTemporaryTable(AbstractSchema drillSchema, String tableName) {
+    String temporaryTable = resolveTemporaryTableName(tableName);
+    if (temporaryTable == null) {
+      return;
+    }
+    SqlHandlerUtil.dropTableFromSchema(drillSchema, temporaryTable);
+    temporaryTables.remove(tableName.toLowerCase());
   }
 
   /**
@@ -318,11 +356,10 @@ public class UserSession implements Closeable {
 
     FileSystem fileSystem = temporaryLocations.putIfAbsent(temporaryLocation, fs);
 
-    if (fileSystem == null && !fs.exists(temporaryLocation)) {
-      fs.mkdirs(temporaryLocation);
+    if (fileSystem == null) {
+      StorageStrategy.TEMPORARY.createPathAndApply(fs, temporaryLocation);
       Preconditions.checkArgument(fs.exists(temporaryLocation),
           String.format("Temporary location should exist [%s]", temporaryLocation.toUri().getPath()));
-      StorageStrategy.TEMPORARY.applyToFolder(fs, temporaryLocation);
     }
   }
 

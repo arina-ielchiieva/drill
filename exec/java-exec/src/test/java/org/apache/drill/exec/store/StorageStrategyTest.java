@@ -19,9 +19,7 @@ package org.apache.drill.exec.store;
 import com.google.common.io.Files;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.junit.Before;
 import org.junit.Test;
@@ -30,13 +28,15 @@ import java.io.File;
 import java.io.IOException;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class StorageStrategyTest {
 
   private static final Configuration configuration = new Configuration();
   private static final FsPermission full_permission = new FsPermission("777");
+  private static final StorageStrategy persistent_strategy = new StorageStrategy("775", "644", false);
+  private static final StorageStrategy temporary_strategy = new StorageStrategy("700", "600", true);
   private FileSystem fs;
 
   @Before
@@ -45,39 +45,121 @@ public class StorageStrategyTest {
   }
 
   @Test
-  public void testPermissionAndDeleteOnExitFalse() throws Exception {
-    Path path = prepareStorageDirectory();
-    Path file = createFileWithFullPermission(path);
+  public void testPermissionAndDeleteOnExitFalseForFileWithParent() throws Exception {
+    Path initialPath = prepareStorageDirectory();
+    Path file = addNLevelsAndFile(initialPath, 2, true);
+    Path firstCreatedParentPath = addNLevelsAndFile(initialPath, 1, false);
 
-    StorageStrategy storageStrategy = new StorageStrategy("775", "644", false);
-    storageStrategy.applyToFolder(fs, path);
-    storageStrategy.applyToFile(fs, file);
+    Path createdParentPath = persistent_strategy.createFileAndApply(fs, file);
 
-    FsPermission folderPermission = new FsPermission(storageStrategy.getFolderPermission());
-    FsPermission filePermission = new FsPermission(storageStrategy.getFilePermission());
-    checkFolderAndFilePermission(fs, path, folderPermission, filePermission, 1);
-
-    // close and open file system to check that path is present
-    initFileSystem();
-    checkFolderAndFilePermission(fs, path, folderPermission, filePermission, 1);
+    assertEquals("Path should match", firstCreatedParentPath, createdParentPath);
+    checkPathAndPermission(initialPath, file, true, 2, persistent_strategy);
+    checkDeleteOnExit(firstCreatedParentPath, true);
   }
 
   @Test
-  public void testPermissionAndDeleteOnExitTrue() throws Exception {
+  public void testPermissionAndDeleteOnExitTrueForFileWithParent() throws Exception {
+    Path initialPath = prepareStorageDirectory();
+    Path file = addNLevelsAndFile(initialPath, 2, true);
+    Path firstCreatedParentPath = addNLevelsAndFile(initialPath, 1, false);
+
+    Path createdParentPath = temporary_strategy.createFileAndApply(fs, file);
+
+    assertEquals("Path should match", firstCreatedParentPath, createdParentPath);
+    checkPathAndPermission(initialPath, file, true, 2, temporary_strategy);
+    checkDeleteOnExit(firstCreatedParentPath, false);
+  }
+
+  @Test
+  public void testPermissionAndDeleteOnExitFalseForFileOnly() throws Exception {
+    Path initialPath = prepareStorageDirectory();
+    Path file = addNLevelsAndFile(initialPath, 0, true);
+
+    Path createdFile = persistent_strategy.createFileAndApply(fs, file);
+
+    assertEquals("Path should match", file, createdFile);
+    checkPathAndPermission(initialPath, file, true, 0, persistent_strategy);
+    checkDeleteOnExit(file, true);
+  }
+
+  @Test
+  public void testPermissionAndDeleteOnExitTrueForFileOnly() throws Exception {
+    Path initialPath = prepareStorageDirectory();
+    Path file = addNLevelsAndFile(initialPath, 0, true);
+
+    Path createdFile = temporary_strategy.createFileAndApply(fs, file);
+
+    assertEquals("Path should match", file, createdFile);
+    checkPathAndPermission(initialPath, file, true, 0, temporary_strategy);
+    checkDeleteOnExit(file, false);
+  }
+
+  @Test(expected = IOException.class)
+  public void testFailureOnExistentFile() throws Exception {
+    Path initialPath = prepareStorageDirectory();
+    Path file = addNLevelsAndFile(initialPath, 0, true);
+    fs.createNewFile(file);
+    assertTrue("File should exist", fs.exists(file));
+    try {
+      persistent_strategy.createFileAndApply(fs, file);
+    } catch (IOException e) {
+      assertEquals("Error message should match", String.format("File [%s] already exists on file system [%s].",
+          file.toUri().getPath(), fs.getUri()), e.getMessage());
+      throw e;
+    }
+  }
+
+  @Test
+  public void testCreatePathAndDeleteOnExitFalse() throws Exception {
+    Path initialPath = prepareStorageDirectory();
+    Path resultPath = addNLevelsAndFile(initialPath, 2, false);
+    Path firstCreatedParentPath = addNLevelsAndFile(initialPath, 1, false);
+
+    Path createdParentPath = persistent_strategy.createPathAndApply(fs, resultPath);
+
+    assertEquals("Path should match", firstCreatedParentPath, createdParentPath);
+    checkPathAndPermission(initialPath, resultPath, false, 2, persistent_strategy);
+    checkDeleteOnExit(firstCreatedParentPath, true);
+  }
+
+  @Test
+  public void testCreatePathAndDeleteOnExitTrue() throws Exception {
+    Path initialPath = prepareStorageDirectory();
+    Path resultPath = addNLevelsAndFile(initialPath, 2, false);
+    Path firstCreatedParentPath = addNLevelsAndFile(initialPath, 1, false);
+
+    Path createdParentPath = temporary_strategy.createPathAndApply(fs, resultPath);
+
+    assertEquals("Path should match", firstCreatedParentPath, createdParentPath);
+    checkPathAndPermission(initialPath, resultPath, false, 2, temporary_strategy);
+    checkDeleteOnExit(firstCreatedParentPath, false);
+  }
+
+  @Test
+  public void testCreateNoPath() throws Exception {
     Path path = prepareStorageDirectory();
-    Path file = createFileWithFullPermission(path);
 
-    StorageStrategy storageStrategy = new StorageStrategy("700", "600", true);
-    storageStrategy.applyToFolder(fs, path);
-    storageStrategy.applyToFile(fs, file);
+    Path createdParentPath = temporary_strategy.createPathAndApply(fs, path);
 
-    FsPermission folderPermission = new FsPermission(storageStrategy.getFolderPermission());
-    FsPermission filePermission = new FsPermission(storageStrategy.getFilePermission());
-    checkFolderAndFilePermission(fs, path, folderPermission, filePermission, 1);
+    assertNull("Path should be null", createdParentPath);
+    assertEquals("Permission should match", full_permission, fs.getFileStatus(path).getPermission());
+  }
 
-    // close and open file system to check that path is absent
-    initFileSystem();
-    assertFalse("Path should be absent", fs.exists(path));
+  @Test
+  public void testStrategyForExistingFile() throws Exception {
+    Path initialPath = prepareStorageDirectory();
+    Path file = addNLevelsAndFile(initialPath, 0, true);
+    fs.createNewFile(file);
+    fs.setPermission(file, full_permission);
+
+    assertTrue("File should exist", fs.exists(file));
+    assertEquals("Permission should match", full_permission, fs.getFileStatus(file).getPermission());
+
+    temporary_strategy.applyToFile(fs, file);
+
+    assertEquals("Permission should match", new FsPermission(temporary_strategy.getFilePermission()),
+        fs.getFileStatus(file).getPermission());
+    checkDeleteOnExit(file, false);
   }
 
   private Path prepareStorageDirectory() throws IOException {
@@ -86,13 +168,6 @@ public class StorageStrategyTest {
     Path path = new Path(storageDirectory.toURI().getPath());
     fs.setPermission(path, full_permission);
     return path;
-  }
-
-  private Path createFileWithFullPermission(Path path) throws IOException {
-    File tempFile = File.createTempFile(getClass().getSimpleName(), null, new File(path.toUri().getPath()));
-    Path tempFilePath = new Path(tempFile.toURI().getPath());
-    fs.setPermission(tempFilePath, full_permission);
-    return tempFilePath;
   }
 
   private void initFileSystem() throws IOException {
@@ -106,19 +181,42 @@ public class StorageStrategyTest {
     fs = FileSystem.get(configuration);
   }
 
-  private void checkFolderAndFilePermission(FileSystem fs,
-                                            Path path,
-                                            FsPermission expectedFolderPermission,
-                                            FsPermission expectedFilePermission,
-                                            int fileCount) throws IOException {
-    assertTrue("Path should exist", fs.exists(path));
-    assertEquals("Permission should match", expectedFolderPermission, fs.getFileStatus(path).getPermission());
-    int count = 0;
-    RemoteIterator<LocatedFileStatus> files = fs.listFiles(path, false);
-    while (files.hasNext()) {
-      count++;
-      assertEquals("Permission should match", expectedFilePermission, files.next().getPermission());
+  private Path addNLevelsAndFile(Path initialPath, int levels, boolean addFile) {
+    Path resultPath = initialPath;
+    for (int i = 1; i <= levels; i++) {
+      resultPath = new Path(resultPath, "level" + i);
     }
-    assertEquals("Number of files should match", fileCount, count);
+    if (addFile) {
+      resultPath = new Path(resultPath, "test_file.txt");
+    }
+    return resultPath;
+  }
+
+  private void checkPathAndPermission(Path initialPath,
+                                      Path resultPath,
+                                      boolean isFile,
+                                      int levels,
+                                      StorageStrategy storageStrategy) throws IOException {
+
+    assertEquals("Path type should match", isFile, fs.isFile(resultPath));
+    assertEquals("Permission should match", full_permission, fs.getFileStatus(initialPath).getPermission());
+
+    if (isFile) {
+      assertEquals("Permission should match", new FsPermission(storageStrategy.getFilePermission()),
+          fs.getFileStatus(resultPath).getPermission());
+    }
+    Path startingPath = initialPath;
+    FsPermission folderPermission = new FsPermission(storageStrategy.getFolderPermission());
+    for (int i = 1; i <= levels; i++) {
+      startingPath = new Path(startingPath, "level" + i);
+      assertEquals("Permission should match", folderPermission, fs.getFileStatus(startingPath).getPermission());
+    }
+  }
+
+  private void checkDeleteOnExit(Path path, boolean isPresent) throws IOException {
+    assertTrue("Path should be present", fs.exists(path));
+    // close and open file system to check for path presence
+    initFileSystem();
+    assertEquals("Path existence flag should match", isPresent, fs.exists(path));
   }
 }

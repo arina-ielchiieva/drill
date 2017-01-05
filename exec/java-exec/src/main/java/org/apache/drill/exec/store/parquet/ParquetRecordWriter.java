@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -105,7 +105,7 @@ public class ParquetRecordWriter extends ParquetOutputRecordWriter {
   private Configuration conf;
   private FileSystem fs;
   private String location;
-  private Path locationPath;
+  private List<Path> cleanUpLocations;
   private String prefix;
   private int index = 0;
   private OperatorContext oContext;
@@ -121,7 +121,8 @@ public class ParquetRecordWriter extends ParquetOutputRecordWriter {
     this.hasPartitions = partitionColumns != null && partitionColumns.size() > 0;
     this.extraMetaData.put(DRILL_VERSION_PROPERTY, DrillVersionInfo.getVersion());
     this.extraMetaData.put(WRITER_VERSION_PROPERTY, String.valueOf(ParquetWriter.WRITER_VERSION));
-    this.storageStrategy = writer.getStorageStrategy();
+    this.storageStrategy = writer.getStorageStrategy() == null ? StorageStrategy.PERSISTENT : writer.getStorageStrategy();
+    this.cleanUpLocations = Lists.newArrayList();
   }
 
   @Override
@@ -368,8 +369,9 @@ public class ParquetRecordWriter extends ParquetOutputRecordWriter {
 
     // we wait until there is at least one record before creating the parquet file
     if (parquetFileWriter == null) {
-      Path path = new Path(prepareLocationPath(), prefix + "_" + index + ".parquet");
-      parquetFileWriter = new ParquetFileWriter(conf, schema, path);
+      Path path = new Path(location, prefix + "_" + index + ".parquet");
+      addCleanUpLocation(fs, storageStrategy.createFileAndApply(fs, path));
+      parquetFileWriter = new ParquetFileWriter(conf, schema, path, ParquetFileWriter.Mode.OVERWRITE);
       storageStrategy.applyToFile(fs, path);
       parquetFileWriter.start();
     }
@@ -381,8 +383,24 @@ public class ParquetRecordWriter extends ParquetOutputRecordWriter {
 
   @Override
   public void abort() throws IOException {
-    fs.delete(new Path(location), true);
-    logger.info(String.format("Aborting writer. Location [%s] on file system [%s] is deleted.", location, fs.getUri()));
+    List<String> errors = Lists.newArrayList();
+    for (Path location : cleanUpLocations) {
+      try {
+        if (fs.exists(location)) {
+          fs.delete(location, false);
+          logger.info("Aborting writer. Location [{}] on file system [{}] is deleted.",
+              location.toUri().getPath(), fs.getUri());
+        }
+      } catch (IOException e) {
+        errors.add(location.toUri().getPath());
+        logger.error("Failed to delete location [{}] on file system [{}].",
+            location, fs.getUri(), e);
+      }
+    }
+    if (!errors.isEmpty()) {
+      throw new IOException(String.format("Failed to delete the following locations %s on file system [%s]" +
+          " during aborting writer", errors, fs.getUri()));
+    }
   }
 
   @Override
@@ -393,18 +411,18 @@ public class ParquetRecordWriter extends ParquetOutputRecordWriter {
   }
 
   /**
-   * Prepares location where files will be written to.
-   * Creates directory if not present, applies storage strategy.
+   * Adds passed location to the list of locations to be cleaned up in case of abort.
+   * Add locations if:
+   * <li>if no locations were added before</li>
+   * <li>if first location is a file</li>
    *
-   * @return path to files location
-   * @throws IOException during directory creation or permission setting problems
+   * @param fs file system where location is created
+   * @param location passed location
+   * @throws IOException in case of errors during check if passed location is a file
    */
-  private Path prepareLocationPath() throws IOException {
-    if (locationPath == null) {
-      locationPath = new Path(location);
-      fs.mkdirs(locationPath);
-      storageStrategy.applyToFolder(fs, locationPath);
+  private void addCleanUpLocation(FileSystem fs, Path location) throws IOException {
+    if (cleanUpLocations.isEmpty() || fs.isFile(cleanUpLocations.get(0))) {
+      cleanUpLocations.add(location);
     }
-    return locationPath;
   }
 }

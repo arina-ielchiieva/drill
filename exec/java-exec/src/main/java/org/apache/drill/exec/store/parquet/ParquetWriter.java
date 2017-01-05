@@ -70,9 +70,7 @@ public class ParquetWriter extends AbstractWriter {
     Preconditions.checkNotNull(formatPlugin, "Unable to load format plugin for provided format config.");
     this.location = location;
     this.partitionColumns = partitionColumns;
-    if (storageStrategy != null) {
-      setStorageStrategy(storageStrategy);
-    }
+    setStorageStrategy(storageStrategy);
   }
 
   public ParquetWriter(PhysicalOperator child,

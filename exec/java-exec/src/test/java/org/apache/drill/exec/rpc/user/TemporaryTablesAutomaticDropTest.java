@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -22,7 +22,6 @@ import mockit.MockUp;
 import mockit.integration.junit4.JMockit;
 import org.apache.drill.BaseTestQuery;
 import org.apache.drill.common.config.DrillConfig;
-import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.apache.drill.exec.util.TestUtilities;
 import org.junit.Before;
@@ -30,7 +29,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.File;
-import java.util.Properties;
 import java.util.UUID;
 
 import static org.junit.Assert.assertFalse;
@@ -49,9 +47,7 @@ public class TemporaryTablesAutomaticDropTest extends BaseTestQuery {
         return UUID.nameUUIDFromBytes(session_id.getBytes());
       }
     };
-    Properties overrideProps = new Properties();
-    overrideProps.setProperty(ExecConstants.DEFAULT_TEMPORARY_WORKSPACE, TEMP_SCHEMA);
-    updateTestCluster(1, DrillConfig.create(overrideProps));
+    updateTestCluster(1, DrillConfig.create(cloneDefaultTestConfigProperties()));
   }
 
   @Test

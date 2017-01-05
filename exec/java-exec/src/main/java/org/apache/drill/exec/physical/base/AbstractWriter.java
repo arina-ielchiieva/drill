@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -21,13 +21,11 @@ import org.apache.drill.exec.store.StorageStrategy;
 
 public abstract class AbstractWriter extends AbstractSingle implements Writer {
 
-  /** Storage strategy is used during table folder and files creation,
-  by default {@link StorageStrategy#PERSISTENT} strategy is applied. */
+  /** Storage strategy is used during table folder and files creation*/
   private StorageStrategy storageStrategy;
 
   public AbstractWriter(PhysicalOperator child) {
     super(child);
-    this.storageStrategy = StorageStrategy.PERSISTENT;
   }
 
   @Override

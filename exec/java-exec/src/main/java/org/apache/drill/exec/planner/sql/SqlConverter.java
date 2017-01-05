@@ -61,6 +61,7 @@ import org.apache.calcite.sql2rel.RelDecorrelator;
 import org.apache.calcite.sql2rel.SqlToRelConverter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.exec.exception.FunctionNotFoundException;
 import org.apache.drill.exec.ExecConstants;
@@ -88,7 +89,7 @@ public class SqlConverter {
   private final SqlParser.Config parserConfig;
   // Allow the default config to be modified using immutable configs
   private SqlToRelConverter.Config sqlToRelConverterConfig;
-  private final CalciteCatalogReader catalog;
+  private final DrillCalciteCatalogReader catalog;
   private final PlannerSettings settings;
   private final SchemaPlus rootSchema;
   private final SchemaPlus defaultSchema;
@@ -100,6 +101,7 @@ public class SqlConverter {
   private final FunctionImplementationRegistry functions;
   private final String temporarySchema;
   private final UserSession session;
+  private final DrillConfig drillConfig;
 
   private String sql;
   private VolcanoPlanner planner;
@@ -117,12 +119,13 @@ public class SqlConverter {
     this.rootSchema = rootSchema(defaultSchema);
     this.temporarySchema = context.getConfig().getString(ExecConstants.DEFAULT_TEMPORARY_WORKSPACE);
     this.session = context.getSession();
+    this.drillConfig = context.getConfig();
     this.catalog = new DrillCalciteCatalogReader(
         CalciteSchemaImpl.from(rootSchema),
         parserConfig.caseSensitive(),
         CalciteSchemaImpl.from(defaultSchema).path(null),
         typeFactory,
-        temporarySchema,
+        drillConfig,
         session);
     this.opTab = new ChainedSqlOperatorTable(Arrays.asList(context.getDrillOperatorTable(), catalog));
     this.costFactory = (settings.useDefaultCosting()) ? null : new DrillCostBase.DrillCostFactory();
@@ -131,7 +134,7 @@ public class SqlConverter {
   }
 
   private SqlConverter(SqlConverter parent, SchemaPlus defaultSchema, SchemaPlus rootSchema,
-      CalciteCatalogReader catalog) {
+      DrillCalciteCatalogReader catalog) {
     this.parserConfig = parent.parserConfig;
     this.sqlToRelConverterConfig = parent.sqlToRelConverterConfig;
     this.defaultSchema = defaultSchema;
@@ -148,6 +151,7 @@ public class SqlConverter {
     this.validator = new DrillValidator(opTab, catalog, typeFactory, SqlConformance.DEFAULT);
     this.temporarySchema = parent.temporarySchema;
     this.session = parent.session;
+    this.drillConfig = parent.drillConfig;
     validator.setIdentifierExpansion(true);
   }
 
@@ -210,6 +214,11 @@ public class SqlConverter {
 
   public SchemaPlus getDefaultSchema() {
     return defaultSchema;
+  }
+
+  /** Disallow temporary tables presence in sql statement (ex: in view definitions) */
+  public void disallowTemporaryTables() {
+    catalog.disallowTemporaryTables();
   }
 
   private class DrillValidator extends SqlValidatorImpl {
@@ -281,27 +290,26 @@ public class SqlConverter {
     public Expander() {
     }
 
-    public RelNode expandView(
-        RelDataType rowType,
-        String queryString,
-        List<String> schemaPath) {
-      SqlConverter parser = new SqlConverter(SqlConverter.this, defaultSchema, rootSchema,
-          catalog.withSchemaPath(schemaPath));
-      return expandView(queryString, parser);
-    }
-
-    @Override
-    public RelNode expandView(
-        RelDataType rowType,
-        String queryString,
-        SchemaPlus rootSchema, // new root schema
-        List<String> schemaPath) {
-      final CalciteCatalogReader catalogReader = new DrillCalciteCatalogReader(
+    public RelNode expandView(RelDataType rowType, String queryString, List<String> schemaPath) {
+      final DrillCalciteCatalogReader catalogReader = new DrillCalciteCatalogReader(
           CalciteSchemaImpl.from(rootSchema),
           parserConfig.caseSensitive(),
           schemaPath,
           typeFactory,
-          temporarySchema,
+          drillConfig,
+          session);
+      final SqlConverter parser = new SqlConverter(SqlConverter.this, defaultSchema, rootSchema, catalogReader);
+      return expandView(queryString, parser);
+    }
+
+    @Override
+    public RelNode expandView(RelDataType rowType, String queryString, SchemaPlus rootSchema, List<String> schemaPath) {
+      final DrillCalciteCatalogReader catalogReader = new DrillCalciteCatalogReader(
+          CalciteSchemaImpl.from(rootSchema), // new root schema
+          parserConfig.caseSensitive(),
+          schemaPath,
+          typeFactory,
+          drillConfig,
           session);
       SchemaPlus schema = rootSchema;
       for (String s : schemaPath) {
@@ -466,42 +474,58 @@ public class SqlConverter {
    */
   private class DrillCalciteCatalogReader extends CalciteCatalogReader {
 
-    private final String temporarySchema;
+    private final DrillConfig drillConfig;
     private final UserSession session;
+    private boolean allowTemporaryTables;
 
     DrillCalciteCatalogReader(CalciteSchema rootSchema,
                                      boolean caseSensitive,
                                      List<String> defaultSchema,
                                      JavaTypeFactory typeFactory,
-                                     String temporarySchema,
+                                     DrillConfig drillConfig,
                                      UserSession session) {
       super(rootSchema, caseSensitive, defaultSchema, typeFactory);
-      this.temporarySchema = temporarySchema;
+      this.drillConfig = drillConfig;
       this.session = session;
+      this.allowTemporaryTables = true;
+    }
+
+    /** Disallow temporary tables presence in sql statement (ex: in view definitions) */
+    public void disallowTemporaryTables() {
+      this.allowTemporaryTables = false;
     }
 
     /**
      * If schema is not indicated (only one element in the list) or schema is default temporary workspace,
      * we need to check among session temporary tables first in default temporary workspace.
-     * If temporary table is found, its table instance will be returned,
+     * If temporary table is found and temporary tables usage is allowed, its table instance will be returned,
      * otherwise search will be conducted in original workspace.
      *
      * @param names list of schema and table names, table name is always the last element
      * @return table instance, null otherwise
+     * @throws UserException if temporary tables usage is disallowed
      */
     @Override
     public RelOptTableImpl getTable(final List<String> names) {
-      RelOptTableImpl foundTemporaryTable = null;
+      RelOptTableImpl temporaryTable = null;
       String schemaPath = SchemaUtilites.getSchemaPath(names.subList(0, names.size() - 1));
-      if (names.size() == 1 || schemaPath.equals(temporarySchema)) {
-        String temporaryTable = session.findTemporaryTable(names.get(names.size() - 1));
-        if (temporaryTable != null) {
-          List<String> temporaryNames = Lists.newArrayList(temporarySchema);
-          temporaryNames.add(temporaryTable);
-          foundTemporaryTable = super.getTable(temporaryNames);
+      if (names.size() == 1 || SchemaUtilites.isTemporaryWorkspace(schemaPath, drillConfig)) {
+        String temporaryTableName = session.resolveTemporaryTableName(names.get(names.size() - 1));
+        if (temporaryTableName != null) {
+          List<String> temporaryNames = Lists.newArrayList(temporarySchema, temporaryTableName);
+          temporaryTable = super.getTable(temporaryNames);
         }
       }
-      return foundTemporaryTable == null ? super.getTable(names) : foundTemporaryTable;
+      if (temporaryTable != null) {
+        if (allowTemporaryTables) {
+          return temporaryTable;
+        }
+        throw UserException
+            .validationError()
+            .message("Temporary tables usage is disallowed. Used temporary table name: %s.", names)
+            .build(logger);
+      }
+      return super.getTable(names);
     }
   }
 }

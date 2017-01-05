@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -46,6 +46,7 @@ public class JsonRecordWriter extends JSONOutputRecordWriter implements RecordWr
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(JsonRecordWriter.class);
   private static final String LINE_FEED = String.format("%n");
 
+  private Path cleanUpLocation;
   private String location;
   private String prefix;
 
@@ -64,7 +65,7 @@ public class JsonRecordWriter extends JSONOutputRecordWriter implements RecordWr
   private boolean fRecordStarted = false; // true once the startRecord() is called until endRecord() is called
 
   public JsonRecordWriter(StorageStrategy storageStrategy){
-    this.storageStrategy = storageStrategy;
+    this.storageStrategy = storageStrategy == null ? StorageStrategy.PERSISTENT : storageStrategy;
   }
 
   @Override
@@ -83,9 +84,8 @@ public class JsonRecordWriter extends JSONOutputRecordWriter implements RecordWr
 
     Path fileName = new Path(location, prefix + "_" + index + "." + extension);
     try {
+      cleanUpLocation = storageStrategy.createFileAndApply(fs, fileName);
       stream = fs.create(fileName);
-      // set storage strategy for folder and file
-      storageStrategy.applyToFolder(fs, fileName.getParent());
       storageStrategy.applyToFile(fs, fileName);
       JsonGenerator generator = factory.createGenerator(stream).useDefaultPrettyPrinter();
       if (uglify) {
@@ -243,8 +243,11 @@ public class JsonRecordWriter extends JSONOutputRecordWriter implements RecordWr
 
   @Override
   public void abort() throws IOException {
-    fs.delete(new Path(location), true);
-    logger.info(String.format("Aborting writer. Location [%s] on file system [%s] is deleted.", location, fs.getUri()));
+    if (cleanUpLocation != null) {
+      fs.delete(cleanUpLocation, true);
+      logger.info("Aborting writer. Location [{}] on file system [{}] is deleted.",
+          cleanUpLocation.toUri().getPath(), fs.getUri());
+    }
   }
 
   @Override

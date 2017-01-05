@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -95,9 +95,7 @@ public class FileSystemCreateTableEntry implements CreateTableEntry {
     }
 
     AbstractWriter writer = formatPlugin.getWriter(child, location, partitionColumns);
-    if (storageStrategy != null) {
-      writer.setStorageStrategy(storageStrategy);
-    }
+    writer.setStorageStrategy(storageStrategy);
     return writer;
   }
 

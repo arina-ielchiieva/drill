@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -31,11 +31,11 @@ import org.apache.calcite.rex.RexBuilder;
 import org.apache.calcite.rex.RexInputRef;
 import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.rex.RexUtil;
-import org.apache.calcite.schema.Schema;
-import org.apache.calcite.schema.Table;
+import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.tools.RelConversionException;
 import org.apache.calcite.tools.ValidationException;
+import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.physical.PhysicalPlan;
@@ -80,24 +80,10 @@ public class CreateTableHandler extends DefaultSqlHandler {
     final RelNode newTblRelNode =
         SqlHandlerUtil.resolveNewTableRel(false, sqlCreateTable.getFieldNames(), validatedRowType, queryRelNode);
 
-    final String temporaryWorkspace = context.getConfig().getString(ExecConstants.DEFAULT_TEMPORARY_WORKSPACE);
+    final DrillConfig drillConfig = context.getConfig();
+    final AbstractSchema drillSchema = resolveSchema(sqlCreateTable, config.getConverter().getDefaultSchema(), drillConfig);
 
-    final AbstractSchema drillSchema =
-        SchemaUtilites.resolveToMutableDrillSchema(config.getConverter().getDefaultSchema(),
-                getSchemaPath(sqlCreateTable, temporaryWorkspace));
-
-    boolean isTemporaryWorkspace = drillSchema.getFullSchemaName().equals(temporaryWorkspace);
-
-    if (sqlCreateTable.isTemporary() && !isTemporaryWorkspace) {
-      throw UserException
-          .validationError()
-          .message(String.format("Temporary tables are not allowed to be created " +
-              "outside of default temporary workspace [%s] defined by [%s] " +
-              "configuration parameter", temporaryWorkspace, ExecConstants.DEFAULT_TEMPORARY_WORKSPACE))
-          .build(logger);
-    }
-
-    checkDuplicatedObjectExistence(drillSchema, originalTableName, isTemporaryWorkspace, context.getSession());
+    checkDuplicatedObjectExistence(drillSchema, originalTableName, drillConfig, context.getSession());
 
     final RelNode newTblRelNodeWithPCol = SqlHandlerUtil.qualifyPartitionCol(newTblRelNode,
         sqlCreateTable.getPartitionColumns());
@@ -106,6 +92,10 @@ public class CreateTableHandler extends DefaultSqlHandler {
     // Convert the query to Drill Logical plan and insert a writer operator on top.
     StorageStrategy storageStrategy = sqlCreateTable.isTemporary() ?
         StorageStrategy.TEMPORARY : StorageStrategy.PERSISTENT;
+
+    // If we are creating temporary table, initial table name will be replaced with generated table name.
+    // Generated table name is unique, UUID.randomUUID() is used for its generation.
+    // Original table name is stored in temporary tables cache, so it can be substituted to generated one during querying.
     String newTableName = sqlCreateTable.isTemporary() ?
         context.getSession().registerTemporaryTable(drillSchema, originalTableName) : originalTableName;
 
@@ -268,20 +258,36 @@ public class CreateTableHandler extends DefaultSqlHandler {
   }
 
   /**
-   * Gets schema path defined in create table statement.
-   * If temporary table is being created and schema is not indicated,
-   * uses default temporary workspace.
+   * Resolves schema taking into account type of table being created.
+   * If schema path wasn't indicated in sql call and table type to be created is temporary
+   * returns temporary workspace.
+   *
+   * If schema path is indicated, resolves to mutable drill schema.
+   * Though if table to be created is temporary table, checks if resolved schema is temporary,
+   * since temporary table are allowed to be created only in temporary workspace.
    *
    * @param sqlCreateTable create table call
-   * @param temporaryWorkspace default temporary workspace
-   * @return table schema path
+   * @param defaultSchema default schema
+   * @param config drill config
+   * @return resolved schema
+   * @throws UserException if attempted to create temporary table outside of temporary workspace
    */
-  private List<String> getSchemaPath(SqlCreateTable sqlCreateTable, String temporaryWorkspace) {
-    List<String> indicatedSchemaPath = sqlCreateTable.getSchemaPath();
-    if (sqlCreateTable.isTemporary() && indicatedSchemaPath.size() == 0) {
-      indicatedSchemaPath = Lists.newArrayList(temporaryWorkspace);
+  private AbstractSchema resolveSchema(SqlCreateTable sqlCreateTable, SchemaPlus defaultSchema, DrillConfig config) {
+    if (sqlCreateTable.isTemporary() && sqlCreateTable.getSchemaPath().size() == 0) {
+      return SchemaUtilites.getTemporaryWorkspace(defaultSchema, config);
+    } else {
+      AbstractSchema resolvedSchema = SchemaUtilites.resolveToMutableDrillSchema(defaultSchema, sqlCreateTable.getSchemaPath());
+      boolean isTemporaryWorkspace = SchemaUtilites.isTemporaryWorkspace(resolvedSchema.getFullSchemaName(), config);
+
+      if (sqlCreateTable.isTemporary() && !isTemporaryWorkspace) {
+        throw UserException
+            .validationError()
+            .message(String.format("Temporary tables are not allowed to be created " +
+                "outside of default temporary workspace [%s].", config.getString(ExecConstants.DEFAULT_TEMPORARY_WORKSPACE)))
+            .build(logger);
+      }
+      return resolvedSchema;
     }
-    return indicatedSchemaPath;
   }
 
   /**
@@ -290,23 +296,16 @@ public class CreateTableHandler extends DefaultSqlHandler {
    *
    * @param drillSchema schema where table will be created
    * @param tableName table name
-   * @param isTemporaryWorkspace is default temporary workspace
+   * @param config drill config
    * @param userSession current user session
    * @throws UserException if duplicate is found
    */
   private void checkDuplicatedObjectExistence(AbstractSchema drillSchema,
                                               String tableName,
-                                              boolean isTemporaryWorkspace,
+                                              DrillConfig config,
                                               UserSession userSession) {
     String schemaPath = drillSchema.getFullSchemaName();
-    boolean isTemporaryTable = false;
-    if (isTemporaryWorkspace) {
-      String temporaryTableName = userSession.findTemporaryTable(tableName);
-      if (temporaryTableName != null) {
-        Table temporaryTable = SqlHandlerUtil.getTableFromSchema(drillSchema, temporaryTableName);
-        isTemporaryTable = temporaryTable != null && temporaryTable.getJdbcTableType() == Schema.TableType.TABLE;
-      }
-    }
+    boolean isTemporaryTable = userSession.isTemporaryTable(drillSchema, config, tableName);
 
     if (isTemporaryTable || SqlHandlerUtil.getTableFromSchema(drillSchema, tableName) != null) {
       throw UserException

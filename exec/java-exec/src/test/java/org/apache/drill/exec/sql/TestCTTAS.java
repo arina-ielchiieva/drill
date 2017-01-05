@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -24,7 +24,6 @@ import mockit.integration.junit4.JMockit;
 import org.apache.drill.BaseTestQuery;
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.exceptions.UserRemoteException;
-import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.apache.drill.exec.store.StorageStrategy;
 import org.apache.drill.exec.store.dfs.FileSystemConfig;
@@ -44,7 +43,6 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.util.List;
-import java.util.Properties;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.containsString;
@@ -67,9 +65,7 @@ public class TestCTTAS extends BaseTestQuery {
   @BeforeClass
   public static void init() throws Exception {
     MockUp<UUID> uuidMockUp = mockRandomUUID(session_id);
-    Properties overrideProps = new Properties();
-    overrideProps.setProperty(ExecConstants.DEFAULT_TEMPORARY_WORKSPACE, TEMP_SCHEMA);
-    updateTestCluster(1, DrillConfig.create(overrideProps));
+    updateTestCluster(1, DrillConfig.create(cloneDefaultTestConfigProperties()));
     uuidMockUp.tearDown();
 
     StoragePluginRegistry pluginRegistry = getDrillbitContext().getStorage();
@@ -103,27 +99,46 @@ public class TestCTTAS extends BaseTestQuery {
 
     try {
       for (String storageFormat : storageFormats) {
-        String tmpTableName = "temp_" + storageFormat;
-        mockRandomUUID(UUID.nameUUIDFromBytes(tmpTableName.getBytes()));
+        String temporaryTableName = "temp_" + storageFormat;
+        mockRandomUUID(UUID.nameUUIDFromBytes(temporaryTableName.getBytes()));
         test("alter session set `store.format`='%s'", storageFormat);
-        test("create TEMPORARY table %s as select 'A' as c1 from (values(1))", tmpTableName);
-        checkPermission(tmpTableName);
+        test("create TEMPORARY table %s as select 'A' as c1 from (values(1))", temporaryTableName);
+        checkPermission(temporaryTableName);
 
         testBuilder()
-            .sqlQuery("select * from %s", tmpTableName)
+            .sqlQuery("select * from %s", temporaryTableName)
             .unOrdered()
             .baselineColumns("c1")
             .baselineValues("A")
             .go();
 
         testBuilder()
-            .sqlQuery("select * from %s", tmpTableName)
+            .sqlQuery("select * from %s", temporaryTableName)
             .unOrdered()
-            .sqlBaselineQuery("select * from %s.%s", TEMP_SCHEMA, tmpTableName)
+            .sqlBaselineQuery("select * from %s.%s", TEMP_SCHEMA, temporaryTableName)
             .go();
       }
     } finally {
       test("alter session reset `store.format`");
+    }
+  }
+
+  @Test
+  public void testTemporaryTablesCaseInsensitivity() throws Exception {
+    String temporaryTableName = "tEmP_InSeNSiTiVe";
+    List<String> temporaryTableNames = Lists.newArrayList(
+        temporaryTableName,
+        temporaryTableName.toLowerCase(),
+        temporaryTableName.toUpperCase());
+
+    test("create TEMPORARY table %s as select 'A' as c1 from (values(1))", temporaryTableName);
+    for (String tableName : temporaryTableNames) {
+      testBuilder()
+          .sqlQuery("select * from %s", tableName)
+          .unOrdered()
+          .baselineColumns("c1")
+          .baselineValues("A")
+          .go();
     }
   }
 
@@ -143,8 +158,8 @@ public class TestCTTAS extends BaseTestQuery {
       test("create TEMPORARY table %s.%s as select 'A' as c1 from (values(1))", temp2_schema, temporaryTableName);
     } catch (UserRemoteException e) {
       assertThat(e.getMessage(), containsString(String.format(
-          "VALIDATION ERROR: Temporary tables are not allowed to be created outside of default temporary workspace [%s]" +
-              " defined by [%s] configuration parameter", TEMP_SCHEMA, ExecConstants.DEFAULT_TEMPORARY_WORKSPACE)));
+          "VALIDATION ERROR: Temporary tables are not allowed to be created outside of default temporary workspace [%s].",
+          TEMP_SCHEMA)));
       throw e;
     }
   }
@@ -159,6 +174,20 @@ public class TestCTTAS extends BaseTestQuery {
       assertThat(e.getMessage(), containsString(String.format(
          "VALIDATION ERROR: A table or view with given name [%s]" +
              " already exists in schema [%s]", temporaryTableName, TEMP_SCHEMA)));
+      throw e;
+    }
+  }
+
+  @Test(expected = UserRemoteException.class)
+  public void testCreateWhenTemporaryTableExistsCaseInsensitive() throws Exception {
+    String temporaryTableName = "temporary_table_exists_without_schema";
+    try {
+      test("create TEMPORARY table %s as select 'A' as c1 from (values(1))", temporaryTableName);
+      test("create TEMPORARY table %s as select 'A' as c1 from (values(1))", temporaryTableName.toUpperCase());
+    } catch (UserRemoteException e) {
+      assertThat(e.getMessage(), containsString(String.format(
+          "VALIDATION ERROR: A table or view with given name [%s]" +
+              " already exists in schema [%s]", temporaryTableName.toUpperCase(), TEMP_SCHEMA)));
       throw e;
     }
   }
@@ -238,7 +267,7 @@ public class TestCTTAS extends BaseTestQuery {
     String name = "temporary_and_persistent_table";
     test("use %s", temp2_schema);
     test("create TEMPORARY table %s as select 'temporary_table' as c1 from (values(1))", name);
-    test("create table %s.%s as select 'persistent_table' as c1 from (values(1))", temp2_schema, name);
+    test("create table %s as select 'persistent_table' as c1 from (values(1))", name);
 
     testBuilder()
         .sqlQuery("select * from %s", name)
@@ -253,6 +282,15 @@ public class TestCTTAS extends BaseTestQuery {
         .baselineColumns("c1")
         .baselineValues("persistent_table")
         .go();
+
+    test("drop table %s", name);
+
+    testBuilder()
+        .sqlQuery("select * from %s", name)
+        .unOrdered()
+        .baselineColumns("c1")
+        .baselineValues("persistent_table")
+        .go();
   }
 
   @Test
@@ -260,7 +298,7 @@ public class TestCTTAS extends BaseTestQuery {
     String name = "temporary_table_and_view";
     test("use %s", temp2_schema);
     test("create TEMPORARY table %s as select 'temporary_table' as c1 from (values(1))", name);
-    test("create view %s.%s as select 'view' as c1 from (values(1))", temp2_schema, name);
+    test("create view %s as select 'view' as c1 from (values(1))", name);
 
     testBuilder()
         .sqlQuery("select * from %s", name)
@@ -275,6 +313,29 @@ public class TestCTTAS extends BaseTestQuery {
         .baselineColumns("c1")
         .baselineValues("view")
         .go();
+
+    test("drop table %s", name);
+
+    testBuilder()
+        .sqlQuery("select * from %s", name)
+        .unOrdered()
+        .baselineColumns("c1")
+        .baselineValues("view")
+        .go();
+  }
+
+  @Test(expected = UserRemoteException.class)
+  public void testTemporaryTablesInViewDefinitions() throws Exception {
+    String temporaryTableName = "temporary_table_for_view_definition";
+    test("create TEMPORARY table %s as select 'A' as c1 from (values(1))", temporaryTableName);
+
+    try {
+      test("create view %s.view_with_temp_table as select * from %s", TEMP_SCHEMA, temporaryTableName);
+    } catch (UserRemoteException e) {
+      assertThat(e.getMessage(), containsString(String.format(
+          "VALIDATION ERROR: Temporary tables usage is disallowed. Used temporary table name: [%s]", temporaryTableName)));
+      throw e;
+    }
   }
 
   @Test
@@ -326,7 +387,7 @@ public class TestCTTAS extends BaseTestQuery {
       test("drop view %s.%s", TEMP_SCHEMA, temporaryTableName);
     } catch (UserRemoteException e) {
       assertThat(e.getMessage(), containsString(String.format(
-              "VALIDATION ERROR: [%s] is not a VIEW in schema [%s]", temporaryTableName, TEMP_SCHEMA)));
+              "VALIDATION ERROR: Unknown view [%s] in schema [%s]", temporaryTableName, TEMP_SCHEMA)));
       throw e;
     }
   }

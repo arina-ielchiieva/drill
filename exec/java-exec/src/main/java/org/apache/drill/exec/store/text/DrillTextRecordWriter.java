@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -39,6 +39,8 @@ public class DrillTextRecordWriter extends StringOutputRecordWriter {
 
   private final StorageStrategy storageStrategy;
 
+  private Path cleanUpLocation;
+
   private String location;
   private String prefix;
 
@@ -56,7 +58,7 @@ public class DrillTextRecordWriter extends StringOutputRecordWriter {
 
   public DrillTextRecordWriter(BufferAllocator allocator, StorageStrategy storageStrategy) {
     super(allocator);
-    this.storageStrategy = storageStrategy;
+    this.storageStrategy = storageStrategy == null ? StorageStrategy.PERSISTENT : storageStrategy;
   }
 
   @Override
@@ -82,9 +84,8 @@ public class DrillTextRecordWriter extends StringOutputRecordWriter {
     // open a new file for writing data with new schema
     Path fileName = new Path(location, prefix + "_" + index + "." + extension);
     try {
+      cleanUpLocation = storageStrategy.createFileAndApply(fs, fileName);
       DataOutputStream fos = fs.create(fileName);
-      // apply storage strategy to folder and file
-      storageStrategy.applyToFolder(fs, fileName.getParent());
       storageStrategy.applyToFile(fs, fileName);
       stream = new PrintStream(fos);
       logger.debug("Created file: {}", fileName);
@@ -166,8 +167,11 @@ public class DrillTextRecordWriter extends StringOutputRecordWriter {
 
   @Override
   public void abort() throws IOException {
-    fs.delete(new Path(location), true);
-    logger.info(String.format("Aborting writer. Location [%s] on file system [%s] is deleted.", location, fs.getUri()));
+    if (cleanUpLocation != null) {
+      fs.delete(cleanUpLocation, true);
+      logger.info("Aborting writer. Location [{}] on file system [{}] is deleted.",
+          cleanUpLocation.toUri().getPath(), fs.getUri());
+    }
   }
 
 }
