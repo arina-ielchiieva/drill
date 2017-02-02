@@ -22,6 +22,7 @@ import java.util.Map;
 
 import org.apache.calcite.sql.SqlCall;
 import org.apache.calcite.sql.SqlIdentifier;
+import org.apache.calcite.sql.SqlInsert;
 import org.apache.calcite.sql.SqlJoin;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlOrderBy;
@@ -176,6 +177,7 @@ public class CompoundIdentifierConverter extends SqlShuttle {
     rules.put(SqlDescribeSchema.class, R(D));
     rules.put(SqlCreateFunction.class, R(D));
     rules.put(SqlDropFunction.class, R(D));
+    rules.put(SqlInsert.class, R(D, D, E, D));
     REWRITE_RULES = ImmutableMap.copyOf(rules);
   }
 

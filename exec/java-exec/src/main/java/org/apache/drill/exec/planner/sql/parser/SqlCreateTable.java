@@ -140,12 +140,20 @@ public class SqlCreateTable extends DrillSqlCall {
     return tblName.names.get(tblName.names.size() - 1);
   }
 
+  public SqlIdentifier getTableName() {
+    return tblName;
+  }
+
   public List<String> getFieldNames() {
     List<String> columnNames = Lists.newArrayList();
     for(SqlNode node : fieldList.getList()) {
       columnNames.add(node.toString());
     }
     return columnNames;
+  }
+
+  public SqlNodeList getFieldList() {
+    return fieldList;
   }
 
   public List<String> getPartitionColumns() {

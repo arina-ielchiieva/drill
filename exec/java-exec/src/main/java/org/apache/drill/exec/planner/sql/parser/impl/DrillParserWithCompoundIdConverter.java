@@ -57,6 +57,7 @@ public class DrillParserWithCompoundIdConverter extends DrillParserImpl {
   @Override
   public SqlNode parseSqlStmtEof() throws Exception {
     SqlNode originalSqlNode = super.parseSqlStmtEof();
+    //todo
     return originalSqlNode.accept(createConverter());
   }
 }

@@ -21,12 +21,14 @@ import static org.apache.drill.TestBuilder.listOf;
 import static org.junit.Assert.assertEquals;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.util.FileUtils;
 import org.apache.drill.common.util.TestTools;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.compile.ClassTransformer;
+import org.apache.drill.exec.rpc.user.QueryDataBatch;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -1193,6 +1195,54 @@ public class TestExampleQueries extends BaseTestQuery {
         .baselineValues("1930-01-08")
         .build()
         .run();
+  }
+
+  @Test
+  public void createTable() throws Exception {
+    //test("create table dfs_test.tmp.t as select 'A' from (values(1))");
+    //test("create table dfs_test.tmp.t as select * from sys.version");
+    //test("create table dfs_test.tmp.t partition by (version) as select * from dfs.`F:\\drill\\files\\parquet\\region.parquet`");
+    //test("create table dfs_test.tmp.t as select * from dfs.`F:\\drill\\files\\parquet\\region.parquet`");
+
+    //String sql = "create table dfs_test.tmp.t as select * from dfs.`F:\\drill\\files\\parquet\\region.parquet`";
+    String sql = "create table dfs_test.tmp.t (version) as select version from sys.version";
+    setColumnWidths(new int[] {40});
+    List<QueryDataBatch> res = testSqlWithResults(sql);
+    printResult(res);
+
+    //select
+    res = testSqlWithResults("select * from dfs_test.tmp.t");
+    //res = testSqlWithResults("select * from dfs.`F:\\drill\\files\\parquet\\nation.parquet`");
+    printResult(res);
+  }
+
+  @Test
+  public void testInsert() throws Exception {
+    String sql = "insert into dfs_test.tmp.t (version) select version from sys.version";
+    setColumnWidths(new int[] {40});
+    List<QueryDataBatch> res = testSqlWithResults(sql);
+    printResult(res);
+
+    sql = "insert into dfs_test.tmp.t (version) values('A')";
+    setColumnWidths(new int[] {40});
+    res = testSqlWithResults(sql);
+    printResult(res);
+  }
+
+  @Test
+  public void testInsertWithoutSchema() throws Exception {
+    test("use dfs_test.tmp");
+    test("create table t as select * from sys.version");
+
+    String sql = "insert into t (version) select version from sys.version";
+    setColumnWidths(new int[] {40});
+    List<QueryDataBatch> res = testSqlWithResults(sql);
+    printResult(res);
+
+    sql = "select * from dfs_test.tmp.t";
+    setColumnWidths(new int[] {40});
+    res = testSqlWithResults(sql);
+    printResult(res);
   }
 
 }
