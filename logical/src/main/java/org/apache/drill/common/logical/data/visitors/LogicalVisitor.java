@@ -18,6 +18,7 @@
 package org.apache.drill.common.logical.data.visitors;
 
 
+import org.apache.drill.common.logical.data.Validator;
 import org.apache.drill.common.logical.data.Values;
 import org.apache.drill.common.logical.data.Filter;
 import org.apache.drill.common.logical.data.Flatten;
@@ -63,4 +64,5 @@ public interface LogicalVisitor<RETURN, EXTRA, EXCEP extends Throwable> {
     public RETURN visitUnion(Union union, EXTRA value) throws EXCEP;
     public RETURN visitWindow(Window window, EXTRA value) throws EXCEP;
     public RETURN visitWriter(Writer writer, EXTRA value) throws EXCEP;
+    public RETURN visitValidator(Validator validator, EXTRA value) throws EXCEP;
 }

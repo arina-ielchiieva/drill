@@ -41,6 +41,7 @@ import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.planner.logical.DrillRel;
 import org.apache.drill.exec.planner.logical.DrillScanRel;
 import org.apache.drill.exec.planner.logical.DrillScreenRel;
+import org.apache.drill.exec.planner.logical.DrillValidatorRel;
 import org.apache.drill.exec.planner.logical.DrillWriterRel;
 import org.apache.drill.exec.planner.physical.Prel;
 import org.apache.drill.exec.planner.sql.SchemaUtilites;
@@ -169,6 +170,20 @@ public class InsertHandler extends DefaultSqlHandler {
       }
     }
 
+    /*
+    todo replace to predicate above foreach
+        boolean isStarQuery = Iterables.tryFind(getRowType().getFieldNames(), new Predicate<String>() {
+      @Override
+      public boolean apply(String input) {
+        return Preconditions.checkNotNull(input).equals("*");
+      }
+    }).isPresent();
+
+    if (isStarQuery) {
+      columnCount = STAR_COLUMN_COST;
+    }
+     */
+
     // check columns count only if source does not have *
     if (checkColumnsCount) {
       if (targetColumnList.size() != sourceRowType.getFieldCount()) {
@@ -184,8 +199,9 @@ public class InsertHandler extends DefaultSqlHandler {
     // add validator, writer and screen rels
     RelTraitSet traitSet = sourceRel.getCluster().traitSet().plus(DrillRel.DRILL_LOGICAL);
     //todo add validator
-    ////todo currently take from source, later from validator
-    DrillWriterRel writerRel = new DrillWriterRel(sourceRel.getCluster(), traitSet, sourceRel,
+    DrillValidatorRel validatorRel = new DrillValidatorRel(sourceRel.getCluster(), traitSet, targetRel, sourceRel, targetColumnList);
+
+    DrillWriterRel writerRel = new DrillWriterRel(validatorRel.getCluster(), traitSet, validatorRel,
         //todo createTableEntry is not logically correct (add new entry or rename existent -> can break anything?)
         resolvedTargetSchema.createNewTable(resolvedTargetTableName, Collections.<String>emptyList(), storageStrategy));
     DrillScreenRel screenRel = new DrillScreenRel(writerRel.getCluster(), writerRel.getTraitSet(), writerRel);

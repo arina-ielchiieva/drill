@@ -424,6 +424,7 @@ public enum PlannerPhase {
     ruleList.add(UnionAllPrule.INSTANCE);
     ruleList.add(ValuesPrule.INSTANCE);
     ruleList.add(DirectScanPrule.INSTANCE);
+    ruleList.add(ValuesPrule.INSTANCE);
 
     if (ps.isHashAggEnabled()) {
       ruleList.add(HashAggPrule.INSTANCE);

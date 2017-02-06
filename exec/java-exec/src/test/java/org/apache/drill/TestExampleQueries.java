@@ -1243,6 +1243,8 @@ public class TestExampleQueries extends BaseTestQuery {
     setColumnWidths(new int[] {40});
     res = testSqlWithResults(sql);
     printResult(res);
+
+    //todo check with values
   }
 
 }
