@@ -1232,7 +1232,7 @@ public class TestExampleQueries extends BaseTestQuery {
   @Test
   public void testInsertWithoutSchema() throws Exception {
     test("use dfs_test.tmp");
-    test("create table t as select * from sys.version");
+    test("create table t as select version from sys.version");
 
     String sql = "insert into t (version) select version from sys.version";
     setColumnWidths(new int[] {40});

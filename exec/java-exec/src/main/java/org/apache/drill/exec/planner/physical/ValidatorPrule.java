@@ -42,12 +42,12 @@ public class ValidatorPrule extends Prule {
     //todo implement method
 
     final DrillValidatorRel rel = (DrillValidatorRel) call.rel(0);
-    final List<RelNode> inputs = rel.getInputs();
+    //final List<RelNode> inputs = rel.getInputs();
    // List<RelNode> convertedInputList = Lists.newArrayList();
     RelTraitSet traits = call.getPlanner().emptyTraitSet().plus(Prel.DRILL_PHYSICAL);
 
-    RelNode convertedTarget = convert(rel.getTarget(), PrelUtil.fixTraits(call, traits));
-    RelNode convertedSource = convert(rel.getSource(), PrelUtil.fixTraits(call, traits));
+    RelNode convertedLeft = convert(rel.getLeft(), PrelUtil.fixTraits(call, traits));
+    RelNode convertedRight = convert(rel.getRight(), PrelUtil.fixTraits(call, traits));
 
 /*    for (int i = 0; i < inputs.size(); i++) {
       RelNode convertedInput = convert(inputs.get(i), PrelUtil.fixTraits(call, traits));
@@ -57,7 +57,7 @@ public class ValidatorPrule extends Prule {
 
     //todo where we should get inputs?
     ValidatorPrel validatorPrel = new ValidatorPrel(rel.getCluster(), traits,
-        convertedTarget, convertedSource, rel.getColumns());
+        convertedLeft, convertedRight, rel.getColumns());
     call.transformTo(validatorPrel);
   }
 }

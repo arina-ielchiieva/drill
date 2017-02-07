@@ -21,10 +21,11 @@ package org.apache.drill.exec.planner.physical;
 
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelTraitSet;
-import org.apache.calcite.rel.AbstractRelNode;
+import org.apache.calcite.rel.BiRel;
 import org.apache.calcite.rel.RelNode;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.config.Validator;
+import org.apache.drill.exec.planner.common.DrillValidatorRelBase;
 import org.apache.drill.exec.planner.physical.visitor.PrelVisitor;
 import org.apache.drill.exec.record.BatchSchema;
 
@@ -32,23 +33,16 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 
-public class ValidatorPrel extends AbstractRelNode implements Prel {
+public class ValidatorPrel  extends DrillValidatorRelBase implements Prel {
 
-  private final RelNode target;
-  private final RelNode source;
-  private final List<String> columns;
-
-  public ValidatorPrel(RelOptCluster cluster, RelTraitSet traitSet, RelNode target, RelNode source, List<String> columns) {
-    super(cluster, traitSet);
-    this.target = target;
-    this.source = source;
-    this.columns = columns;
+  public ValidatorPrel(RelOptCluster cluster, RelTraitSet traitSet, RelNode left, RelNode right, List<String> columns) {
+    super(cluster, traitSet, left, right, columns);
   }
 
   @Override
   public Prel copy(RelTraitSet traitSet, List<RelNode> inputs) {
     assert inputs.isEmpty();
-    return new ValidatorPrel(getCluster(), traitSet, target, source, columns);
+    return new ValidatorPrel(getCluster(), traitSet, getLeft(), getRight(), getColumns());
   }
 
   @Override
@@ -58,7 +52,7 @@ public class ValidatorPrel extends AbstractRelNode implements Prel {
 
   @Override
   public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
-    return new Validator(columns);
+    return new Validator(getColumns());
   }
 
   @Override
@@ -83,7 +77,7 @@ public class ValidatorPrel extends AbstractRelNode implements Prel {
 
   @Override
   public Iterator<Prel> iterator() {
-    return PrelUtil.iter(target, source);
+    return PrelUtil.iter(getLeft(), getRight());
   }
 }
 

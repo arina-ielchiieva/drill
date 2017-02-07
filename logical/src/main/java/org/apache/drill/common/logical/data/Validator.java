@@ -32,27 +32,27 @@ import java.util.List;
 @JsonTypeName("validator")
 public class Validator extends LogicalOperatorBase {
 
-  private final LogicalOperator target;
-  private final LogicalOperator source;
+  private final LogicalOperator left;
+  private final LogicalOperator right;
   private final List<String> columns;
 
   @JsonCreator
-  public Validator(@JsonProperty("target") LogicalOperator target,
-                   @JsonProperty("source") LogicalOperator source,
+  public Validator(@JsonProperty("left") LogicalOperator left,
+                   @JsonProperty("right") LogicalOperator right,
                    @JsonProperty("columns") List<String> columns) {
-    this.target = target;
-    target.registerAsSubscriber(this);
-    this.source = source;
-    source.registerAsSubscriber(this);
+    this.left = left;
+    this.right = right;
+    left.registerAsSubscriber(this);
+    right.registerAsSubscriber(this);
     this.columns = columns;
   }
 
-  public LogicalOperator getTarget() {
-    return target;
+  public LogicalOperator getLeft() {
+    return left;
   }
 
-  public LogicalOperator getSource() {
-    return source;
+  public LogicalOperator getRight() {
+    return right;
   }
 
   public List<String> getColumns() {
@@ -66,7 +66,7 @@ public class Validator extends LogicalOperatorBase {
 
   @Override
   public Iterator<LogicalOperator> iterator() {
-    return Iterators.forArray(target, source);
+    return Iterators.forArray(left, right);
   }
 
   public static Builder builder(){
@@ -74,17 +74,17 @@ public class Validator extends LogicalOperatorBase {
   }
 
   public static class Builder extends AbstractBuilder<Validator> {
-    private LogicalOperator target;
-    private LogicalOperator source;
+    private LogicalOperator left;
+    private LogicalOperator right;
     private List<String> columns;
 
-    public Builder target(LogicalOperator target) {
-      this.target = target;
+    public Builder left(LogicalOperator left) {
+      this.left = left;
       return this;
     }
 
-    public Builder source(LogicalOperator source) {
-      this.source = source;
+    public Builder right(LogicalOperator right) {
+      this.right = right;
       return this;
     }
 
@@ -95,10 +95,10 @@ public class Validator extends LogicalOperatorBase {
 
     @Override
     public Validator build() {
-      Preconditions.checkNotNull(target);
-      Preconditions.checkNotNull(source);
+      Preconditions.checkNotNull(left);
+      Preconditions.checkNotNull(right);
       Preconditions.checkNotNull(columns);
-      return new Validator(target, source, columns);
+      return new Validator(left, right, columns);
     }
   }
 }
