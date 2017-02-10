@@ -23,6 +23,7 @@ import org.apache.calcite.plan.RelOptRule;
 import org.apache.calcite.plan.RelOptRuleCall;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
+import org.apache.drill.exec.planner.logical.DrillRel;
 import org.apache.drill.exec.planner.logical.DrillUnionRel;
 import org.apache.drill.exec.planner.logical.DrillValidatorRel;
 import org.apache.drill.exec.planner.logical.RelOptHelper;
@@ -33,31 +34,63 @@ public class ValidatorPrule extends Prule {
   public static final RelOptRule INSTANCE = new ValidatorPrule();
 
   private ValidatorPrule() {
-    super(RelOptHelper.any(DrillUnionRel.class), "Prel.ValidatorPrule");
+    super(RelOptHelper.some(DrillValidatorRel.class, DrillRel.DRILL_LOGICAL, RelOptHelper.any(RelNode.class)),"Prel.ValidatorPrule");
   }
-
 
   @Override
   public void onMatch(RelOptRuleCall call) {
-    //todo implement method
-
-    final DrillValidatorRel rel = (DrillValidatorRel) call.rel(0);
-    //final List<RelNode> inputs = rel.getInputs();
-   // List<RelNode> convertedInputList = Lists.newArrayList();
+    final DrillValidatorRel rel = call.rel(0);
     RelTraitSet traits = call.getPlanner().emptyTraitSet().plus(Prel.DRILL_PHYSICAL);
 
     RelNode convertedLeft = convert(rel.getLeft(), PrelUtil.fixTraits(call, traits));
     RelNode convertedRight = convert(rel.getRight(), PrelUtil.fixTraits(call, traits));
 
-/*    for (int i = 0; i < inputs.size(); i++) {
-      RelNode convertedInput = convert(inputs.get(i), PrelUtil.fixTraits(call, traits));
-      convertedInputList.add(convertedInput);
-    }*/
-    traits = call.getPlanner().emptyTraitSet().plus(Prel.DRILL_PHYSICAL).plus(DrillDistributionTrait.SINGLETON);
+    //traits = call.getPlanner().emptyTraitSet().plus(Prel.DRILL_PHYSICAL).plus(DrillDistributionTrait.SINGLETON);
+    traits = call.getPlanner().emptyTraitSet().plus(Prel.DRILL_PHYSICAL).plus(DrillDistributionTrait.ANY);
 
-    //todo where we should get inputs?
     ValidatorPrel validatorPrel = new ValidatorPrel(rel.getCluster(), traits,
         convertedLeft, convertedRight, rel.getColumns());
     call.transformTo(validatorPrel);
   }
+
+/*  private class ValidatorTraitPull extends SubsetTransformer<DrillValidatorRel, RuntimeException> {
+
+    public ValidatorTraitPull(RelOptRuleCall call) {
+      super(call);
+    }
+
+    @Override
+    public RelNode convertChild(DrillValidatorRel current, RelNode child) throws RuntimeException {
+      DrillDistributionTrait childDist = current.getTraitSet().getTrait(DrillDistributionTraitDef.INSTANCE);
+      return new ValidatorPrel(current.getCluster(),
+          current.getTraitSet().plus(childDist).plus(Prel.DRILL_PHYSICAL),
+          child, );
+    }
+  }*/
+
 }
+
+/*
+  private class WriteTraitPull extends SubsetTransformer<DrillWriterRelBase, RuntimeException> {
+
+    public WriteTraitPull(RelOptRuleCall call) {
+      super(call);
+    }
+
+    @Override
+    public RelNode convertChild(DrillWriterRelBase writer, RelNode rel) throws RuntimeException {
+      DrillDistributionTrait childDist = rel.getTraitSet().getTrait(DrillDistributionTraitDef.INSTANCE);
+
+      // Create the Writer with the child's distribution because the degree of parallelism for the writer
+      // should correspond to the number of child minor fragments. The Writer itself is not concerned with
+      // the collation of the child.  Note that the Writer's output RowType consists of
+      // {fragment_id varchar(255), number_of_records_written bigint} which are very different from the
+      // child's output RowType.
+      return new WriterPrel(writer.getCluster(),
+          writer.getTraitSet().plus(childDist).plus(Prel.DRILL_PHYSICAL),
+          rel, writer.getCreateTableEntry());
+    }
+
+  }
+
+ */

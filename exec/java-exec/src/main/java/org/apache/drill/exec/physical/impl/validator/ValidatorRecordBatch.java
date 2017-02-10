@@ -23,14 +23,14 @@ import org.apache.drill.exec.record.RecordBatch;
 
 import java.util.List;
 
-public class ValidatorRecorBatch extends AbstractRecordBatch<Validator> {
+public class ValidatorRecordBatch extends AbstractRecordBatch<Validator> {
 
   private final RecordBatch target;
   private final RecordBatch source;
   private final List<String> columns;
 
 
-  public ValidatorRecorBatch(Validator config, RecordBatch target, RecordBatch source, FragmentContext context) {
+  public ValidatorRecordBatch(Validator config, RecordBatch target, RecordBatch source, FragmentContext context) {
     super(config, context, false);
     this.target = target;
     this.source = source;

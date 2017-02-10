@@ -31,6 +31,6 @@ public class ValidatorBatchCreator implements BatchCreator<Validator> {
   @Override
   public CloseableRecordBatch getBatch(FragmentContext context, Validator config, List<RecordBatch> children) throws ExecutionSetupException {
     Preconditions.checkArgument(children.size() == 2);
-    return new ValidatorRecorBatch(config, children.get(0), children.get(1), context);
+    return new ValidatorRecordBatch(config, children.get(0), children.get(1), context);
   }
 }

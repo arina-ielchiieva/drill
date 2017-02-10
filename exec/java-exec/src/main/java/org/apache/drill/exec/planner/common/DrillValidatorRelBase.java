@@ -22,6 +22,7 @@ import org.apache.calcite.plan.RelOptPlanner;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.BiRel;
 import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.type.RelDataType;
 
 import java.util.Collections;
 import java.util.List;
@@ -40,6 +41,16 @@ public class DrillValidatorRelBase extends BiRel implements DrillRelNode {
   }
 
   @Override
+  public double getRows() {
+    return getRight().getRows(); //todo
+  }
+
+  @Override
+  public RelDataType deriveRowType() {
+    return getLeft().getRowType(); //todo
+  }
+
+  @Override
   public RelOptCost computeSelfCost(RelOptPlanner planner) {
     double dRows = getRight().getRows();
     double dCpu = dRows + 1; // ensure non-zero cost
@@ -47,9 +58,9 @@ public class DrillValidatorRelBase extends BiRel implements DrillRelNode {
     return planner.getCostFactory().makeCost(dRows, dCpu, dIo);
   }
 
-  @Override
+/*  @Override
   public List<RelNode> getInputs() {
     return getLeft().getInputs();
-  }
+  }*/
 
 }

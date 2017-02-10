@@ -22,6 +22,7 @@ package org.apache.drill.exec.physical.config;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.google.common.collect.Iterators;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.physical.base.AbstractBase;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
@@ -33,11 +34,26 @@ import java.util.List;
 @JsonTypeName("validator")
 public class Validator extends AbstractBase {
 
+  private final PhysicalOperator left;
+  private final PhysicalOperator right;
   private final List<String> columns;
 
   @JsonCreator
-  public Validator(@JsonProperty("columns") List<String> columns) {
+  public Validator(
+      @JsonProperty("left") PhysicalOperator left,
+      @JsonProperty("right") PhysicalOperator right,
+      @JsonProperty("columns") List<String> columns) {
+    this.left = left;
+    this.right = right;
     this.columns = columns;
+  }
+
+  public PhysicalOperator getLeft() {
+    return left;
+  }
+
+  public PhysicalOperator getRight() {
+    return right;
   }
 
   public List<String> getColumns() {
@@ -51,8 +67,7 @@ public class Validator extends AbstractBase {
 
   @Override
   public PhysicalOperator getNewWithChildren(List<PhysicalOperator> children) throws ExecutionSetupException {
-    assert children.isEmpty();
-    return new Validator(columns);
+    return new Validator(children.get(0), children.get(1), columns);
   }
 
   @Override
@@ -62,6 +77,6 @@ public class Validator extends AbstractBase {
 
   @Override
   public Iterator<PhysicalOperator> iterator() {
-    return null;
+    return Iterators.forArray(left, right);
   }
 }

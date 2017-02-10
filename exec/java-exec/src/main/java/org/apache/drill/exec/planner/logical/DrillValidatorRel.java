@@ -36,18 +36,9 @@ public class DrillValidatorRel extends DrillValidatorRelBase implements DrillRel
   }
 
   @Override
-  public double getRows() {
-    return getRight().getRows(); //todo
-  }
-
-  @Override
-  public RelDataType deriveRowType() {
-    return getLeft().getRowType(); //todo
-  }
-
-  @Override
   public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
-    return new DrillValidatorRel(getCluster(), traitSet, getLeft(), getRight(), getColumns());
+    assert inputs.size() == 2;
+    return new DrillValidatorRel(getCluster(), traitSet, inputs.get(0), inputs.get(1), getColumns());
   }
 
   @Override

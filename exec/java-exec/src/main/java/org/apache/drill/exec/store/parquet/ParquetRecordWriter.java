@@ -163,6 +163,8 @@ public class ParquetRecordWriter extends ParquetOutputRecordWriter {
     this.index = setIndex();
   }
 
+  //todo incorrect need to determine how to get next index
+  //todo how can we clean up if one fragment has already succeeded
   private int setIndex() throws IOException {
     Path path = new Path(location);
     FileSystem fs = FileSystem.get(conf);

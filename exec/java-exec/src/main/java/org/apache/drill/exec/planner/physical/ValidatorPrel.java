@@ -21,7 +21,6 @@ package org.apache.drill.exec.planner.physical;
 
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelTraitSet;
-import org.apache.calcite.rel.BiRel;
 import org.apache.calcite.rel.RelNode;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.config.Validator;
@@ -33,7 +32,7 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 
-public class ValidatorPrel  extends DrillValidatorRelBase implements Prel {
+public class ValidatorPrel extends DrillValidatorRelBase implements Prel {
 
   public ValidatorPrel(RelOptCluster cluster, RelTraitSet traitSet, RelNode left, RelNode right, List<String> columns) {
     super(cluster, traitSet, left, right, columns);
@@ -41,8 +40,7 @@ public class ValidatorPrel  extends DrillValidatorRelBase implements Prel {
 
   @Override
   public Prel copy(RelTraitSet traitSet, List<RelNode> inputs) {
-    assert inputs.isEmpty();
-    return new ValidatorPrel(getCluster(), traitSet, getLeft(), getRight(), getColumns());
+    return new ValidatorPrel(getCluster(), traitSet, inputs.get(0), inputs.get(1), getColumns()); //todo inputs or getLeft
   }
 
   @Override
@@ -52,7 +50,9 @@ public class ValidatorPrel  extends DrillValidatorRelBase implements Prel {
 
   @Override
   public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
-    return new Validator(getColumns());
+    PhysicalOperator leftPop = ((Prel)getLeft()).getPhysicalOperator(creator);
+    PhysicalOperator rightPop = ((Prel)getRight()).getPhysicalOperator(creator);
+    return new Validator(leftPop, rightPop, getColumns());
   }
 
   @Override
