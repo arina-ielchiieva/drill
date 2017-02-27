@@ -83,7 +83,7 @@ public class InsertHandler extends DefaultSqlHandler {
     UserSession session = context.getSession();
     String resolvedTargetTableName = targetTableName;
     AbstractSchema resolvedTargetSchema;
-    StorageStrategy storageStrategy = StorageStrategy.PERSISTENT;
+    StorageStrategy storageStrategy = new StorageStrategy(context.getOption(ExecConstants.PERSISTENT_TABLE_UMASK).string_val, false);
     if (targetSchema.isEmpty()) {
       AbstractSchema temporarySchema = SchemaUtilites.getTemporaryWorkspace(defaultSchema, drillConfig);
       boolean temporaryTable = session.isTemporaryTable(temporarySchema, drillConfig, targetTableName);
@@ -120,6 +120,7 @@ public class InsertHandler extends DefaultSqlHandler {
     }
 
     // validate store type
+    //todo can we allow insert in any store type but it would be on customer
     String storeType = context.getOption(ExecConstants.OUTPUT_FORMAT_OPTION).string_val;
     if (!"parquet".equalsIgnoreCase(storeType)) {
       throw UserException
@@ -141,6 +142,7 @@ public class InsertHandler extends DefaultSqlHandler {
     RelNode convertedTargetNode = convertedTarget.getConvertedNode();
     DrillRel targetRel = convertToDrel(convertedTargetNode);
 
+    //todo can we allow insert in any store type but it would be on customer
     // validate target table type
     if (targetRel.getInputs().size() == 1 && targetRel.getInput(0) instanceof DrillScanRel) {
     if (!(((DrillScanRel) targetRel.getInput(0)).getGroupScan() instanceof ParquetGroupScan)) {
@@ -199,6 +201,7 @@ public class InsertHandler extends DefaultSqlHandler {
     // add validator, writer and screen rels
     RelTraitSet traitSet = sourceRel.getCluster().traitSet().plus(DrillRel.DRILL_LOGICAL);
     //todo add validator
+    //todo may be validator rel can prepare itself select * from target
     DrillValidatorRel validatorRel = new DrillValidatorRel(sourceRel.getCluster(), traitSet, targetRel, sourceRel, targetColumnList);
 
     DrillWriterRel writerRel = new DrillWriterRel(validatorRel.getCluster(), traitSet, validatorRel,

@@ -1233,18 +1233,44 @@ public class TestExampleQueries extends BaseTestQuery {
   public void testInsertWithoutSchema() throws Exception {
     test("use dfs_test.tmp");
     test("create table t as select version from sys.version");
+    setColumnWidths(new int[] {40});
 
     String sql = "insert into t (version) select version from sys.version";
-    setColumnWidths(new int[] {40});
     List<QueryDataBatch> res = testSqlWithResults(sql);
     printResult(res);
 
     sql = "select * from dfs_test.tmp.t";
-    setColumnWidths(new int[] {40});
     res = testSqlWithResults(sql);
     printResult(res);
 
-    //todo check with values
+    sql = "insert into t (version)(values ('A'))";
+    res = testSqlWithResults(sql);
+    printResult(res);
+
+    sql = "select * from dfs_test.tmp.t";
+    res = testSqlWithResults(sql);
+    printResult(res);
+
+    sql = "insert into t (version)(values ('B'), ('C'), ('D'))";
+    res = testSqlWithResults(sql);
+    printResult(res);
+
+    sql = "select count(1) from dfs_test.tmp.t";
+    res = testSqlWithResults(sql);
+    printResult(res);
+  }
+
+  @Test
+  public void testAllTypes() throws Exception {
+    test("use dfs_test.tmp");
+    test("create table t as select * from dfs.`F:\\drill\\files\\all_types\\alltypes_optional.parquet`");
+    setColumnWidths(new int[] {40});
+
+    String sql = "insert into t (col_int, col_chr, col_vrchr, col_dt, col_tim, col_tmstmp, col_flt, col_intrvl_yr, col_intrvl_day, col_bln) " +
+        "select *, suffix " +
+        "from dfs.`F:\\drill\\files\\all_types\\alltypes_optional.parquet`";
+    List<QueryDataBatch> res = testSqlWithResults(sql);
+    printResult(res);
   }
 
 }

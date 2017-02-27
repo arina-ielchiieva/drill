@@ -22,9 +22,9 @@ import org.apache.calcite.plan.RelOptPlanner;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.BiRel;
 import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.calcite.rel.type.RelDataType;
 
-import java.util.Collections;
 import java.util.List;
 
 public class DrillValidatorRelBase extends BiRel implements DrillRelNode {
@@ -41,8 +41,8 @@ public class DrillValidatorRelBase extends BiRel implements DrillRelNode {
   }
 
   @Override
-  public double getRows() {
-    return getRight().getRows(); //todo
+  public double estimateRowCount(RelMetadataQuery mq) {
+    return mq.getRowCount(getRight());
   }
 
   @Override
@@ -51,8 +51,8 @@ public class DrillValidatorRelBase extends BiRel implements DrillRelNode {
   }
 
   @Override
-  public RelOptCost computeSelfCost(RelOptPlanner planner) {
-    double dRows = getRight().getRows();
+  public RelOptCost computeSelfCost(RelOptPlanner planner, RelMetadataQuery mq) {
+    double dRows = mq.getRowCount(getRight());
     double dCpu = dRows + 1; // ensure non-zero cost
     double dIo = 0;
     return planner.getCostFactory().makeCost(dRows, dCpu, dIo);
