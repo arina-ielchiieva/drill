@@ -41,6 +41,8 @@ import org.apache.drill.common.util.TestTools;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.fn.interp.TestConstantFolding;
 import org.apache.drill.exec.planner.physical.PlannerSettings;
+import org.apache.drill.exec.store.StoragePluginRegistry;
+import org.apache.drill.exec.store.dfs.FileSystemConfig;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -730,7 +732,10 @@ public class TestParquetWriter extends BaseTestQuery {
           .sqlBaselineQuery(validateQuery)
           .go();
 
+      StoragePluginRegistry pluginRegistry = getDrillbitContext().getStorage();
+      FileSystemConfig pluginConfig = (FileSystemConfig) pluginRegistry.getPlugin(TEST_SCHEMA).getConfig();
       Configuration hadoopConf = new Configuration();
+      hadoopConf.set(FileSystem.FS_DEFAULT_NAME_KEY, pluginConfig.connection);
       Path output = new Path(getDfsTestTmpSchemaLocation(), outputFile);
       FileSystem fs = output.getFileSystem(hadoopConf);
       for (FileStatus file : fs.listStatus(output)) {

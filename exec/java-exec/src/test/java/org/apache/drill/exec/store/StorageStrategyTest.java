@@ -19,6 +19,7 @@ package org.apache.drill.exec.store;
 import com.google.common.io.Files;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.junit.Before;
@@ -33,7 +34,6 @@ import static org.junit.Assert.assertTrue;
 
 public class StorageStrategyTest {
 
-  private static final Configuration configuration = new Configuration();
   private static final FsPermission full_permission = new FsPermission("777");
   private static final StorageStrategy persistent_strategy = new StorageStrategy("775", "644", false);
   private static final StorageStrategy temporary_strategy = new StorageStrategy("700", "600", true);
@@ -178,6 +178,8 @@ public class StorageStrategyTest {
         // do nothing
       }
     }
+    Configuration configuration = new Configuration();
+    configuration.set(FileSystem.FS_DEFAULT_NAME_KEY, "local");
     fs = FileSystem.get(configuration);
   }
 
