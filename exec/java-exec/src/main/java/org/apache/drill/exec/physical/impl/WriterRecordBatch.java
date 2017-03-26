@@ -38,6 +38,7 @@ import org.apache.drill.exec.store.RecordWriter;
 import org.apache.drill.exec.vector.AllocationHelper;
 import org.apache.drill.exec.vector.BigIntVector;
 import org.apache.drill.exec.vector.VarCharVector;
+import org.apache.hadoop.fs.FSError;
 
 /* Write the RecordBatch to the given RecordWriter. */
 public class WriterRecordBatch extends AbstractRecordBatch<Writer> {
@@ -127,7 +128,8 @@ public class WriterRecordBatch extends AbstractRecordBatch<Writer> {
 
     closeWriter();
 
-    return IterOutcome.OK_NEW_SCHEMA;
+    // if after closing writer processed flag was changed to false, stop processing
+    return processed ? IterOutcome.OK_NEW_SCHEMA : IterOutcome.STOP;
   }
 
   private void addOutputContainerData() {
@@ -174,7 +176,10 @@ public class WriterRecordBatch extends AbstractRecordBatch<Writer> {
     schema = container.getSchema();
   }
 
-  /** Clean up needs to be performed before closing writer. Partially written data will be removed. */
+  /**
+   * Clean up needs to be performed before closing writer.
+   * If processing was not finished or clean up failed, partially written data should be removed.
+   */
   private void closeWriter() {
     if (recordWriter == null) {
       return;
@@ -182,18 +187,29 @@ public class WriterRecordBatch extends AbstractRecordBatch<Writer> {
 
     try {
       recordWriter.cleanup();
-    } catch(IOException ex) {
+      // FsError
+
+      /*
+   Exception in thread "drill-executor-4" org.apache.hadoop.fs.FSError: java.io.IOException: No space left on device
+	at org.apache.hadoop.fs.RawLocalFileSystem$LocalFSFileOutputStream.write(RawLocalFileSystem.java:248)
+	at java.io.BufferedOutputStream.flushBuffer(BufferedOutputStream.java:82)
+	at java.io.BufferedOutputStream.flush(BufferedOutputStream.java:140)
+	at java.io.FilterOutputStream.close(FilterOutputStream.java:157)
+	at org.apache.hadoop.fs.FSDataOutputStream$PositionCache.close(FSDataOutputStream.java:72)
+	at org.apache.hadoop.fs.FSDataOutputStream.close(FSDataOutputStream.java:106)
+	at org.apache.hadoop.fs.ChecksumFileSystem$ChecksumFSOutputSummer.close(ChecksumFileSystem.java:408)
+	at org.apache.hadoop.fs.FSDataOutputStream$PositionCache.close(FSDataOutputStream.java:72)
+	at org.apache.hadoop.fs.FSDataOutputStream.close(FSDataOutputStream.java:106)
+	at org.apache.hadoop.fs.FileSystem.createNewFile(FileSystem.java:1152)
+
+       */
+    } catch(Throwable ex) {
+      processed = false;
+      logger.error("Failed to cleanup record writer (flush data to disk, close stream).", ex);
       context.fail(ex);
     } finally {
-      try {
-        if (!processed) {
-          recordWriter.abort();
-        }
-      } catch (IOException e) {
-        logger.error("Abort failed. There could be leftover output files.", e);
-      } finally {
-        recordWriter = null;
-      }
+      abortRecordWriter(recordWriter, !processed);
+      recordWriter = null;
     }
   }
 
@@ -201,5 +217,22 @@ public class WriterRecordBatch extends AbstractRecordBatch<Writer> {
   public void close() {
     closeWriter();
     super.close();
+  }
+
+  /**
+   * Performs abort to clean up partially written data.
+   * If exception occurs, logs error.
+   *
+   * @param recordWriter record writer
+   * @param isAbortNeeded flag that indicates if abort is needed
+   */
+  private void abortRecordWriter(RecordWriter recordWriter, boolean isAbortNeeded) {
+    if (isAbortNeeded) {
+      try {
+        recordWriter.abort();
+      } catch (IOException e) {
+        logger.error("Abort failed. There could be leftover output files.", e);
+      }
+    }
   }
 }
