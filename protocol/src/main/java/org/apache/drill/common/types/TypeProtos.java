@@ -850,10 +850,18 @@ public final class TypeProtos {
     // optional int32 width = 3;
     /**
      * <code>optional int32 width = 3;</code>
+     *
+     * <pre>
+     * optional width for fixed size values.
+     * </pre>
      */
     boolean hasWidth();
     /**
      * <code>optional int32 width = 3;</code>
+     *
+     * <pre>
+     * optional width for fixed size values.
+     * </pre>
      */
     int getWidth();
 
@@ -862,7 +870,7 @@ public final class TypeProtos {
      * <code>optional int32 precision = 4;</code>
      *
      * <pre>
-     * used for decimal types or optional width for fixed size values.
+     * used for decimal types
      * </pre>
      */
     boolean hasPrecision();
@@ -870,7 +878,7 @@ public final class TypeProtos {
      * <code>optional int32 precision = 4;</code>
      *
      * <pre>
-     * used for decimal types or optional width for fixed size values.
+     * used for decimal types
      * </pre>
      */
     int getPrecision();
@@ -1143,12 +1151,20 @@ public final class TypeProtos {
     private int width_;
     /**
      * <code>optional int32 width = 3;</code>
+     *
+     * <pre>
+     * optional width for fixed size values.
+     * </pre>
      */
     public boolean hasWidth() {
       return ((bitField0_ & 0x00000004) == 0x00000004);
     }
     /**
      * <code>optional int32 width = 3;</code>
+     *
+     * <pre>
+     * optional width for fixed size values.
+     * </pre>
      */
     public int getWidth() {
       return width_;
@@ -1161,7 +1177,7 @@ public final class TypeProtos {
      * <code>optional int32 precision = 4;</code>
      *
      * <pre>
-     * used for decimal types or optional width for fixed size values.
+     * used for decimal types
      * </pre>
      */
     public boolean hasPrecision() {
@@ -1171,7 +1187,7 @@ public final class TypeProtos {
      * <code>optional int32 precision = 4;</code>
      *
      * <pre>
-     * used for decimal types or optional width for fixed size values.
+     * used for decimal types
      * </pre>
      */
     public int getPrecision() {
@@ -1678,18 +1694,30 @@ public final class TypeProtos {
       private int width_ ;
       /**
        * <code>optional int32 width = 3;</code>
+       *
+       * <pre>
+       * optional width for fixed size values.
+       * </pre>
        */
       public boolean hasWidth() {
         return ((bitField0_ & 0x00000004) == 0x00000004);
       }
       /**
        * <code>optional int32 width = 3;</code>
+       *
+       * <pre>
+       * optional width for fixed size values.
+       * </pre>
        */
       public int getWidth() {
         return width_;
       }
       /**
        * <code>optional int32 width = 3;</code>
+       *
+       * <pre>
+       * optional width for fixed size values.
+       * </pre>
        */
       public Builder setWidth(int value) {
         bitField0_ |= 0x00000004;
@@ -1699,6 +1727,10 @@ public final class TypeProtos {
       }
       /**
        * <code>optional int32 width = 3;</code>
+       *
+       * <pre>
+       * optional width for fixed size values.
+       * </pre>
        */
       public Builder clearWidth() {
         bitField0_ = (bitField0_ & ~0x00000004);
@@ -1713,7 +1745,7 @@ public final class TypeProtos {
        * <code>optional int32 precision = 4;</code>
        *
        * <pre>
-       * used for decimal types or optional width for fixed size values.
+       * used for decimal types
        * </pre>
        */
       public boolean hasPrecision() {
@@ -1723,7 +1755,7 @@ public final class TypeProtos {
        * <code>optional int32 precision = 4;</code>
        *
        * <pre>
-       * used for decimal types or optional width for fixed size values.
+       * used for decimal types
        * </pre>
        */
       public int getPrecision() {
@@ -1733,7 +1765,7 @@ public final class TypeProtos {
        * <code>optional int32 precision = 4;</code>
        *
        * <pre>
-       * used for decimal types or optional width for fixed size values.
+       * used for decimal types
        * </pre>
        */
       public Builder setPrecision(int value) {
@@ -1746,7 +1778,7 @@ public final class TypeProtos {
        * <code>optional int32 precision = 4;</code>
        *
        * <pre>
-       * used for decimal types or optional width for fixed size values.
+       * used for decimal types
        * </pre>
        */
       public Builder clearPrecision() {
