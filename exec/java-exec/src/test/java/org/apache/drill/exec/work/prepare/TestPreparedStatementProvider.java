@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -53,11 +53,11 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
 
     List<ExpectedColumnResult> expMetadata = ImmutableList.of(
         new ExpectedColumnResult("region_id", "BIGINT", true, 20, 0, 0, true, Long.class.getName()),
-        new ExpectedColumnResult("sales_city", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
-        new ExpectedColumnResult("sales_state_province", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
-        new ExpectedColumnResult("sales_district", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
-        new ExpectedColumnResult("sales_region", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
-        new ExpectedColumnResult("sales_country", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
+        new ExpectedColumnResult("sales_city", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
+        new ExpectedColumnResult("sales_state_province", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
+        new ExpectedColumnResult("sales_district", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
+        new ExpectedColumnResult("sales_region", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
+        new ExpectedColumnResult("sales_country", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
         new ExpectedColumnResult("sales_district_id", "BIGINT", true, 20, 0, 0, true, Long.class.getName())
     );
 
@@ -82,7 +82,7 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     PreparedStatement preparedStatement = createPrepareStmt(query, false, null);
 
     List<ExpectedColumnResult> expMetadata = ImmutableList.of(
-        new ExpectedColumnResult("sales_city", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
+        new ExpectedColumnResult("sales_city", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
         new ExpectedColumnResult("cnt", "BIGINT", false, 20, 0, 0, true, Long.class.getName())
     );
 
@@ -131,6 +131,49 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
   @Test
   public void invalidQueryValidationError() throws Exception {
     createPrepareStmt("SELECT * sdflkgdh", true, ErrorType.PARSE /** Drill returns incorrect error for parse error*/);
+  }
+
+  @Test
+  public void queryWithVarLenCasts() throws Exception {
+    String query = "select\n" +
+        "cast(col_int as varchar(30)) as col_int,\n" +
+        "cast(col_vrchr as varchar(31)) as col_vrchr,\n" +
+        "cast(col_dt as varchar(32)) as col_dt,\n" +
+        "cast(col_tim as varchar(33)) as col_tim,\n" +
+        "cast(col_tmstmp as varchar(34)) as col_tmstmp,\n" +
+        "cast(col_flt as varchar(35)) as col_flt,\n" +
+        "cast(col_intrvl_yr as varchar(36)) as col_intrvl_yr,\n" +
+        "cast(col_bln as varchar(37)) as col_bln\n" +
+        "from cp.`parquet/alltypes_optional.parquet` limit 1";
+
+    PreparedStatement preparedStatement = createPrepareStmt(query, false, null);
+
+    List<ExpectedColumnResult> expMetadata = ImmutableList.of(
+        new ExpectedColumnResult("col_int", "CHARACTER VARYING", true, 30, 30, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_vrchr", "CHARACTER VARYING", true, 31, 31, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_dt", "CHARACTER VARYING", true, 32, 32, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_tim", "CHARACTER VARYING", true, 33, 33, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_tmstmp", "CHARACTER VARYING", true, 34, 34, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_flt", "CHARACTER VARYING", true, 35, 35, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_intrvl_yr", "CHARACTER VARYING", true, 36, 36, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_bln", "CHARACTER VARYING", true, 37, 37, 0, false, String.class.getName())
+    );
+
+    verifyMetadata(expMetadata, preparedStatement.getColumnsList());
+  }
+
+  @Test
+  public void queryWithVarLenCastForDecimal() throws Exception {
+    try {
+      test("alter session set `planner.enable_decimal_data_type` = true");
+      String query = "select cast(commission_pct as varchar(50)) as commission_pct from cp.`parquet/fixedlenDecimal.parquet` limit 1";
+      PreparedStatement preparedStatement = createPrepareStmt(query, false, null);
+      List<ExpectedColumnResult> expMetadata = ImmutableList.of(
+          new ExpectedColumnResult("commission_pct", "CHARACTER VARYING", true, 50, 50, 0, false, String.class.getName()));
+      verifyMetadata(expMetadata, preparedStatement.getColumnsList());
+    } finally {
+      test("alter session reset `planner.enable_decimal_data_type`");
+    }
   }
 
   /* Helper method which creates a prepared statement for given query. */

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -34,7 +34,7 @@ import org.apache.drill.exec.expr.holders.Var16CharHolder;
 import org.apache.drill.exec.expr.holders.VarCharHolder;
 
 @SuppressWarnings("unused")
-@FunctionTemplate(names = {"castVAR16CHAR", "to_var16char", "to_string"}, scope = FunctionTemplate.FunctionScope.SIMPLE, nulls= NullHandling.NULL_IF_NULL)
+@FunctionTemplate(names = {"castVAR16CHAR", "to_var16char", "to_string"}, scope = FunctionTemplate.FunctionScope.VAR_LEN_CAST, nulls= NullHandling.NULL_IF_NULL)
 public class CastVarCharVar16Char implements DrillSimpleFunc {
   @Param VarCharHolder in;
   @Param BigIntHolder length;
