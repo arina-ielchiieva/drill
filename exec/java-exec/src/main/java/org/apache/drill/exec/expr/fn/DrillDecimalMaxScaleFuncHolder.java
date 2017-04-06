@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -17,16 +17,11 @@
  */
 package org.apache.drill.exec.expr.fn;
 
-import java.util.List;
-import java.util.Map;
-
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.MajorType;
-import org.apache.drill.exec.expr.DrillSimpleFunc;
-import org.apache.drill.exec.expr.annotations.FunctionTemplate;
-import org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope;
-import org.apache.drill.exec.expr.annotations.FunctionTemplate.NullHandling;
+
+import java.util.List;
 
 public class DrillDecimalMaxScaleFuncHolder extends DrillSimpleFuncHolder {
 
@@ -34,26 +29,22 @@ public class DrillDecimalMaxScaleFuncHolder extends DrillSimpleFuncHolder {
     super(functionAttributes, initializer);
   }
 
-    @Override
-    public MajorType getReturnType(List<LogicalExpression> args) {
+  @Override
+  public MajorType getReturnType(List<LogicalExpression> args) {
 
-        TypeProtos.DataMode mode = returnValue.type.getMode();
-        boolean nullInput = false;
-        int scale = 0;
-        int precision = 0;
+    TypeProtos.DataMode mode = getReturnTypeDataMode(args);
+    int scale = 0;
+    int precision = 0;
 
-        for (LogicalExpression e : args) {
-            if (e.getMajorType().getMode() == TypeProtos.DataMode.OPTIONAL) {
-                nullInput = true;
-            }
-            scale = Math.max(scale, e.getMajorType().getScale());
-            precision = Math.max(precision, e.getMajorType().getPrecision());
-        }
-
-        if (nullHandling == NullHandling.NULL_IF_NULL && nullInput) {
-            mode = TypeProtos.DataMode.OPTIONAL;
-        }
-
-        return (TypeProtos.MajorType.newBuilder().setMinorType(returnValue.type.getMinorType()).setScale(scale).setPrecision(precision).setMode(mode).build());
+    for (LogicalExpression e : args) {
+      scale = Math.max(scale, e.getMajorType().getScale());
+      precision = Math.max(precision, e.getMajorType().getPrecision());
     }
+
+    return TypeProtos.MajorType.newBuilder()
+        .setMinorType(getReturnType().getMinorType())
+        .setScale(scale).setPrecision(precision)
+        .setMode(mode)
+        .build();
+  }
 }

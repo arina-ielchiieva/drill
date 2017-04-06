@@ -45,7 +45,6 @@ import org.apache.drill.exec.expr.ClassGenerator.HoldingContainer;
 import org.apache.drill.exec.expr.CodeGenerator;
 import org.apache.drill.exec.expr.DrillFuncHolderExpr;
 import org.apache.drill.exec.expr.ExpressionTreeMaterializer;
-import org.apache.drill.exec.expr.TypeHelper;
 import org.apache.drill.exec.expr.ValueVectorReadExpression;
 import org.apache.drill.exec.expr.ValueVectorWriteExpression;
 import org.apache.drill.exec.expr.fn.DrillComplexWriterFuncHolder;
@@ -522,7 +521,7 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
          * using an arbitrary value. We trim down the size of the stored bytes
          * to the actual size so this size doesn't really matter.
          */
-        castArgs.add(new ValueExpressions.LongExpression(TypeHelper.VARCHAR_DEFAULT_CAST_LEN, null)); //
+        castArgs.add(new ValueExpressions.LongExpression(Types.MAX_VARCHAR_LENGTH, null));
         final FunctionCall castCall = new FunctionCall(castFuncName, castArgs, ExpressionPosition.UNKNOWN);
         exprs.add(new NamedExpression(castCall, new FieldReference(field.getPath())));
       } else {

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -27,9 +27,13 @@ import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.TypeProtos.MinorType;
 
 import com.google.protobuf.TextFormat;
+import org.apache.drill.common.util.CoreDecimalUtility;
 
 public class Types {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Types.class);
+
+  public static final int MAX_VARCHAR_LENGTH = 65536;
+  public static final int UNDEFINED = 0;
 
   public static final MajorType NULL = required(MinorType.NULL);
   public static final MajorType LATE_BIND_TYPE = optional(MinorType.LATE);
@@ -41,8 +45,8 @@ public class Types {
     return toType.getMinorType() == MinorType.UNION;
   }
 
-  public static enum Comparability {
-    UNKNOWN, NONE, EQUAL, ORDERED;
+  public enum Comparability {
+    UNKNOWN, NONE, EQUAL, ORDERED
   }
 
   public static boolean isComplex(final MajorType type) {
@@ -282,7 +286,7 @@ public class Types {
 
   public static int getJdbcDisplaySize(MajorType type) {
     if (type.getMode() == DataMode.REPEATED || type.getMinorType() == MinorType.LIST) {
-      return 0;
+      return UNDEFINED;
     }
 
     final int precision = getPrecision(type);
@@ -340,18 +344,18 @@ public class Types {
     case INTERVALYEAR:
       return precision > 0
           ? 5 + precision // P..Y12M
-          : 0; // if precision is not set, return 0 because there's not enough info
+          : UNDEFINED; // if precision is not set, return 0 because there's not enough info
 
     case INTERVALDAY:
       return precision > 0
           ? 12 + precision // P..DT12H60M60S assuming fractional seconds precision is not supported
-          : 0; // if precision is not set, return 0 because there's not enough info
+          : UNDEFINED; // if precision is not set, return 0 because there's not enough info
 
     case INTERVAL:
     case MAP:
     case LATE:
     case NULL:
-    case UNION:           return 0;
+    case UNION:           return UNDEFINED;
 
     default:
       throw new UnsupportedOperationException(
@@ -399,7 +403,13 @@ public class Types {
   }
 
 
-  public static boolean isStringScalarType(final MajorType type) {
+  /**
+   * Checks is given major type is string scalar type.
+   *
+   * @param type major type
+   * @return true if given major type is scalar string, false otherwise
+   */
+  public static boolean isScalarStringType(final MajorType type) {
     if (type.getMode() == REPEATED) {
       return false;
     }
@@ -473,6 +483,18 @@ public class Types {
 
   public static MajorType withMode(final MinorType type, final DataMode mode) {
     return MajorType.newBuilder().setMode(mode).setMinorType(type).build();
+  }
+
+  /**
+   * Builds major type using given minor type, data mode and precision.
+   *
+   * @param type minor type
+   * @param mode data mode
+   * @param precision precision value
+   * @return major type
+   */
+  public static MajorType withPrecision(final MinorType type, final DataMode mode, final int precision) {
+    return MajorType.newBuilder().setMinorType(type).setMode(mode).setPrecision(precision).build();
   }
 
   public static MajorType withScaleAndPrecision(final MinorType type, final DataMode mode, final int scale, final int precision) {
@@ -636,43 +658,63 @@ public class Types {
 
   /**
    * Get the <code>precision</code> of given type.
-   * @param majorType
-   * @return
+   *
+   * @param majorType major type
+   * @return precision value
    */
   public static int getPrecision(MajorType majorType) {
-    MinorType type = majorType.getMinorType();
-
-    if (type == MinorType.VARBINARY || type == MinorType.VARCHAR) {
-      return 65536;
-    }
-
     if (majorType.hasPrecision()) {
       return majorType.getPrecision();
     }
 
-    return 0;
+    return isScalarStringType(majorType) ? MAX_VARCHAR_LENGTH : UNDEFINED;
   }
 
   /**
    * Get the <code>scale</code> of given type.
-   * @param majorType
-   * @return
+   *
+   * @param majorType major type
+   * @return scale value
    */
   public static int getScale(MajorType majorType) {
     if (majorType.hasScale()) {
       return majorType.getScale();
     }
 
-    return 0;
+    return UNDEFINED;
   }
 
   /**
-   * Is the given type column be used in ORDER BY clause?
-   * @param type
-   * @return
+   * Checks if the given type column be used in ORDER BY clause.
+   *
+   * @param type minor type
+   * @return true if type can be used in ORDER BY clause
    */
   public static boolean isSortable(MinorType type) {
     // Currently only map and list columns are not sortable.
     return type != MinorType.MAP && type != MinorType.LIST;
+  }
+
+  /**
+   * Sets max precision from both types if these types are string scalar types.
+   * Sets max precision and scale from both types if these types are decimal types.
+   *
+   * @param leftType type from left side
+   * @param rightType type from right side
+   * @param typeBuilder type builder
+   * @return type builder
+   */
+  public static MajorType.Builder calculateTypePrecisionAndScale(MajorType leftType, MajorType rightType, MajorType.Builder typeBuilder) {
+    boolean isScalarString = Types.isScalarStringType(leftType) && Types.isScalarStringType(rightType);
+    boolean isDecimal = CoreDecimalUtility.isDecimalType(leftType);
+
+    if ((isScalarString || isDecimal) && leftType.hasPrecision() && rightType.hasPrecision()) {
+      typeBuilder.setPrecision(Math.max(leftType.getPrecision(), rightType.getPrecision()));
+    }
+
+    if (isDecimal && leftType.hasScale() && rightType.hasScale()) {
+      typeBuilder.setScale(Math.max(leftType.getScale(), rightType.getScale()));
+    }
+    return typeBuilder;
   }
 }
