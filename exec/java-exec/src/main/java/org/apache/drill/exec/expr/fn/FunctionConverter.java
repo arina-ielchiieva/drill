@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -218,6 +218,8 @@ public class FunctionConverter {
           return new DrillDecimalSetScaleFuncHolder(functionAttributes, initializer);
       case DECIMAL_ZERO_SCALE:
           return new DrillDecimalZeroScaleFuncHolder(functionAttributes, initializer);
+      case VAR_LEN_CAST:
+          return new DrillVarLenCastFuncHolder(functionAttributes, initializer);
       case HOLISTIC_AGGREGATE:
       case RANGE_AGGREGATE:
       default:
