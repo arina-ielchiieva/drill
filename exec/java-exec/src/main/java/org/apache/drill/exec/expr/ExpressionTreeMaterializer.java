@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -64,6 +65,7 @@ import org.apache.drill.common.expression.ValueExpressions.TimeStampExpression;
 import org.apache.drill.common.expression.fn.CastFunctions;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
 import org.apache.drill.common.expression.visitors.ConditionalExprOptimizer;
+import org.apache.drill.common.expression.visitors.ExprVisitor;
 import org.apache.drill.common.expression.visitors.ExpressionValidator;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.DataMode;
@@ -79,6 +81,7 @@ import org.apache.drill.exec.expr.fn.DrillFuncHolder;
 import org.apache.drill.exec.expr.fn.ExceptionFunction;
 import org.apache.drill.exec.expr.fn.FunctionLookupContext;
 import org.apache.drill.exec.expr.stat.TypedFieldExpr;
+import org.apache.drill.exec.record.MaterializeVisitor;
 import org.apache.drill.exec.record.TypedFieldId;
 import org.apache.drill.exec.record.VectorAccessible;
 import org.apache.drill.exec.resolver.FunctionResolver;
@@ -869,7 +872,7 @@ public class ExpressionTreeMaterializer {
 
         //VarLen type
         if (!Types.isFixedWidthType(type)) {
-          newArgs.add(new ValueExpressions.LongExpression(type.getPrecision(), null));
+          newArgs.add(new ValueExpressions.LongExpression(type.getWidth(), null));
         }  if (CoreDecimalUtility.isDecimalType(type)) {
             newArgs.add(new ValueExpressions.LongExpression(type.getPrecision(), null));
             newArgs.add(new ValueExpressions.LongExpression(type.getScale(), null));
@@ -930,7 +933,7 @@ public class ExpressionTreeMaterializer {
         // 2) or "to" length is unknown (0 means unknown length?).
         // Case 1 and case 2 mean that cast will do nothing.
         // In other cases, cast is required to trim the "from" according to "to" length.
-        if ( (to.getPrecision() >= from.getPrecision() && from.getPrecision() > 0) || to.getPrecision() == 0) {
+        if ( (to.getWidth() >= from.getWidth() && from.getWidth() > 0) || to.getWidth() == 0) {
           return true;
         } else {
           return false;
