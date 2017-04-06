@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -88,7 +88,7 @@ public @interface FunctionTemplate {
      * either input is NULL, and therefore that the method must not be called
      * with null inputs.  (The calling framework must handle NULLs.)
      */
-    NULL_IF_NULL;
+    NULL_IF_NULL
   }
 
   public static enum FunctionScope {
@@ -106,7 +106,13 @@ public @interface FunctionTemplate {
     DECIMAL_ADD_SCALE,
     DECIMAL_SET_SCALE,
     DECIMAL_ZERO_SCALE,
-    SC_BOOLEAN_OPERATOR
+    SC_BOOLEAN_OPERATOR,
+    STRING_CAST,
+    CONCAT,
+    SUBSTRING,
+    STRING_LEFT_RIGHT,
+    PAD,
+    SAME_IN_OUT_LENGTH
   }
 
   public static enum FunctionCostCategory {
@@ -114,7 +120,7 @@ public @interface FunctionTemplate {
 
     private final int value;
 
-    private FunctionCostCategory(int value) {
+    FunctionCostCategory(int value) {
       this.value = value;
     }
 

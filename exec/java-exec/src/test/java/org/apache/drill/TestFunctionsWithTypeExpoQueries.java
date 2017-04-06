@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -496,6 +496,7 @@ public class TestFunctionsWithTypeExpoQueries extends BaseTestQuery {
     final TypeProtos.MajorType majorType2 = TypeProtos.MajorType.newBuilder()
         .setMinorType(TypeProtos.MinorType.VARCHAR)
         .setMode(TypeProtos.DataMode.OPTIONAL)
+        .setPrecision(2)
         .build();
 
     final TypeProtos.MajorType majorType3 = TypeProtos.MajorType.newBuilder()
