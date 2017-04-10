@@ -641,12 +641,6 @@ public class Types {
    * @return precision value
    */
   public static int getPrecision(MajorType majorType) {
-    MinorType type = majorType.getMinorType();
-
-    if (type == MinorType.VARBINARY || type == MinorType.VARCHAR) {
-      return majorType.getWidth();
-    }
-
     if (majorType.hasPrecision()) {
       return majorType.getPrecision();
     }

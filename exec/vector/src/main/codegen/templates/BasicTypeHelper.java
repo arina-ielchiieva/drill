@@ -62,9 +62,9 @@ public class BasicTypeHelper {
                                minor.class?substring(0, 3) == "MSG"> + WIDTH_ESTIMATE</#if>;
   </#list>
 </#list>
-      case FIXEDCHAR: return major.getWidth();
-      case FIXED16CHAR: return major.getWidth();
-      case FIXEDBINARY: return major.getWidth();
+      case FIXEDCHAR: return major.getPrecision();
+      case FIXED16CHAR: return major.getPrecision();
+      case FIXEDBINARY: return major.getPrecision();
     }
     throw new UnsupportedOperationException(buildErrorMessage("get size", major));
   }

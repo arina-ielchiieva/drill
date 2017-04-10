@@ -872,7 +872,7 @@ public class ExpressionTreeMaterializer {
 
         //VarLen type
         if (!Types.isFixedWidthType(type)) {
-          newArgs.add(new ValueExpressions.LongExpression(type.getWidth(), null));
+          newArgs.add(new ValueExpressions.LongExpression(type.getPrecision(), null));
         }  if (CoreDecimalUtility.isDecimalType(type)) {
             newArgs.add(new ValueExpressions.LongExpression(type.getPrecision(), null));
             newArgs.add(new ValueExpressions.LongExpression(type.getScale(), null));
@@ -933,7 +933,7 @@ public class ExpressionTreeMaterializer {
         // 2) or "to" length is unknown (0 means unknown length?).
         // Case 1 and case 2 mean that cast will do nothing.
         // In other cases, cast is required to trim the "from" according to "to" length.
-        if ( (to.getWidth() >= from.getWidth() && from.getWidth() > 0) || to.getWidth() == 0) {
+        if ( (to.getPrecision() >= from.getPrecision() && from.getPrecision() > 0) || to.getPrecision() == 0) {
           return true;
         } else {
           return false;

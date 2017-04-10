@@ -163,6 +163,19 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
   }
 
   @Test
+  //todo add all cases (varchar longer and smaller, integer
+  // do we need to add cases for limit 0 if problem will be found
+  public void queryWithConstant() throws Exception {
+    String query = "select\n" +
+        "cast('a' as varchar(5)) as col_a\n" +
+        "from (values(1))";
+
+    PreparedStatement preparedStatement = createPrepareStmt(query, false, null);
+    System.out.println(preparedStatement.getColumnsList());
+
+  }
+
+  @Test
   public void queryWithVarLenCastForDecimal() throws Exception {
     try {
       test("alter session set `planner.enable_decimal_data_type` = true");
