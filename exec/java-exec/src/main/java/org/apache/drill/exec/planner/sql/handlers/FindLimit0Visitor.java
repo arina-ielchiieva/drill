@@ -87,7 +87,28 @@ public class FindLimit0Visitor extends RelShuttleImpl {
     final List<SqlTypeName> columnTypes = Lists.newArrayList();
     final List<TypeProtos.DataMode> dataModes = Lists.newArrayList();
 
+    final List<TypeProtos.MajorType> columnTypes_new = Lists.newArrayList();
+
+
     for (final RelDataTypeField field : fieldList) {
+      final SqlTypeName sqlTypeName = field.getType().getSqlTypeName();
+      if (!TYPES.contains(sqlTypeName)) {
+        return null;
+      } else {
+
+        final TypeProtos.MajorType.Builder builder = TypeProtos.MajorType.newBuilder()
+            .setMode(field.getType().isNullable() ? TypeProtos.DataMode.OPTIONAL : TypeProtos.DataMode.REQUIRED)
+            .setMinorType(TypeInferenceUtils.getDrillTypeFromCalciteType(sqlTypeName));
+
+        if (SqlTypeName.VARCHAR.equals(sqlTypeName) || SqlTypeName.CHAR.equals(sqlTypeName)) {
+          builder.setPrecision(field.getType().getPrecision());
+        }
+
+        columnTypes_new.add(builder.build());
+      }
+    }
+
+/*    for (final RelDataTypeField field : fieldList) {
       final SqlTypeName sqlTypeName = field.getType().getSqlTypeName();
       if (!TYPES.contains(sqlTypeName)) {
         return null;
@@ -96,14 +117,20 @@ public class FindLimit0Visitor extends RelShuttleImpl {
         dataModes.add(field.getType().isNullable() ?
             TypeProtos.DataMode.OPTIONAL : TypeProtos.DataMode.REQUIRED);
       }
-    }
+    }*/
 
     final RelTraitSet traits = rel.getTraitSet().plus(DrillRel.DRILL_LOGICAL);
-    final RelDataTypeReader reader = new RelDataTypeReader(rel.getRowType().getFieldNames(), columnTypes,
-        dataModes);
+    final RelDataTypeReader reader = new RelDataTypeReader(rel.getRowType().getFieldNames(), columnTypes_new);
     return new DrillDirectScanRel(rel.getCluster(), traits,
         new DirectGroupScan(reader, ScanStats.ZERO_RECORD_TABLE), rel.getRowType());
   }
+
+  /*
+        final TypeProtos.MajorType type = TypeProtos.MajorType.newBuilder()
+            .setMode(dataModes.get(i))
+            .setMinorType(TypeInferenceUtils.getDrillTypeFromCalciteType(columnTypes.get(i)))
+            .build();
+   */
 
   /**
    * Check if the root portion of the tree contains LIMIT(0).
@@ -197,25 +224,18 @@ public class FindLimit0Visitor extends RelShuttleImpl {
   public static class RelDataTypeReader extends AbstractRecordReader {
 
     public final List<String> columnNames;
-    public final List<SqlTypeName> columnTypes;
-    public final List<TypeProtos.DataMode> dataModes;
+    public final List<TypeProtos.MajorType> columnTypes;
 
-    public RelDataTypeReader(List<String> columnNames, List<SqlTypeName> columnTypes,
-        List<TypeProtos.DataMode> dataModes) {
-      Preconditions.checkArgument(columnNames.size() == columnTypes.size() &&
-          columnTypes.size() == dataModes.size());
+    public RelDataTypeReader(List<String> columnNames, List<TypeProtos.MajorType> columnTypes) {
+      Preconditions.checkArgument(columnNames.size() == columnTypes.size());
       this.columnNames = columnNames;
       this.columnTypes = columnTypes;
-      this.dataModes = dataModes;
     }
 
     @Override
     public void setup(OperatorContext context, OutputMutator output) throws ExecutionSetupException {
       for (int i = 0; i < columnNames.size(); i++) {
-        final TypeProtos.MajorType type = TypeProtos.MajorType.newBuilder()
-            .setMode(dataModes.get(i))
-            .setMinorType(TypeInferenceUtils.getDrillTypeFromCalciteType(columnTypes.get(i)))
-            .build();
+        final TypeProtos.MajorType type = columnTypes.get(i);
         final MaterializedField field = MaterializedField.create(columnNames.get(i), type);
         final Class vvClass = TypeHelper.getValueVectorClass(type.getMinorType(), type.getMode());
         try {
