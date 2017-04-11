@@ -53,11 +53,11 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
 
     List<ExpectedColumnResult> expMetadata = ImmutableList.of(
         new ExpectedColumnResult("region_id", "BIGINT", true, 20, 0, 0, true, Long.class.getName()),
-        new ExpectedColumnResult("sales_city", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
-        new ExpectedColumnResult("sales_state_province", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
-        new ExpectedColumnResult("sales_district", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
-        new ExpectedColumnResult("sales_region", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
-        new ExpectedColumnResult("sales_country", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
+        new ExpectedColumnResult("sales_city", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
+        new ExpectedColumnResult("sales_state_province", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
+        new ExpectedColumnResult("sales_district", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
+        new ExpectedColumnResult("sales_region", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
+        new ExpectedColumnResult("sales_country", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
         new ExpectedColumnResult("sales_district_id", "BIGINT", true, 20, 0, 0, true, Long.class.getName())
     );
 
@@ -82,7 +82,7 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     PreparedStatement preparedStatement = createPrepareStmt(query, false, null);
 
     List<ExpectedColumnResult> expMetadata = ImmutableList.of(
-        new ExpectedColumnResult("sales_city", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
+        new ExpectedColumnResult("sales_city", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
         new ExpectedColumnResult("cnt", "BIGINT", false, 20, 0, 0, true, Long.class.getName())
     );
 
@@ -167,7 +167,7 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
   // do we need to add cases for limit 0 if problem will be found
   public void queryWithConstant() throws Exception {
     String query = "select\n" +
-        "cast('a' as varchar(5)) as col_a\n" +
+        "cast('aaaaaaaaaaaaa' as varchar(5)) as col_a\n" +
         "from (values(1))";
 
     PreparedStatement preparedStatement = createPrepareStmt(query, false, null);
