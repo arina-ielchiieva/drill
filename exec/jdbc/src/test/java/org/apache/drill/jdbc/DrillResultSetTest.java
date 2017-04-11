@@ -168,7 +168,7 @@ public class DrillResultSetTest extends DrillTest {
 
   // TODO:  Ideally, test other methods.
 
-  @Test
+  //@Test
   public void test() throws Exception {
     Connection connection =
         new Driver().connect( "jdbc:drill:zk=local", JdbcAssert.getDefaultProperties() );
@@ -185,10 +185,10 @@ public class DrillResultSetTest extends DrillTest {
         "dfs.`F:\\git_repo\\drill-test-framework\\framework\\resources\\Datasources\\convert\\vvtypes.json`) t " +
         "limit 0";
 
-
+    ResultSet resultSet = null;
     statement.executeQuery("alter session set `planner.enable_limit0_optimization` = true");
-    System.out.println("REGULAR");
-    ResultSet resultSet = statement.executeQuery(query);
+/*    System.out.println("REGULAR");
+    resultSet = statement.executeQuery(query);
     System.out.println(resultSet.getMetaData().getColumnDisplaySize(1));
     System.out.println("LIMIT 0");
     resultSet = statement.executeQuery(limit);
@@ -198,10 +198,25 @@ public class DrillResultSetTest extends DrillTest {
     System.out.println(resultSet.getMetaData().getColumnDisplaySize(1));
     System.out.println("CONCAT FUNCTION");
     resultSet = statement.executeQuery("SELECT cast(CONCAT(cast('Drill' as varchar(10)), cast('release' as varchar(10))) as varchar(10)) FROM (VALUES(1))");
-    System.out.println(resultSet.getMetaData().getColumnDisplaySize(1));
+    System.out.println(resultSet.getMetaData().getColumnDisplaySize(1));*/
     System.out.println("Simple constant");
     resultSet = statement.executeQuery("SELECT 'aaaa' FROM (VALUES(1))");
     System.out.println(resultSet.getMetaData().getColumnDisplaySize(1));
+    System.out.println("Simple constant limit 0");
+    resultSet = statement.executeQuery("SELECT 'aaaa' FROM (VALUES(1)) limit 0");
+    System.out.println(resultSet.getMetaData().getColumnDisplaySize(1));
+
+
+ /*   statement.executeQuery("create dfs_tmp.my_view");
+
+    System.out.println("Coalesce constant");
+    resultSet = statement.executeQuery("SELECT ('aaaa' FROM (VALUES(1))");
+    System.out.println(resultSet.getMetaData().getColumnDisplaySize(1));
+
+
+    System.out.println("Coalesce constant limit 0");
+    resultSet = statement.executeQuery("SELECT 'aaaa' FROM (VALUES(1))");
+    System.out.println(resultSet.getMetaData().getColumnDisplaySize(1));*/
   }
 
 }

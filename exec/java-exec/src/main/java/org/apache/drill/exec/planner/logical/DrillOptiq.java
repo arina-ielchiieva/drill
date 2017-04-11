@@ -422,7 +422,7 @@ public class DrillOptiq {
            * (empty string literal) to the list of arguments.
            */
           List<LogicalExpression> concatArgs = new LinkedList<>(args);
-          concatArgs.add(new QuotedString("", ExpressionPosition.UNKNOWN));
+          concatArgs.add(QuotedString.EMPTY_STRING);
 
           return FunctionCallFactory.createExpression(functionName, concatArgs);
 
@@ -514,7 +514,7 @@ public class DrillOptiq {
         if (isLiteralNull(literal)) {
           return createNullExpr(MinorType.VARCHAR);
         }
-        return ValueExpressions.getChar(((NlsString)literal.getValue()).getValue());
+        return ValueExpressions.getChar(((NlsString)literal.getValue()).getValue(), literal.getType().getPrecision());
       case DOUBLE:
         if (isLiteralNull(literal)){
           return createNullExpr(MinorType.FLOAT8);
@@ -558,12 +558,12 @@ public class DrillOptiq {
         if (isLiteralNull(literal)) {
           return createNullExpr(MinorType.VARCHAR);
         }
-        return ValueExpressions.getChar(((NlsString)literal.getValue()).getValue());
+        return ValueExpressions.getChar(((NlsString)literal.getValue()).getValue(), literal.getType().getPrecision());
       case SYMBOL:
         if (isLiteralNull(literal)) {
           return createNullExpr(MinorType.VARCHAR);
         }
-        return ValueExpressions.getChar(literal.getValue().toString());
+        return ValueExpressions.getChar(literal.getValue().toString(), literal.getType().getPrecision());
       case DATE:
         if (isLiteralNull(literal)) {
           return createNullExpr(MinorType.DATE);

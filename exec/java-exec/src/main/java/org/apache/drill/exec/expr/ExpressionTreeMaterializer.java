@@ -576,7 +576,7 @@ public class ExpressionTreeMaterializer {
      * @return
      */
     private LogicalExpression getExceptionFunction(String message) {
-      QuotedString msg = new QuotedString(message, ExpressionPosition.UNKNOWN);
+      QuotedString msg = new QuotedString(message, message.length(), ExpressionPosition.UNKNOWN);
       List<LogicalExpression> args = Lists.newArrayList();
       args.add(msg);
       FunctionCall call = new FunctionCall(ExceptionFunction.EXCEPTION_FUNCTION_NAME, args, ExpressionPosition.UNKNOWN);
