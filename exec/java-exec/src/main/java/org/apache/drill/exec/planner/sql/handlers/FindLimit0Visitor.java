@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -84,10 +84,7 @@ public class FindLimit0Visitor extends RelShuttleImpl {
    */
   public static DrillRel getDirectScanRelIfFullySchemaed(RelNode rel) {
     final List<RelDataTypeField> fieldList = rel.getRowType().getFieldList();
-    final List<SqlTypeName> columnTypes = Lists.newArrayList();
-    final List<TypeProtos.DataMode> dataModes = Lists.newArrayList();
-
-    final List<TypeProtos.MajorType> columnTypes_new = Lists.newArrayList();
+    final List<TypeProtos.MajorType> columnTypes = Lists.newArrayList();
 
 
     for (final RelDataTypeField field : fieldList) {
@@ -95,7 +92,6 @@ public class FindLimit0Visitor extends RelShuttleImpl {
       if (!TYPES.contains(sqlTypeName)) {
         return null;
       } else {
-
         final TypeProtos.MajorType.Builder builder = TypeProtos.MajorType.newBuilder()
             .setMode(field.getType().isNullable() ? TypeProtos.DataMode.OPTIONAL : TypeProtos.DataMode.REQUIRED)
             .setMinorType(TypeInferenceUtils.getDrillTypeFromCalciteType(sqlTypeName));
@@ -104,33 +100,14 @@ public class FindLimit0Visitor extends RelShuttleImpl {
           builder.setPrecision(field.getType().getPrecision());
         }
 
-        columnTypes_new.add(builder.build());
+        columnTypes.add(builder.build());
       }
     }
-
-/*    for (final RelDataTypeField field : fieldList) {
-      final SqlTypeName sqlTypeName = field.getType().getSqlTypeName();
-      if (!TYPES.contains(sqlTypeName)) {
-        return null;
-      } else {
-        columnTypes.add(sqlTypeName);
-        dataModes.add(field.getType().isNullable() ?
-            TypeProtos.DataMode.OPTIONAL : TypeProtos.DataMode.REQUIRED);
-      }
-    }*/
-
     final RelTraitSet traits = rel.getTraitSet().plus(DrillRel.DRILL_LOGICAL);
-    final RelDataTypeReader reader = new RelDataTypeReader(rel.getRowType().getFieldNames(), columnTypes_new);
+    final RelDataTypeReader reader = new RelDataTypeReader(rel.getRowType().getFieldNames(), columnTypes);
     return new DrillDirectScanRel(rel.getCluster(), traits,
         new DirectGroupScan(reader, ScanStats.ZERO_RECORD_TABLE), rel.getRowType());
   }
-
-  /*
-        final TypeProtos.MajorType type = TypeProtos.MajorType.newBuilder()
-            .setMode(dataModes.get(i))
-            .setMinorType(TypeInferenceUtils.getDrillTypeFromCalciteType(columnTypes.get(i)))
-            .build();
-   */
 
   /**
    * Check if the root portion of the tree contains LIMIT(0).
@@ -227,7 +204,7 @@ public class FindLimit0Visitor extends RelShuttleImpl {
     public final List<TypeProtos.MajorType> columnTypes;
 
     public RelDataTypeReader(List<String> columnNames, List<TypeProtos.MajorType> columnTypes) {
-      Preconditions.checkArgument(columnNames.size() == columnTypes.size());
+      Preconditions.checkArgument(columnNames.size() == columnTypes.size(), "Number of columns and their types should match");
       this.columnNames = columnNames;
       this.columnTypes = columnTypes;
     }

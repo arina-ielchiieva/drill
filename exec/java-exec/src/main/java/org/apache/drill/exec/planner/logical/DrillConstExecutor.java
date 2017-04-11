@@ -21,7 +21,6 @@ import com.google.common.base.Function;
 import com.google.common.collect.ImmutableList;
 import io.netty.buffer.DrillBuf;
 import org.apache.calcite.rel.RelNode;
-import org.apache.calcite.rel.type.RelDataType;
 import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.common.expression.ErrorCollectorImpl;
 import org.apache.drill.common.expression.ExpressionStringBuilder;
@@ -191,34 +190,9 @@ public class DrillConstExecutor implements RelOptPlanner.Executor {
               String value = (materializedExpr.getMajorType().getMode() == TypeProtos.DataMode.OPTIONAL) ?
                 StringFunctionHelpers.getStringFromVarCharHolder((NullableVarCharHolder)output) :
                 StringFunctionHelpers.getStringFromVarCharHolder((VarCharHolder)output);
-              RelDataType v = TypeInferenceUtils.createCalciteTypeWithNullability(
-                  typeFactory, SqlTypeName.VARCHAR, newCall.getType().isNullable());
               return rexBuilder.makeLiteral(value,
                 TypeInferenceUtils.createCalciteTypeWithNullability(typeFactory, SqlTypeName.VARCHAR, newCall.getType().isNullable()), false);
             }
-
-            /*
-
-                          DrillBuf buffer;
-              int start;
-              int scale;
-              if (materializedExpr.getMajorType().getMode() == TypeProtos.DataMode.OPTIONAL) {
-                NullableDecimal38SparseHolder decimal38Out = (NullableDecimal38SparseHolder)output;
-                buffer = decimal38Out.buffer;
-                start = decimal38Out.start;
-                scale = decimal38Out.scale;
-              } else {
-                Decimal38SparseHolder decimal38Out = (Decimal38SparseHolder)output;
-                buffer = decimal38Out.buffer;
-                start = decimal38Out.start;
-                scale = decimal38Out.scale;
-              }
-              return rexBuilder.makeLiteral(org.apache.drill.exec.util.DecimalUtility.getBigDecimalFromSparse(buffer, start * 24, 6, scale),
-                TypeInferenceUtils.createCalciteTypeWithNullability(typeFactory, SqlTypeName.DECIMAL, newCall.getType().isNullable()),
-                false);
-
-
-             */
             case BIT: {
               boolean value = (materializedExpr.getMajorType().getMode() == TypeProtos.DataMode.OPTIONAL) ?
                 ((NullableBitHolder) output).value == 1 : ((BitHolder) output).value == 1;

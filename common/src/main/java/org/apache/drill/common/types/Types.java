@@ -41,8 +41,8 @@ public class Types {
     return toType.getMinorType() == MinorType.UNION;
   }
 
-  public static enum Comparability {
-    UNKNOWN, NONE, EQUAL, ORDERED;
+  public enum Comparability {
+    UNKNOWN, NONE, EQUAL, ORDERED
   }
 
   public static boolean isComplex(final MajorType type) {
@@ -475,6 +475,10 @@ public class Types {
     return MajorType.newBuilder().setMode(mode).setMinorType(type).build();
   }
 
+  public static MajorType withPrecision(final MinorType type, final DataMode mode, final int precision) {
+    return MajorType.newBuilder().setMinorType(type).setMode(mode).setPrecision(precision).build();
+  }
+
   public static MajorType withScaleAndPrecision(final MinorType type, final DataMode mode, final int scale, final int precision) {
     return MajorType.newBuilder().setMinorType(type).setMode(mode).setScale(scale).setPrecision(precision).build();
   }
@@ -641,11 +645,13 @@ public class Types {
    * @return precision value
    */
   public static int getPrecision(MajorType majorType) {
+    MinorType type = majorType.getMinorType();
+
     if (majorType.hasPrecision()) {
       return majorType.getPrecision();
     }
 
-    return 0;
+    return type == MinorType.VARBINARY || type == MinorType.VARCHAR ? 65536 : 0;
   }
 
   /**

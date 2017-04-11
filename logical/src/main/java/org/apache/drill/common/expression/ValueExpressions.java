@@ -22,7 +22,6 @@ import java.util.GregorianCalendar;
 import java.util.Iterator;
 
 import org.apache.drill.common.expression.visitors.ExprVisitor;
-import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.DataMode;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.TypeProtos.MinorType;
@@ -651,6 +650,8 @@ public class ValueExpressions {
 
   public static class QuotedString extends ValueExpression<String> {
 
+    private static final MajorType QUOTED_STRING_CONSTANT = Types.required(MinorType.VARCHAR);
+
     public QuotedString(String value, ExpressionPosition pos) {
       super(value, pos);
     }
@@ -666,11 +667,7 @@ public class ValueExpressions {
 
     @Override
     public MajorType getMajorType() {
-      return TypeProtos.MajorType.newBuilder()
-          .setMinorType(MinorType.VARCHAR)
-          .setMode(DataMode.REQUIRED)
-          .setPrecision(value.length())
-          .build();
+      return QUOTED_STRING_CONSTANT;
     }
 
     @Override
