@@ -21,6 +21,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.sql.Date;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.drill.BaseTestQuery;
@@ -144,7 +145,7 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
         "cast(col_flt as varchar(35)) as col_flt,\n" +
         "cast(col_intrvl_yr as varchar(36)) as col_intrvl_yr,\n" +
         "cast(col_bln as varchar(37)) as col_bln\n" +
-        "from cp.`parquet/alltypes_optional.parquet` limit 1";
+        "from cp.`parquet/alltypes_optional.parquet` limit 0";
 
     PreparedStatement preparedStatement = createPrepareStmt(query, false, null);
 
@@ -163,16 +164,39 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
   }
 
   @Test
-  //todo add all cases (varchar longer and smaller, integer
-  // do we need to add cases for limit 0 if problem will be found
   public void queryWithConstant() throws Exception {
     String query = "select\n" +
-        "cast('aaaaaaaaaaaaa' as varchar(5)) as col_a\n" +
+        "'aaa' as col_a,\n" +
+        "10 as col_i\n," +
+        "cast('aaa' as varchar(5)) as col_a_short,\n" +
+        "cast(10 as varchar(5)) as col_i_short,\n" +
+        "cast('aaaaaaaaaaaaa' as varchar(5)) as col_a_long,\n" +
+        "cast(1000000000 as varchar(5)) as col_i_long\n" +
         "from (values(1))";
 
+    List<ExpectedColumnResult> expMetadata = ImmutableList.of(
+        new ExpectedColumnResult("col_a", "CHARACTER VARYING", false, 3, 3, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_i", "INTEGER", false, 11, 0, 0, true, Integer.class.getName()),
+        new ExpectedColumnResult("col_a_short", "CHARACTER VARYING", false, 5, 5, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_i_short", "CHARACTER VARYING", false, 5, 5, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_a_long", "CHARACTER VARYING", false, 5, 5, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_i_long", "CHARACTER VARYING", false, 5, 5, 0, false, String.class.getName())
+    );
+
+    PreparedStatement preparedStatement = createPrepareStmt(query, false, null);
+
+    verifyMetadata(expMetadata, preparedStatement.getColumnsList());
+  }
+
+  @Test
+  public void unknownPrecision() throws Exception {
+    String query = "SELECT sales_city FROM cp.`region.json` ORDER BY region_id LIMIT 0";
     PreparedStatement preparedStatement = createPrepareStmt(query, false, null);
     System.out.println(preparedStatement.getColumnsList());
+    test("alter session set `planner.enable_limit0_optimization` = true");
 
+    preparedStatement = createPrepareStmt(query, false, null);
+    System.out.println(preparedStatement.getColumnsList());
   }
 
   @Test

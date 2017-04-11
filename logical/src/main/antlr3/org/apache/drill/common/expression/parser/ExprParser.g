@@ -314,7 +314,7 @@ lookup returns [LogicalExpression e]
   | convertCall {$e = $convertCall.e; }
   | castCall {$e = $castCall.e; }
   | pathSegment {$e = new SchemaPath($pathSegment.seg, pos($pathSegment.start) ); }
-  | String {$e = new ValueExpressions.QuotedString($String.text, pos($String) ); }
+  | String {$e = new ValueExpressions.QuotedString($String.text, $String.text.length(), pos($String) ); }
   | OParen expression CParen  {$e = $expression.e; }
   | SingleQuote Identifier SingleQuote {$e = new SchemaPath($Identifier.text, pos($Identifier) ); }
   ;
