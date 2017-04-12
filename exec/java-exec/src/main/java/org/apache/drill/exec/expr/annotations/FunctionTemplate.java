@@ -107,7 +107,9 @@ public @interface FunctionTemplate {
     DECIMAL_SET_SCALE,
     DECIMAL_ZERO_SCALE,
     SC_BOOLEAN_OPERATOR,
-    VAR_LEN_CAST
+    VAR_LEN_CAST,
+    CONCAT_OPERATOR,
+
   }
 
   public static enum FunctionCostCategory {

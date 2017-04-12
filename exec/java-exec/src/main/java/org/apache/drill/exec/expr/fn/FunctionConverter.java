@@ -220,6 +220,8 @@ public class FunctionConverter {
           return new DrillDecimalZeroScaleFuncHolder(functionAttributes, initializer);
       case VAR_LEN_CAST:
           return new DrillVarLenCastFuncHolder(functionAttributes, initializer);
+      case CONCAT_OPERATOR:
+          return new DrillConcatOperatorFuncHolder(functionAttributes, initializer);
       case HOLISTIC_AGGREGATE:
       case RANGE_AGGREGATE:
       default:

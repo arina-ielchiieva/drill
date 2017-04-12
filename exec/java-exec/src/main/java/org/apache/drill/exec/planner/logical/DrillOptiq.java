@@ -512,7 +512,7 @@ public class DrillOptiq {
         return ValueExpressions.getBit(((Boolean) literal.getValue()));
       case CHAR:
         if (isLiteralNull(literal)) {
-          return createNullExpr(MinorType.VARCHAR);
+          return createVarLenNullExpr(literal.getType().getPrecision());
         }
         return ValueExpressions.getChar(((NlsString)literal.getValue()).getValue(), literal.getType().getPrecision());
       case DOUBLE:
@@ -556,12 +556,12 @@ public class DrillOptiq {
         return ValueExpressions.getFloat8(dbl);
       case VARCHAR:
         if (isLiteralNull(literal)) {
-          return createNullExpr(MinorType.VARCHAR);
+          return createVarLenNullExpr(literal.getType().getPrecision());
         }
         return ValueExpressions.getChar(((NlsString)literal.getValue()).getValue(), literal.getType().getPrecision());
       case SYMBOL:
         if (isLiteralNull(literal)) {
-          return createNullExpr(MinorType.VARCHAR);
+          return createVarLenNullExpr(literal.getType().getPrecision());
         }
         return ValueExpressions.getChar(literal.getValue().toString(), literal.getType().getPrecision());
       case DATE:
@@ -599,10 +599,14 @@ public class DrillOptiq {
         throw new UnsupportedOperationException(String.format("Unable to convert the value of %s and type %s to a Drill constant expression.", literal, literal.getType().getSqlTypeName()));
       }
     }
-  }
 
-  private static final TypedNullConstant createNullExpr(MinorType type) {
-    return new TypedNullConstant(Types.optional(type));
+    private TypedNullConstant createNullExpr(MinorType type) {
+      return new TypedNullConstant(Types.optional(type));
+    }
+
+    private TypedNullConstant createVarLenNullExpr(int precision) {
+      return new TypedNullConstant(Types.withPrecision(MinorType.VARCHAR, TypeProtos.DataMode.OPTIONAL, precision));
+    }
   }
 
   public static boolean isLiteralNull(RexLiteral literal) {

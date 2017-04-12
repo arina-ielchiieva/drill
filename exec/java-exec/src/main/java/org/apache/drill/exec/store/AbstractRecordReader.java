@@ -46,6 +46,10 @@ public abstract class AbstractRecordReader implements RecordReader {
   private boolean isStarQuery = false;
   private boolean isSkipQuery = false;
 
+  public AbstractRecordReader() {
+    System.out.println("STOP HERE");
+  }
+
   @Override
   public String toString() {
     return super.toString()
