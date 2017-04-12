@@ -24,6 +24,7 @@ import java.sql.Date;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.commons.codec.EncoderException;
 import org.apache.drill.BaseTestQuery;
 import org.apache.drill.exec.proto.UserBitShared.DrillPBError.ErrorType;
 import org.apache.drill.exec.proto.UserProtos.ColumnSearchability;
@@ -164,10 +165,11 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
   }
 
   @Test
-  public void queryWithConstant() throws Exception {
+  public void queryWithConstants() throws Exception {
     String query = "select\n" +
         "'aaa' as col_a,\n" +
         "10 as col_i\n," +
+        "cast(null as varchar(5)) as col_n\n," +
         "cast('aaa' as varchar(5)) as col_a_short,\n" +
         "cast(10 as varchar(5)) as col_i_short,\n" +
         "cast('aaaaaaaaaaaaa' as varchar(5)) as col_a_long,\n" +
@@ -177,6 +179,7 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     List<ExpectedColumnResult> expMetadata = ImmutableList.of(
         new ExpectedColumnResult("col_a", "CHARACTER VARYING", false, 3, 3, 0, false, String.class.getName()),
         new ExpectedColumnResult("col_i", "INTEGER", false, 11, 0, 0, true, Integer.class.getName()),
+        new ExpectedColumnResult("col_n", "CHARACTER VARYING", true, 5, 5, 0, false, String.class.getName()),
         new ExpectedColumnResult("col_a_short", "CHARACTER VARYING", false, 5, 5, 0, false, String.class.getName()),
         new ExpectedColumnResult("col_i_short", "CHARACTER VARYING", false, 5, 5, 0, false, String.class.getName()),
         new ExpectedColumnResult("col_a_long", "CHARACTER VARYING", false, 5, 5, 0, false, String.class.getName()),
@@ -190,11 +193,133 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
 
   @Test
   public void unknownPrecision() throws Exception {
+    // both return 65536
     String query = "SELECT sales_city FROM cp.`region.json` ORDER BY region_id LIMIT 0";
     PreparedStatement preparedStatement = createPrepareStmt(query, false, null);
     System.out.println(preparedStatement.getColumnsList());
     test("alter session set `planner.enable_limit0_optimization` = true");
 
+    preparedStatement = createPrepareStmt(query, false, null);
+    System.out.println(preparedStatement.getColumnsList());
+  }
+
+  @Test
+  public void differencesBetweenLimitAndRegular() throws Exception {
+    test("use dfs_test.tmp");
+    test("create view voter_csv_v as select " +
+        "case when columns[0]='' then cast(null as int) else cast(columns[0] as int) end as voter_id, " +
+        "case when columns[3]='' then cast(null as char(20)) else cast(columns[3] as char(20)) end as registration " +
+        "from dfs.`F:\\git_repo\\drill-test-framework\\framework\\resources\\Datasources\\limit0\\p1tests\\voter.csv`");
+
+    String query = "SELECT concat(registration, '_D') FROM voter_csv_v limit 0";
+    //String query = "SELECT * FROM voter_csv_v where voter_id=10 limit 0";
+    PreparedStatement preparedStatement1 = createPrepareStmt(query, false, null);
+    System.out.println(preparedStatement1.getColumnsList());
+    test("alter session set `planner.enable_limit0_optimization` = true");
+    PreparedStatement preparedStatement2 = createPrepareStmt(query, false, null);
+    System.out.println(preparedStatement2.getColumnsList());
+    assertEquals(preparedStatement1.getColumnsList(), preparedStatement2.getColumnsList());
+  }
+
+  @Test //todo so far could not reproduce
+  public void leadAndLeadFunctions() throws Exception {
+    test("use dfs_test.tmp");
+
+    test("create or replace view tblWnulls_v as select cast(c1 as integer) c1, "
+        + "cast(c2 as char(1)) c2 "
+        + "from dfs.`F:\\git_repo\\drill-test-framework\\framework\\resources\\Datasources\\window_functions\\tblWnulls.parquet`");
+
+    test("alter session set `planner.enable_decimal_data_type` = true");
+
+    //String query = "SELECT LEAD(c2) OVER ( PARTITION BY c2 ORDER BY c1) LEAD_c2 FROM `tblWnulls_v` limit 0";
+    String query = "select * from (SELECT * FROM (SELECT c1, c2, LEAD(c2) OVER ( PARTITION BY c2 ORDER BY c1) LEAD_c2, " +
+        "NTILE(3) OVER ( PARTITION BY c2 ORDER BY c1) tile " +
+        "FROM `tblWnulls_v`) sub_query WHERE LEAD_c2 ='e' ORDER BY tile, c1) t limit 0";
+
+    PreparedStatement preparedStatement = createPrepareStmt(query, false, null);
+    System.out.println(preparedStatement.getColumnsList());
+  }
+
+  @Test
+  public void complexInput() throws Exception {
+    // both give 65536
+    // 10 is casted to bigint, thus we can't determine cast length
+    String query = "SELECT castVarchar(sales_city, 10) as c FROM cp.`region.json` ORDER BY region_id LIMIT 0";
+    PreparedStatement preparedStatement = createPrepareStmt(query, false, null);
+    System.out.println(preparedStatement.getColumnsList());
+
+    test("alter session set `planner.enable_limit0_optimization` = true");
+    preparedStatement = createPrepareStmt(query, false, null);
+    System.out.println(preparedStatement.getColumnsList());
+  }
+
+  @Test
+  public void concat() throws Exception {
+    //String query = "SELECT concat(cast(sales_city as varchar(10)), '_D') as c FROM cp.`region.json` LIMIT 0";
+    //String query = "SELECT concat(cast(sales_city as varchar(10)), sales_city) as c FROM cp.`region.json` LIMIT 0";
+    //String query = "SELECT concat(cast(sales_city as varchar(10)), cast(sales_city as varchar(10))) as c FROM cp.`region.json` LIMIT 0";
+
+    String query = "select\n" +
+        "concat(cast(sales_city as varchar(10)), cast(sales_city as varchar(10))) as two_casts,\n" +
+        "concat(cast(sales_city as varchar(60000)), cast(sales_city as varchar(60000))) as max_length,\n" +
+        "concat(cast(sales_city as varchar(10)), sales_city) as one_unknown,\n" +
+        "concat(sales_city, sales_city) as two_unknown,\n" +
+        "concat(cast(sales_city as varchar(10)), 'a') as one_constant,\n" +
+        "concat('a', 'a') as two_constants\n" +
+        "from cp.`region.json` limit 0";
+
+    List<ExpectedColumnResult> expMetadata = ImmutableList.of(
+        new ExpectedColumnResult("two_casts", "CHARACTER VARYING", false, 20, 20, 0, false, String.class.getName()),
+        new ExpectedColumnResult("max_length", "CHARACTER VARYING", false, 120000, 120000, 0, false, String.class.getName()),
+        new ExpectedColumnResult("one_unknown", "CHARACTER VARYING", false, 65536, 65536, 0, false, String.class.getName()),
+        new ExpectedColumnResult("two_unknown", "CHARACTER VARYING", false, 65536, 65536, 0, false, String.class.getName()),
+        new ExpectedColumnResult("one_constant", "CHARACTER VARYING", false, 11, 11, 0, false, String.class.getName()),
+        new ExpectedColumnResult("two_constants", "CHARACTER VARYING", false, 2, 2, 0, false, String.class.getName())
+    );
+
+    verifyMetadata(expMetadata, createPrepareStmt(query, false, null).getColumnsList());
+
+    System.out.println("LIMIT 0 START");
+    try {
+      test("alter session set `planner.enable_limit0_optimization` = true");
+      expMetadata = ImmutableList.of(
+          new ExpectedColumnResult("two_casts", "CHARACTER VARYING", true, 20, 20, 0, false, String.class.getName()),
+          new ExpectedColumnResult("max_length", "CHARACTER VARYING", true, 120000, 120000, 0, false, String.class.getName()),
+          new ExpectedColumnResult("one_unknown", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
+          new ExpectedColumnResult("two_unknown", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
+          new ExpectedColumnResult("one_constant", "CHARACTER VARYING", false, 11, 11, 0, false, String.class.getName()),
+          new ExpectedColumnResult("two_constants", "CHARACTER VARYING", false, 2, 2, 0, false, String.class.getName())
+      );
+
+      verifyMetadata(expMetadata, createPrepareStmt(query, false, null).getColumnsList());
+    } finally {
+      test("alter session reset `planner.enable_limit0_optimization`");
+    }
+  }
+
+  @Test
+  public void substring() throws Exception {
+    // both give 65536
+    //String query = "SELECT concat(cast(sales_city as varchar(10)), '_D') as c FROM cp.`region.json` LIMIT 0";
+    //String query = "SELECT concat(cast(sales_city as varchar(10)), sales_city) as c FROM cp.`region.json` LIMIT 0";
+    String query = "SELECT substring(cast(sales_city as varchar(10)), 1, 2) as c FROM cp.`region.json` LIMIT 0";
+    PreparedStatement preparedStatement = createPrepareStmt(query, false, null);
+    System.out.println(preparedStatement.getColumnsList());
+
+
+    test("alter session set `planner.enable_limit0_optimization` = true");
+    preparedStatement = createPrepareStmt(query, false, null);
+    System.out.println(preparedStatement.getColumnsList());
+  }
+
+  @Test
+  public void coalesce() throws Exception {
+    String query = "SELECT coalesce(cast(sales_city as varchar(10)), 'zzzzz') as c FROM cp.`region.json` LIMIT 0";
+    PreparedStatement preparedStatement = createPrepareStmt(query, false, null);
+    System.out.println(preparedStatement.getColumnsList());
+
+
+    test("alter session set `planner.enable_limit0_optimization` = true");
     preparedStatement = createPrepareStmt(query, false, null);
     System.out.println(preparedStatement.getColumnsList());
   }

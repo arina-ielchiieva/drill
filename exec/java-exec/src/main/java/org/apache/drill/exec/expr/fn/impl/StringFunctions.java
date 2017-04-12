@@ -1389,7 +1389,7 @@ public class StringFunctions{
 
   }
 
-  @FunctionTemplate(name = "concatOperator", scope = FunctionScope.SIMPLE, nulls = NullHandling.NULL_IF_NULL)
+  @FunctionTemplate(name = "concatOperator", scope = FunctionScope.CONCAT_OPERATOR, nulls = NullHandling.NULL_IF_NULL)
   public static class ConcatOperator implements DrillSimpleFunc {
     @Param  VarCharHolder left;
     @Param  VarCharHolder right;
@@ -1418,7 +1418,7 @@ public class StringFunctions{
 
   //Concatenate the text representations of the arguments. NULL arguments are ignored.
   //TODO: NullHanding.INTERNAL for DrillSimpleFunc requires change in code generation.
-  @FunctionTemplate(name = "concat", scope = FunctionScope.SIMPLE, nulls = NullHandling.INTERNAL)
+  @FunctionTemplate(name = "concat", scope = FunctionScope.CONCAT_OPERATOR, nulls = NullHandling.INTERNAL)
   public static class Concat implements DrillSimpleFunc {
     @Param  VarCharHolder left;
     @Param  VarCharHolder right;
@@ -1445,7 +1445,7 @@ public class StringFunctions{
     }
   }
 
-  @FunctionTemplate(name = "concat", scope = FunctionScope.SIMPLE, nulls = NullHandling.INTERNAL)
+  @FunctionTemplate(name = "concat", scope = FunctionScope.CONCAT_OPERATOR, nulls = NullHandling.INTERNAL)
   public static class ConcatRightNullInput implements DrillSimpleFunc {
     @Param  VarCharHolder left;
     @Param  NullableVarCharHolder right;
@@ -1474,7 +1474,7 @@ public class StringFunctions{
     }
   }
 
-  @FunctionTemplate(name = "concat", scope = FunctionScope.SIMPLE, nulls = NullHandling.INTERNAL)
+  @FunctionTemplate(name = "concat", scope = FunctionScope.CONCAT_OPERATOR, nulls = NullHandling.INTERNAL)
   public static class ConcatLeftNullInput implements DrillSimpleFunc {
     @Param  NullableVarCharHolder left;
     @Param  VarCharHolder right;
@@ -1503,7 +1503,7 @@ public class StringFunctions{
     }
   }
 
-  @FunctionTemplate(name = "concat", scope = FunctionScope.SIMPLE, nulls = NullHandling.INTERNAL)
+  @FunctionTemplate(name = "concat", scope = FunctionScope.CONCAT_OPERATOR, nulls = NullHandling.INTERNAL)
   public static class ConcatBothNullInput implements DrillSimpleFunc {
     @Param  NullableVarCharHolder left;
     @Param  NullableVarCharHolder right;
