@@ -203,7 +203,7 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     System.out.println(preparedStatement.getColumnsList());
   }
 
-  @Test
+  //@Test
   public void differencesBetweenLimitAndRegular() throws Exception {
     test("use dfs_test.tmp");
     test("create view voter_csv_v as select " +
@@ -221,7 +221,7 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     assertEquals(preparedStatement1.getColumnsList(), preparedStatement2.getColumnsList());
   }
 
-  @Test //todo so far could not reproduce
+  //@Test //todo so far could not reproduce
   public void leadAndLeadFunctions() throws Exception {
     test("use dfs_test.tmp");
 
@@ -253,7 +253,7 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     System.out.println(preparedStatement.getColumnsList());
   }
 
-  @Test
+  //@Test
   public void concat() throws Exception {
     //String query = "SELECT concat(cast(sales_city as varchar(10)), '_D') as c FROM cp.`region.json` LIMIT 0";
     //String query = "SELECT concat(cast(sales_city as varchar(10)), sales_city) as c FROM cp.`region.json` LIMIT 0";
@@ -279,6 +279,7 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
 
     verifyMetadata(expMetadata, createPrepareStmt(query, false, null).getColumnsList());
 
+    //todo check difference in nullability
     System.out.println("LIMIT 0 START");
     try {
       test("alter session set `planner.enable_limit0_optimization` = true");
@@ -295,6 +296,18 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     } finally {
       test("alter session reset `planner.enable_limit0_optimization`");
     }
+  }
+
+  @Test
+  public void concat2() throws Exception {
+    String query = "select lname || mi from cp.`customer.json` limit 0"; // both correct when fixed in TypeInferenceUtils
+    //String query = "select concat('A', '') from (values(1)) limit 0";
+    //String query = "select 'A' || cast(null as varchar(10)) from (values(1)) limit 0"; // NPE
+    //String query = "select cast('A' as varchar(10)) || cast(null as varchar(10)) from (values(1)) limit 0"; // NPE
+    System.out.println(createPrepareStmt(query, false, null).getColumnsList());
+    test("alter session set `planner.enable_limit0_optimization` = true");
+    System.out.println("LIMIT 0");
+    System.out.println(createPrepareStmt(query, false, null).getColumnsList());
   }
 
   @Test
@@ -341,6 +354,10 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
   /* Helper method which creates a prepared statement for given query. */
   private static PreparedStatement createPrepareStmt(String query, boolean expectFailure, ErrorType errorType) throws Exception {
     CreatePreparedStatementResp resp = client.createPreparedStatement(query).get();
+
+    if (resp.hasError()) {
+      System.out.println(resp.getError().getMessage());
+    }
 
     assertEquals(expectFailure ? RequestStatus.FAILED : RequestStatus.OK, resp.getStatus());
 

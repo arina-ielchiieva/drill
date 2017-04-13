@@ -19,10 +19,6 @@ package org.apache.drill.exec.expr.fn;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.Types;
-import org.apache.drill.exec.expr.fn.DrillSimpleFuncHolder;
-import org.apache.drill.exec.expr.fn.FunctionAttributes;
-import org.apache.drill.exec.expr.fn.FunctionInitializer;
-
 import java.util.List;
 
 public class DrillConcatOperatorFuncHolder extends DrillSimpleFuncHolder {
@@ -33,16 +29,17 @@ public class DrillConcatOperatorFuncHolder extends DrillSimpleFuncHolder {
 
   @Override
   public TypeProtos.MajorType getReturnType(List<LogicalExpression> logicalExpressions) {
-    TypeProtos.MajorType returnType = super.getReturnType();
+    TypeProtos.MajorType returnType = super.getReturnType(logicalExpressions);
     if (Types.isStringScalarType(returnType)) {
       int totalPrecision = 0;
+      boolean setPrecision = true;
       for (LogicalExpression expression : logicalExpressions) {
-        int precision = expression.getMajorType().getPrecision();
-        if (precision == 0) {
-          totalPrecision = 0;
+        if (expression.getMajorType().hasPrecision()) {
+          totalPrecision += expression.getMajorType().getPrecision();
+        } else {
+          setPrecision = false;
           break;
         }
-        totalPrecision += precision;
 
         /*else if (precision == 65536) {
           totalPrecision = 65536;
@@ -55,7 +52,7 @@ public class DrillConcatOperatorFuncHolder extends DrillSimpleFuncHolder {
           break;
         }*/
       }
-      if (totalPrecision != returnType.getPrecision()) {
+      if (setPrecision) {
         return Types.withPrecision(returnType.getMinorType(), returnType.getMode(), totalPrecision);
       }
     }
