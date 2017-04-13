@@ -150,8 +150,8 @@ public class IfExpression extends LogicalExpressionBase {
 
     // scale
     if (CoreDecimalUtility.isDecimalType(ifType)) {
-      if (ifType.hasScale() &&  elseType.hasScale()) {
-        builder.setScale(Math.max(ifType.getPrecision(),elseType.getPrecision()));
+      if (ifType.hasScale() && elseType.hasScale()) {
+        builder.setScale(Math.max(ifType.getScale(),elseType.getScale()));
       }
     }
 

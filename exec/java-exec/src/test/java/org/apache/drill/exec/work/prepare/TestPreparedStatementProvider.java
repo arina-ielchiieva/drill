@@ -203,7 +203,7 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     System.out.println(preparedStatement.getColumnsList());
   }
 
-  @Test
+  //@Test
   public void differencesBetweenLimitAndRegular() throws Exception {
     test("use dfs_test.tmp");
     test("create view voter_csv_v as select " +
