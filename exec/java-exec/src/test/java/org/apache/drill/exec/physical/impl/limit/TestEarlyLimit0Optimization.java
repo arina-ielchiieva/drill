@@ -527,10 +527,11 @@ public class TestEarlyLimit0Optimization extends BaseTestQuery {
     checkThatQueryPlanIsOptimized(query);
   }
 
-  public void concatTest(final String query, int precision) throws Exception {
+  public void concatTest(final String query, int precision, boolean isNullable) throws Exception {
     @SuppressWarnings("unchecked")
-    final List<Pair<SchemaPath, TypeProtos.MajorType>> expectedSchema = Lists.newArrayList(
-        Pair.of(SchemaPath.getSimplePath("c"), Types.withPrecision(TypeProtos.MinorType.VARCHAR, TypeProtos.DataMode.OPTIONAL, precision)));
+    final List<Pair<SchemaPath, TypeProtos.MajorType>> expectedSchema =
+        Lists.newArrayList(Pair.of(SchemaPath.getSimplePath("c"), Types.withPrecision(TypeProtos.MinorType.VARCHAR,
+            isNullable ? TypeProtos.DataMode.OPTIONAL : TypeProtos.DataMode.REQUIRED, precision)));
 
     testBuilder()
         .sqlQuery(query)
@@ -549,12 +550,12 @@ public class TestEarlyLimit0Optimization extends BaseTestQuery {
 
   @Test
   public void concat() throws Exception {
-    concatTest("SELECT CONCAT(full_name, education_level) AS c FROM " + viewName, 85);
+    concatTest("SELECT CONCAT(full_name, education_level) AS c FROM " + viewName, 85, false);
   }
 
   @Test
   public void concatOp() throws Exception {
-    concatTest("SELECT full_name || education_level AS c FROM " + viewName, 65536);
+    concatTest("SELECT full_name || education_level AS c FROM " + viewName, 85, true);
   }
 
   @Test
@@ -601,7 +602,7 @@ public class TestEarlyLimit0Optimization extends BaseTestQuery {
     @SuppressWarnings("unchecked")
     final List<Pair<SchemaPath, TypeProtos.MajorType>> expectedSchema = Lists.newArrayList(
         Pair.of(SchemaPath.getSimplePath("b"), Types.required(TypeProtos.MinorType.BIT)),
-        Pair.of(SchemaPath.getSimplePath("c"), Types.withPrecision(TypeProtos.MinorType.VARCHAR, TypeProtos.DataMode.OPTIONAL, 65536)),
+        Pair.of(SchemaPath.getSimplePath("c"), Types.withPrecision(TypeProtos.MinorType.VARCHAR, TypeProtos.DataMode.OPTIONAL, 85)),
         Pair.of(SchemaPath.getSimplePath("d"), Types.optional(TypeProtos.MinorType.INT)),
         Pair.of(SchemaPath.getSimplePath("e"), Types.optional(TypeProtos.MinorType.BIT)),
         Pair.of(SchemaPath.getSimplePath("g"), Types.optional(TypeProtos.MinorType.BIT)),

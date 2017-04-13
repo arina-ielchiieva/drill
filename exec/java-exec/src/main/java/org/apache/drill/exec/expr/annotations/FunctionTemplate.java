@@ -109,7 +109,7 @@ public @interface FunctionTemplate {
     SC_BOOLEAN_OPERATOR,
     VAR_LEN_CAST,
     CONCAT_OPERATOR,
-
+    STEADY_STATE_SIZE
   }
 
   public static enum FunctionCostCategory {

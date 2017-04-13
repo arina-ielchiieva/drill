@@ -203,22 +203,24 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     System.out.println(preparedStatement.getColumnsList());
   }
 
-  //@Test
+  @Test
   public void differencesBetweenLimitAndRegular() throws Exception {
     test("use dfs_test.tmp");
     test("create view voter_csv_v as select " +
-        "case when columns[0]='' then cast(null as int) else cast(columns[0] as int) end as voter_id, " +
+        "case when columns[0]='' then cast(null as integer) else cast(columns[0] as integer) end as voter_id, " +
         "case when columns[3]='' then cast(null as char(20)) else cast(columns[3] as char(20)) end as registration " +
         "from dfs.`F:\\git_repo\\drill-test-framework\\framework\\resources\\Datasources\\limit0\\p1tests\\voter.csv`");
 
-    String query = "SELECT concat(registration, '_D') FROM voter_csv_v limit 0";
+    String query = "SELECT " +
+        //"concat(registration, '_D'), " +
+        "concat(voter_id, '_D') FROM voter_csv_v limit 0";
     //String query = "SELECT * FROM voter_csv_v where voter_id=10 limit 0";
-    PreparedStatement preparedStatement1 = createPrepareStmt(query, false, null);
-    System.out.println(preparedStatement1.getColumnsList());
+    //PreparedStatement preparedStatement1 = createPrepareStmt(query, false, null);
+    //System.out.println(preparedStatement1.getColumnsList());
     test("alter session set `planner.enable_limit0_optimization` = true");
     PreparedStatement preparedStatement2 = createPrepareStmt(query, false, null);
     System.out.println(preparedStatement2.getColumnsList());
-    assertEquals(preparedStatement1.getColumnsList(), preparedStatement2.getColumnsList());
+    //assertEquals(preparedStatement1.getColumnsList(), preparedStatement2.getColumnsList());
   }
 
   //@Test //todo so far could not reproduce
@@ -253,45 +255,37 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     System.out.println(preparedStatement.getColumnsList());
   }
 
-  //@Test
+  @Test
+  //todo the same cases for concat operator
   public void concat() throws Exception {
-    //String query = "SELECT concat(cast(sales_city as varchar(10)), '_D') as c FROM cp.`region.json` LIMIT 0";
-    //String query = "SELECT concat(cast(sales_city as varchar(10)), sales_city) as c FROM cp.`region.json` LIMIT 0";
-    //String query = "SELECT concat(cast(sales_city as varchar(10)), cast(sales_city as varchar(10))) as c FROM cp.`region.json` LIMIT 0";
-
     String query = "select\n" +
         "concat(cast(sales_city as varchar(10)), cast(sales_city as varchar(10))) as two_casts,\n" +
         "concat(cast(sales_city as varchar(60000)), cast(sales_city as varchar(60000))) as max_length,\n" +
         "concat(cast(sales_city as varchar(10)), sales_city) as one_unknown,\n" +
         "concat(sales_city, sales_city) as two_unknown,\n" +
         "concat(cast(sales_city as varchar(10)), 'a') as one_constant,\n" +
-        "concat('a', 'a') as two_constants\n" +
+        "concat('a', 'a') as two_constants," +
+        "concat(cast(sales_city as varchar(10)), cast(null as varchar(10))) as right_null,\n" +
+        "concat(cast(null as varchar(10)), cast(sales_city as varchar(10))) as left_null,\n" +
+        "concat(cast(null as varchar(10)), cast(null as varchar(10))) as both_null\n" +
         "from cp.`region.json` limit 0";
 
     List<ExpectedColumnResult> expMetadata = ImmutableList.of(
         new ExpectedColumnResult("two_casts", "CHARACTER VARYING", false, 20, 20, 0, false, String.class.getName()),
-        new ExpectedColumnResult("max_length", "CHARACTER VARYING", false, 120000, 120000, 0, false, String.class.getName()),
+        new ExpectedColumnResult("max_length", "CHARACTER VARYING", false, 120000, 120000, 0, false, String.class.getName()), //todo max length case
         new ExpectedColumnResult("one_unknown", "CHARACTER VARYING", false, 65536, 65536, 0, false, String.class.getName()),
         new ExpectedColumnResult("two_unknown", "CHARACTER VARYING", false, 65536, 65536, 0, false, String.class.getName()),
         new ExpectedColumnResult("one_constant", "CHARACTER VARYING", false, 11, 11, 0, false, String.class.getName()),
-        new ExpectedColumnResult("two_constants", "CHARACTER VARYING", false, 2, 2, 0, false, String.class.getName())
+        new ExpectedColumnResult("two_constants", "CHARACTER VARYING", false, 2, 2, 0, false, String.class.getName()),
+        new ExpectedColumnResult("right_null", "CHARACTER VARYING", false, 20, 20, 0, false, String.class.getName()),
+        new ExpectedColumnResult("left_null", "CHARACTER VARYING", false, 20, 20, 0, false, String.class.getName()),
+        new ExpectedColumnResult("both_null", "CHARACTER VARYING", false, 20, 20, 0, false, String.class.getName())
     );
 
     verifyMetadata(expMetadata, createPrepareStmt(query, false, null).getColumnsList());
 
-    //todo check difference in nullability
-    System.out.println("LIMIT 0 START");
     try {
       test("alter session set `planner.enable_limit0_optimization` = true");
-      expMetadata = ImmutableList.of(
-          new ExpectedColumnResult("two_casts", "CHARACTER VARYING", true, 20, 20, 0, false, String.class.getName()),
-          new ExpectedColumnResult("max_length", "CHARACTER VARYING", true, 120000, 120000, 0, false, String.class.getName()),
-          new ExpectedColumnResult("one_unknown", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
-          new ExpectedColumnResult("two_unknown", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
-          new ExpectedColumnResult("one_constant", "CHARACTER VARYING", false, 11, 11, 0, false, String.class.getName()),
-          new ExpectedColumnResult("two_constants", "CHARACTER VARYING", false, 2, 2, 0, false, String.class.getName())
-      );
-
       verifyMetadata(expMetadata, createPrepareStmt(query, false, null).getColumnsList());
     } finally {
       test("alter session reset `planner.enable_limit0_optimization`");
@@ -300,10 +294,10 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
 
   @Test
   public void concat2() throws Exception {
-    String query = "select lname || mi from cp.`customer.json` limit 0"; // both correct when fixed in TypeInferenceUtils
+    //String query = "select lname || mi from cp.`customer.json` limit 0"; // both correct when fixed in TypeInferenceUtils
     //String query = "select concat('A', '') from (values(1)) limit 0";
-    //String query = "select 'A' || cast(null as varchar(10)) from (values(1)) limit 0"; // NPE
-    //String query = "select cast('A' as varchar(10)) || cast(null as varchar(10)) from (values(1)) limit 0"; // NPE
+    //String query = "select concat('A', cast(null as varchar(10))) from (values(1)) limit 0";
+    String query = "select cast('A' as varchar(10)) || cast(null as varchar(10)) from (values(1)) limit 0";
     System.out.println(createPrepareStmt(query, false, null).getColumnsList());
     test("alter session set `planner.enable_limit0_optimization` = true");
     System.out.println("LIMIT 0");
@@ -332,9 +326,45 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     System.out.println(preparedStatement.getColumnsList());
 
 
-    test("alter session set `planner.enable_limit0_optimization` = true");
+/*    test("alter session set `planner.enable_limit0_optimization` = true");
     preparedStatement = createPrepareStmt(query, false, null);
-    System.out.println(preparedStatement.getColumnsList());
+    System.out.println(preparedStatement.getColumnsList());*/
+  }
+
+  @Test
+  public void ifExpression() throws Exception {
+    String query = "select\n" +
+        "case when sales_state_province = 'CA' then 'a' when sales_state_province = 'DB' then 'aa' else 'aaa' end as col_123,\n" +
+        "case when sales_state_province = 'CA' then 'aa' when sales_state_province = 'DB' then 'a' else 'aaa' end as col_213,\n" +
+        "case when sales_state_province = 'CA' then 'a' when sales_state_province = 'DB' then 'aaa' else 'aa' end as col_132,\n" +
+        "case when sales_state_province = 'CA' then 'aa' when sales_state_province = 'DB' then 'aaa' else 'a' end as col_231,\n" +
+        "case when sales_state_province = 'CA' then 'aaa' when sales_state_province = 'DB' then 'aa' else 'a' end as col_321,\n" +
+        "case when sales_state_province = 'CA' then 'aaa' when sales_state_province = 'DB' then 'a' else 'aa' end as col_312,\n" +
+        "case when sales_state_province = 'CA' then sales_state_province when sales_state_province = 'DB' then 'a' else 'aa' end as col_unk1,\n" +
+        "case when sales_state_province = 'CA' then 'aaa' when sales_state_province = 'DB' then sales_state_province else 'aa' end as col_unk2,\n" +
+        "case when sales_state_province = 'CA' then 'aaa' when sales_state_province = 'DB' then 'a' else sales_state_province end as col_unk3\n" +
+        "from cp.`region.json` limit 0";
+
+    List<ExpectedColumnResult> expMetadata = ImmutableList.of(
+        new ExpectedColumnResult("col_123", "CHARACTER VARYING", false, 3, 3, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_213", "CHARACTER VARYING", false, 3, 3, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_132", "CHARACTER VARYING", false, 3, 3, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_231", "CHARACTER VARYING", false, 3, 3, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_321", "CHARACTER VARYING", false, 3, 3, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_312", "CHARACTER VARYING", false, 3, 3, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_unk1", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_unk2", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_unk3", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName())
+    );
+
+    verifyMetadata(expMetadata, createPrepareStmt(query, false, null).getColumnsList());
+
+    try {
+      test("alter session set `planner.enable_limit0_optimization` = true");
+      verifyMetadata(expMetadata, createPrepareStmt(query, false, null).getColumnsList());
+    } finally {
+      test("alter session reset `planner.enable_limit0_optimization`");
+    }
   }
 
   @Test

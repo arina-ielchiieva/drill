@@ -126,8 +126,8 @@ public class TypeInferenceUtils {
       .put("DATE_PART", DrillDatePartSqlReturnTypeInference.INSTANCE)
       .put("SUM", DrillSumSqlReturnTypeInference.INSTANCE)
       .put("COUNT", DrillCountSqlReturnTypeInference.INSTANCE)
-      .put("CONCAT", DrillConcatSqlReturnTypeInference.INSTANCE)
-      .put("CONCATOPERATOR", DrillConcatSqlReturnTypeInference.INSTANCE)
+      .put("CONCAT", DrillConcatSqlReturnTypeInference.INSTANCE_CONCAT)
+      .put("CONCATOPERATOR", DrillConcatSqlReturnTypeInference.INSTANCE_CONCAT_OP)
       .put("LENGTH", DrillLengthSqlReturnTypeInference.INSTANCE)
       .put("LPAD", DrillPadTrimSqlReturnTypeInference.INSTANCE)
       .put("RPAD", DrillPadTrimSqlReturnTypeInference.INSTANCE)
@@ -395,17 +395,24 @@ public class TypeInferenceUtils {
   }
 
   private static class DrillConcatSqlReturnTypeInference implements SqlReturnTypeInference {
-    private static final DrillConcatSqlReturnTypeInference INSTANCE = new DrillConcatSqlReturnTypeInference();
+    private static final DrillConcatSqlReturnTypeInference INSTANCE_CONCAT = new DrillConcatSqlReturnTypeInference(false);
+    private static final DrillConcatSqlReturnTypeInference INSTANCE_CONCAT_OP = new DrillConcatSqlReturnTypeInference(true);
+
+    private final boolean isNullIfNull;
+
+    public DrillConcatSqlReturnTypeInference(boolean isNullIfNull) {
+      this.isNullIfNull = isNullIfNull;
+    }
 
     @Override
     public RelDataType inferReturnType(SqlOperatorBinding opBinding) {
       final RelDataTypeFactory factory = opBinding.getTypeFactory();
 
-      boolean isNullable = true;
+      boolean isNullable = false;
       int precision = 0;
       for(RelDataType relDataType : opBinding.collectOperandTypes()) {
-        if(!relDataType.isNullable()) {
-          isNullable = false;
+        if(isNullIfNull && relDataType.isNullable()) {
+          isNullable = true;
         }
 
         // If the underlying columns cannot offer information regarding the precision (i.e., the length) of the VarChar,
