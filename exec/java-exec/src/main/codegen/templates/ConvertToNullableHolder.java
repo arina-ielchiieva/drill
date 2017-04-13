@@ -35,12 +35,7 @@ import org.apache.drill.exec.record.RecordBatch;
  * This class is generated using freemarker and the ${.template_name} template.
  */
 
-
-<#if minor.class.startsWith("Decimal")>
-@FunctionTemplate(name = "convertToNullable${minor.class?upper_case}", scope = FunctionTemplate.FunctionScope.DECIMAL_MAX_SCALE, nulls = FunctionTemplate.NullHandling.INTERNAL)
-<#else>
-@FunctionTemplate(name = "convertToNullable${minor.class?upper_case}", scope = FunctionTemplate.FunctionScope.SIMPLE, nulls = FunctionTemplate.NullHandling.INTERNAL)
-</#if>
+@FunctionTemplate(name = "convertToNullable${minor.class?upper_case}", scope = FunctionTemplate.FunctionScope.STEADY_STATE_SIZE, nulls = FunctionTemplate.NullHandling.INTERNAL)
 public class ${className} implements DrillSimpleFunc {
 
   @Param ${minor.class}Holder input;

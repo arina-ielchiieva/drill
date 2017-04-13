@@ -26,6 +26,8 @@ import org.apache.drill.common.expression.visitors.ExprVisitor;
 import org.apache.drill.common.types.TypeProtos.DataMode;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.TypeProtos.MinorType;
+import org.apache.drill.common.types.Types;
+import org.apache.drill.common.util.CoreDecimalUtility;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,10 +106,9 @@ public class IfExpression extends LogicalExpressionBase {
       return outputType;
     }
 
-    MajorType majorType = elseExpression.getMajorType();
-    if (majorType.getMinorType() == MinorType.UNION) {
+    if (elseExpression.getMajorType().getMinorType() == MinorType.UNION) {
       Set<MinorType> subtypes = Sets.newHashSet();
-      for (MinorType subtype : majorType.getSubTypeList()) {
+      for (MinorType subtype : elseExpression.getMajorType().getSubTypeList()) {
         subtypes.add(subtype);
       }
       for (MinorType subtype : ifCondition.expression.getMajorType().getSubTypeList()) {
@@ -119,17 +120,42 @@ public class IfExpression extends LogicalExpressionBase {
       }
       return builder.build();
     }
-    if (majorType.getMode() == DataMode.OPTIONAL) {
-      return majorType;
+
+    MajorType ifType = ifCondition.expression.getMajorType();
+    MajorType elseType = elseExpression.getMajorType();
+    assert ifType.getMinorType() == elseType.getMinorType();
+
+    //todo extract as utility method
+    // merge two types
+    MajorType.Builder builder = MajorType.newBuilder().setMinorType(ifType.getMinorType());
+
+    // data mode
+    DataMode mode = ifType.getMode();
+    if (ifType.getMode() != elseType.getMode()) {
+      if (ifType.getMode() == DataMode.REPEATED || elseType.getMode() == DataMode.REPEATED) {
+        mode = DataMode.REPEATED;
+      } else {
+        mode = DataMode.OPTIONAL;
+      }
     }
 
-    if (ifCondition.expression.getMajorType().getMode() == DataMode.OPTIONAL) {
-      assert ifCondition.expression.getMajorType().getMinorType() == majorType.getMinorType();
+    builder.setMode(mode);
 
-      return ifCondition.expression.getMajorType();
+    // precision
+    if (Types.isStringScalarType(ifType) || CoreDecimalUtility.isDecimalType(ifType)) {
+      if (ifType.hasPrecision() && elseType.hasPrecision()) {
+        builder.setPrecision(Math.max(ifType.getPrecision(),elseType.getPrecision()));
+      }
     }
 
-    return majorType;
+    // scale
+    if (CoreDecimalUtility.isDecimalType(ifType)) {
+      if (ifType.hasScale() &&  elseType.hasScale()) {
+        builder.setScale(Math.max(ifType.getPrecision(),elseType.getPrecision()));
+      }
+    }
+
+    return builder.build();
   }
 
   public static Builder newBuilder() {

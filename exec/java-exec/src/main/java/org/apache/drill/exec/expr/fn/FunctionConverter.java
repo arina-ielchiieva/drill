@@ -222,6 +222,8 @@ public class FunctionConverter {
           return new DrillVarLenCastFuncHolder(functionAttributes, initializer);
       case CONCAT_OPERATOR:
           return new DrillConcatOperatorFuncHolder(functionAttributes, initializer);
+      case STEADY_STATE_SIZE:
+        return new DrillSteadyStateSizeFuncHolder(functionAttributes, initializer);
       case HOLISTIC_AGGREGATE:
       case RANGE_AGGREGATE:
       default:

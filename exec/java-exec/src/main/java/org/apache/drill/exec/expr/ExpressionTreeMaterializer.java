@@ -443,6 +443,7 @@ public class ExpressionTreeMaterializer {
               parmType = MajorType.newBuilder().setMinorType(parmType.getMinorType()).setMode(parmType.getMode()).
                   setScale(currentArg.getMajorType().getScale()).setPrecision(computePrecision(currentArg)).build();
             }
+            //todo can we upgrade for varchar?
             argsWithCast.add(addCastExpression(currentArg, parmType, functionLookupContext, errorCollector));
           }
         }
@@ -469,6 +470,7 @@ public class ExpressionTreeMaterializer {
               parmType = MajorType.newBuilder().setMinorType(parmType.getMinorType()).setMode(parmType.getMode()).
                   setScale(currentArg.getMajorType().getScale()).setPrecision(computePrecision(currentArg)).build();
             }
+            //todo can we upgrade for varchar?
             extArgsWithCast.add(addCastExpression(call.args.get(i), parmType, functionLookupContext, errorCollector));
           }
         }
@@ -615,6 +617,7 @@ public class ExpressionTreeMaterializer {
       return new FunctionCall(isFuncName, args, ExpressionPosition.UNKNOWN);
     }
 
+    //todo check if we need make any changes here for data types merging
     public LogicalExpression visitIfExpression(IfExpression ifExpr, FunctionLookupContext functionLookupContext) {
       IfExpression.IfCondition conditions = ifExpr.ifCondition;
       LogicalExpression newElseExpr = ifExpr.elseExpression.accept(this, functionLookupContext);
