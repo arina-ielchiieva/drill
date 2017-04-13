@@ -127,6 +127,7 @@ public class TypeInferenceUtils {
       .put("SUM", DrillSumSqlReturnTypeInference.INSTANCE)
       .put("COUNT", DrillCountSqlReturnTypeInference.INSTANCE)
       .put("CONCAT", DrillConcatSqlReturnTypeInference.INSTANCE)
+      .put("CONCATOPERATOR", DrillConcatSqlReturnTypeInference.INSTANCE)
       .put("LENGTH", DrillLengthSqlReturnTypeInference.INSTANCE)
       .put("LPAD", DrillPadTrimSqlReturnTypeInference.INSTANCE)
       .put("RPAD", DrillPadTrimSqlReturnTypeInference.INSTANCE)
