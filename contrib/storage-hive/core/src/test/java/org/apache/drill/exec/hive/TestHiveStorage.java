@@ -21,6 +21,8 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.drill.common.exceptions.UserRemoteException;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.planner.physical.PlannerSettings;
+import org.apache.drill.exec.proto.UserProtos;
+import org.apache.drill.exec.rpc.user.QueryDataBatch;
 import org.apache.hadoop.fs.FileSystem;
 import org.joda.time.DateTime;
 import org.junit.AfterClass;
@@ -30,6 +32,7 @@ import org.junit.Test;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.containsString;
@@ -508,6 +511,30 @@ public class TestHiveStorage extends HiveTestBase {
         .baselineColumns("cnt")
         .baselineValues(5000L)
         .go();
+  }
+
+  @Test
+  public void testVarchar() throws Exception {
+    String query = "select name, registration from hive.voter_text";
+    System.out.println(client.createPreparedStatement(query).get().getPreparedStatement().getColumnsList());
+
+/*    test("alter session set `planner.enable_limit0_optimization` = true");
+    System.out.println("***************************LIMIT 0*****************************");
+    System.out.println(client.createPreparedStatement(query).get().getPreparedStatement().getColumnsList());*/
+  }
+
+  @Test
+  public void testAvro() throws Exception {
+    String query = "SELECT title, air_date FROM hive.episodes_partitioned limit 0";
+    //String query = "SELECT * FROM hive.episodes";
+/*    setColumnWidths(new int[] {40});
+    List<QueryDataBatch> res = testSqlWithResults(query);
+    printResult(res);*/
+    System.out.println(client.createPreparedStatement(query).get().getPreparedStatement().getColumnsList());
+
+/*    test("alter session set `planner.enable_limit0_optimization` = true");
+    System.out.println("***************************LIMIT 0*****************************");
+    System.out.println(client.createPreparedStatement(query).get().getPreparedStatement().getColumnsList());*/
   }
 
   @AfterClass
