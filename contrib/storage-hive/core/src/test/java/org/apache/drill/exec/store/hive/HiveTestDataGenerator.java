@@ -126,7 +126,7 @@ public class HiveTestDataGenerator {
     SessionState.start(ss);
     Driver hiveDriver = new Driver(conf);
 
-    // generate (key, value) test data
+/*    // generate (key, value) test data
     String testDataFile = generateTestDataFile();
 
     // Create a (key, value) schema table with Text SerDe which is available in hive-serdes.jar
@@ -309,9 +309,9 @@ public class HiveTestDataGenerator {
         "charType CHAR(10))"
     );
 
-    /**
+    *//**
      * Create a PARQUET table with all supported types.
-     */
+     *//*
     executeQuery(hiveDriver,
         "CREATE TABLE readtest_parquet (" +
             "  binary_field BINARY, " +
@@ -518,7 +518,56 @@ public class HiveTestDataGenerator {
       executeQuery(hiveDriver, "create table default.simple_json(json string)");
       final String loadData = String.format("load data local inpath '" +
           Resources.getResource("simple.json") + "' into table default.simple_json");
-      executeQuery(hiveDriver, loadData);
+      executeQuery(hiveDriver, loadData);*/
+
+    executeQuery(hiveDriver, "create table default.voter_text (\n"
+        + "   VOTER_ID SMALLINT,\n"
+        + "   NAME VARCHAR(40),\n"
+        + "   AGE TINYINT,\n"
+        + "   REGISTRATION CHAR(11),\n"
+        + "   CONTRIBUTIONS float,\n"
+        + "   VOTERZONE INT,\n"
+        + "   CREATE_TIMESTAMP TIMESTAMP,\n"
+        + "   create_date date\n"
+        + ")\n"
+        + "ROW FORMAT DELIMITED FIELDS TERMINATED BY '\\t'\n"
+        + "STORED AS TEXTFILE TBLPROPERTIES('serialization.null.format'='')");
+
+    executeQuery(hiveDriver, "load data local inpath " +
+        "'/home/arina/git_repo/drill-test-framework/framework/resources/Datasources/hive_storage/voterhive.tsv'" +
+        " into table default.voter_text");
+
+
+    // avro
+
+    executeQuery(hiveDriver, "CREATE EXTERNAL TABLE default.episodes\n" + "ROW FORMAT\n" + "SERDE 'org.apache.hadoop.hive.serde2.avro.AvroSerDe'\n"
+        + "STORED AS\n" + "INPUTFORMAT 'org.apache.hadoop.hive.ql.io.avro.AvroContainerInputFormat'\n"
+        + "OUTPUTFORMAT 'org.apache.hadoop.hive.ql.io.avro.AvroContainerOutputFormat'\n"
+        + "LOCATION '/home/arina/files/episodes'\n"
+        + "TBLPROPERTIES ('avro.schema.literal'='{\n" + "  \"namespace\": \"testing.hive.avro.serde\",\n"
+        + "  \"name\": \"episodes\",\n" + "  \"type\": \"record\",\n" + "  \"fields\": [\n" + "    {\n"
+        + "      \"name\":\"title\",\n" + "      \"type\":\"string\",\n" + "      \"doc\":\"episode title\"\n"
+        + "    },\n" + "    {\n" + "      \"name\":\"air_date\",\n" + "      \"type\":\"string\",\n" + "      \"doc\":\"initial date\"\n"
+        + "    },\n" + "    {\n" + "      \"name\":\"doctor\",\n" + "      \"type\":\"int\",\n"
+        + "      \"doc\":\"main actor playing the Doctor in episode\"\n" + "    }\n" + "  ]\n" + "}')");
+
+    executeQuery(hiveDriver, "CREATE TABLE default.episodes_partitioned\n" + "PARTITIONED BY (doctor_pt INT)\n" + "ROW FORMAT\n"
+        + "SERDE 'org.apache.hadoop.hive.serde2.avro.AvroSerDe'\n" + "STORED AS\n"
+        + "INPUTFORMAT 'org.apache.hadoop.hive.ql.io.avro.AvroContainerInputFormat'\n"
+        + "OUTPUTFORMAT 'org.apache.hadoop.hive.ql.io.avro.AvroContainerOutputFormat'\n"
+        + "TBLPROPERTIES ('avro.schema.literal'='{\n" + "  \"namespace\": \"testing.hive.avro.serde\",\n"
+        + "  \"name\": \"episodes\",\n" + "  \"type\": \"record\",\n" + "  \"fields\": [\n"
+        + "    {\n" + "      \"name\":\"title\",\n" + "      \"type\":\"string\",\n"
+        + "      \"doc\":\"episode title\"\n" + "    },\n" + "    {\n" + "      \"name\":\"air_date\",\n"
+        + "      \"type\":\"string\",\n" + "      \"doc\":\"initial date\"\n" + "    },\n"
+        + "    {\n" + "      \"name\":\"doctor\",\n" + "      \"type\":\"int\",\n"
+        + "      \"doc\":\"main actor playing the Doctor in episode\"\n" + "    }\n" + "  ]\n" + "}')");
+
+    executeQuery(hiveDriver, "INSERT OVERWRITE TABLE default.episodes_partitioned PARTITION (doctor_pt) " +
+        "SELECT title, air_date, doctor, doctor as doctor_pt FROM default.episodes");
+
+
+
     ss.close();
   }
 

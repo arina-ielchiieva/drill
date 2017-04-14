@@ -51,6 +51,7 @@ import org.apache.drill.exec.vector.ValueVector;
 import org.apache.drill.exec.work.ExecErrorConstants;
 
 import org.apache.hadoop.hive.common.type.HiveDecimal;
+import org.apache.hadoop.hive.common.type.HiveVarchar;
 import org.apache.hadoop.hive.metastore.MetaStoreUtils;
 import org.apache.hadoop.hive.metastore.api.Partition;
 import org.apache.hadoop.hive.metastore.api.StorageDescriptor;
@@ -59,6 +60,7 @@ import org.apache.hadoop.hive.ql.metadata.HiveStorageHandler;
 import org.apache.hadoop.hive.ql.metadata.HiveUtils;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector.PrimitiveCategory;
+import org.apache.hadoop.hive.serde2.typeinfo.BaseCharTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.DecimalTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.HiveDecimalUtils;
 import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo;
@@ -293,6 +295,16 @@ public class HiveUtilities {
         MinorType minorType = HiveUtilities.getMinorTypeFromHivePrimitiveTypeInfo(primitiveTypeInfo, options);
         MajorType.Builder typeBuilder = MajorType.newBuilder().setMinorType(minorType)
             .setMode(DataMode.OPTIONAL); // Hive columns (both regular and partition) could have null values
+
+        if (primitiveTypeInfo.getPrimitiveCategory() == PrimitiveCategory.CHAR ||
+            primitiveTypeInfo.getPrimitiveCategory() == PrimitiveCategory.VARCHAR) {
+          BaseCharTypeInfo baseCharTypeInfo = (BaseCharTypeInfo) primitiveTypeInfo;
+          typeBuilder.setPrecision(baseCharTypeInfo.getLength());
+        }
+
+        if (primitiveTypeInfo.getPrimitiveCategory() == PrimitiveCategory.STRING) {
+          typeBuilder.setPrecision(HiveVarchar.MAX_VARCHAR_LENGTH);
+        }
 
         if (primitiveTypeInfo.getPrimitiveCategory() == PrimitiveCategory.DECIMAL) {
           DecimalTypeInfo decimalTypeInfo = (DecimalTypeInfo) primitiveTypeInfo;
