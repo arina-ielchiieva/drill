@@ -410,20 +410,31 @@ public class TypeInferenceUtils {
 
       boolean isNullable = false;
       int precision = 0;
-      for(RelDataType relDataType : opBinding.collectOperandTypes()) {
-        if(isNullIfNull && relDataType.isNullable()) {
+      for (RelDataType relDataType : opBinding.collectOperandTypes()) {
+        if (isNullIfNull && relDataType.isNullable()) {
           isNullable = true;
         }
 
+        TypeProtos.MinorType minorType = getDrillTypeFromCalciteType(relDataType);
+        int typePrecision = relDataType.getPrecision() == RelDataType.PRECISION_NOT_SPECIFIED ? TypeHelper.VARCHAR_DEFAULT_CAST_LEN : relDataType.getPrecision();
+        int castSize = Types.getCastSize(minorType, typePrecision);
+        if (castSize == 0) {
+          castSize = TypeHelper.VARCHAR_DEFAULT_CAST_LEN;
+        }
+
+        precision += castSize;
+
         // If the underlying columns cannot offer information regarding the precision (i.e., the length) of the VarChar,
         // Drill uses the largest to represent it
-        if(relDataType.getPrecision() == TypeHelper.VARCHAR_DEFAULT_CAST_LEN
+/*        if (relDataType.getPrecision() == TypeHelper.VARCHAR_DEFAULT_CAST_LEN
             || relDataType.getPrecision() == RelDataType.PRECISION_NOT_SPECIFIED) {
           precision = TypeHelper.VARCHAR_DEFAULT_CAST_LEN;
         } else {
           precision += relDataType.getPrecision();
-        }
+        } */
       }
+
+      //todo can we make precision max so it won't exceed max default? the same changes to be done in concat func holder
 
       return factory.createTypeWithNullability(
           factory.createSqlType(SqlTypeName.VARCHAR, precision),
@@ -606,10 +617,7 @@ public class TypeInferenceUtils {
     private static final DrillLeadLagSqlReturnTypeInference INSTANCE = new DrillLeadLagSqlReturnTypeInference();
     @Override
     public RelDataType inferReturnType(SqlOperatorBinding opBinding) {
-      return createCalciteTypeWithNullability(
-          opBinding.getTypeFactory(),
-          opBinding.getOperandType(0).getSqlTypeName(),
-          true);
+      return opBinding.getTypeFactory().createTypeWithNullability(opBinding.getOperandType(0), true);
     }
   }
 

@@ -49,11 +49,11 @@ public class DrillVarLenCastFuncHolder extends DrillSimpleFuncHolder {
     TypeProtos.MajorType returnType = super.getReturnType(logicalExpressions);
     LogicalExpression logicalExpression = logicalExpressions.get(1);
     if (logicalExpressions.get(1) instanceof ValueExpressions.LongExpression) {
-      long width = ((ValueExpressions.LongExpression) logicalExpression).getLong();
+      long precision = ((ValueExpressions.LongExpression) logicalExpression).getLong();
       return TypeProtos.MajorType.newBuilder()
           .setMinorType(returnType.getMinorType())
           .setMode(returnType.getMode())
-          .setPrecision(Ints.checkedCast(width))
+          .setPrecision(Ints.checkedCast(precision))
           .build();
     }
     return returnType;

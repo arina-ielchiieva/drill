@@ -203,7 +203,7 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     System.out.println(preparedStatement.getColumnsList());
   }
 
-  //@Test
+  //@Test //todo case should be fixed
   public void differencesBetweenLimitAndRegular() throws Exception {
     test("use dfs_test.tmp");
     test("create view voter_csv_v as select " +
@@ -223,7 +223,7 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     //assertEquals(preparedStatement1.getColumnsList(), preparedStatement2.getColumnsList());
   }
 
-  //@Test //todo so far could not reproduce
+  //@Test //todo create test cover four functions: lead, lag, first_value, last_value
   public void leadAndLeadFunctions() throws Exception {
     test("use dfs_test.tmp");
 

@@ -32,6 +32,13 @@ public class TestHBaseProjectPushDown extends BaseHBaseTest {
   }
 
   @Test
+  public void testCast() throws Exception {
+    // TestTable1
+    String query = "select cast(t.f2.c7 as varchar(30)) from hbase.`TestTable1` t";
+    System.out.println(client.createPreparedStatement(query).get().getPreparedStatement().getColumnsList());
+  }
+
+  @Test
   public void testColumnWith1RowPushDown() throws Exception{
     setColumnWidth(6);
     runHBaseSQLVerifyCount("SELECT\n"
