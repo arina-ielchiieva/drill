@@ -409,21 +409,21 @@ public class TypeInferenceUtils {
       final RelDataTypeFactory factory = opBinding.getTypeFactory();
 
       boolean isNullable = false;
-      int precision = 0;
+      int totalPrecision = 0;
       for (RelDataType relDataType : opBinding.collectOperandTypes()) {
         if (isNullIfNull && relDataType.isNullable()) {
           isNullable = true;
         }
 
-        TypeProtos.MinorType minorType = getDrillTypeFromCalciteType(relDataType);
-        int typePrecision = relDataType.getPrecision() == RelDataType.PRECISION_NOT_SPECIFIED ? TypeHelper.VARCHAR_DEFAULT_CAST_LEN : relDataType.getPrecision();
-        int castSize = Types.getCastSize(minorType, typePrecision);
-        if (castSize == 0) {
-          castSize = TypeHelper.VARCHAR_DEFAULT_CAST_LEN;
+        if (totalPrecision < TypeHelper.VARCHAR_DEFAULT_CAST_LEN) {
+          if (relDataType.getPrecision() == RelDataType.PRECISION_NOT_SPECIFIED) {
+            totalPrecision = TypeHelper.VARCHAR_DEFAULT_CAST_LEN;
+          } else if (relDataType.getSqlTypeName() == SqlTypeName.VARCHAR || relDataType.getSqlTypeName() == SqlTypeName.CHAR) {
+            totalPrecision += relDataType.getPrecision();
+          } else {
+            totalPrecision = TypeHelper.VARCHAR_DEFAULT_CAST_LEN;
+          }
         }
-
-        precision += castSize;
-
         // If the underlying columns cannot offer information regarding the precision (i.e., the length) of the VarChar,
         // Drill uses the largest to represent it
 /*        if (relDataType.getPrecision() == TypeHelper.VARCHAR_DEFAULT_CAST_LEN
@@ -434,10 +434,12 @@ public class TypeInferenceUtils {
         } */
       }
 
-      //todo can we make precision max so it won't exceed max default? the same changes to be done in concat func holder
+      if (totalPrecision > TypeHelper.VARCHAR_DEFAULT_CAST_LEN) {
+        totalPrecision = TypeHelper.VARCHAR_DEFAULT_CAST_LEN;
+      }
 
       return factory.createTypeWithNullability(
-          factory.createSqlType(SqlTypeName.VARCHAR, precision),
+          factory.createSqlType(SqlTypeName.VARCHAR, totalPrecision),
           isNullable);
     }
   }
