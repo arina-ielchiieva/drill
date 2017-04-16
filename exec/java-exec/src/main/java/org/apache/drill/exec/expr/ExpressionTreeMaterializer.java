@@ -219,12 +219,7 @@ public class ExpressionTreeMaterializer {
        * using an arbitrary value. We trim down the size of the stored bytes
        * to the actual size so this size doesn't really matter.
        */
-      int castSize = Types.getCastSize(fromExpr.getMajorType().getMinorType(), fromExpr.getMajorType().getPrecision());
-      if (castSize == 0) {
-        //todo consider this constant usage in different classes
-        castSize = TypeHelper.VARCHAR_DEFAULT_CAST_LEN;
-      }
-      castArgs.add(new ValueExpressions.LongExpression(castSize, null));
+      castArgs.add(new ValueExpressions.LongExpression(TypeHelper.VARCHAR_DEFAULT_CAST_LEN, null));
     }
     else if (CoreDecimalUtility.isDecimalType(toType)) {
       // Add the scale and precision to the arguments of the implicit cast
