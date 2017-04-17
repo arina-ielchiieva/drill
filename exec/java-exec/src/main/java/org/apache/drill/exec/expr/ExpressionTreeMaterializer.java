@@ -862,7 +862,26 @@ public class ExpressionTreeMaterializer {
         return new CastExpression(input, e.getMajorType(), e.getPosition());
       } else if (newMinor == MinorType.NULL) {
         // if input is a NULL expression, remove cast expression and return a TypedNullConstant directly.
-        return new TypedNullConstant(Types.optional(e.getMajorType().getMinorType()));
+        MajorType.Builder builder = MajorType.newBuilder()
+            .setMode(DataMode.OPTIONAL)
+            .setMinorType(e.getMajorType().getMinorType());
+
+        if (!Types.isFixedWidthType(e.getMajorType())) {
+          if (e.getMajorType().hasPrecision()) {
+            builder.setPrecision(e.getMajorType().getPrecision());
+          }
+        }
+
+        if (CoreDecimalUtility.isDecimalType(e.getMajorType())) {
+          if (e.getMajorType().hasPrecision()) {
+            builder.setPrecision(e.getMajorType().getPrecision());
+          }
+          if (e.getMajorType().hasScale()) {
+            builder.setScale(e.getMajorType().getScale());
+          }
+        }
+
+        return new TypedNullConstant(builder.build());
       } else {
         // if the type is fully bound, convert to functioncall and materialze the function.
         MajorType type = e.getMajorType();
@@ -876,10 +895,13 @@ public class ExpressionTreeMaterializer {
         //VarLen type
         if (!Types.isFixedWidthType(type)) {
           newArgs.add(new ValueExpressions.LongExpression(type.getPrecision(), null));
-        }  if (CoreDecimalUtility.isDecimalType(type)) {
+        }
+
+        if (CoreDecimalUtility.isDecimalType(type)) {
             newArgs.add(new ValueExpressions.LongExpression(type.getPrecision(), null));
             newArgs.add(new ValueExpressions.LongExpression(type.getScale(), null));
         }
+
         FunctionCall fc = new FunctionCall(castFuncWithType, newArgs, e.getPosition());
         return fc.accept(this, functionLookupContext);
       }
