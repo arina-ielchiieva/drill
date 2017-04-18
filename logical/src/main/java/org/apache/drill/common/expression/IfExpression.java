@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -79,7 +79,7 @@ public class IfExpression extends LogicalExpressionBase {
 
     public Builder setElse(LogicalExpression elseExpression) {
       this.elseExpression = elseExpression;
-            return this;
+      return this;
     }
 
     public Builder setIfCondition(IfCondition conditions) {
@@ -106,12 +106,14 @@ public class IfExpression extends LogicalExpressionBase {
       return outputType;
     }
 
-    if (elseExpression.getMajorType().getMinorType() == MinorType.UNION) {
+    MajorType elseType = elseExpression.getMajorType();
+    MajorType ifType = ifCondition.expression.getMajorType();
+    if (elseType.getMinorType() == MinorType.UNION) {
       Set<MinorType> subtypes = Sets.newHashSet();
-      for (MinorType subtype : elseExpression.getMajorType().getSubTypeList()) {
+      for (MinorType subtype : elseType.getSubTypeList()) {
         subtypes.add(subtype);
       }
-      for (MinorType subtype : ifCondition.expression.getMajorType().getSubTypeList()) {
+      for (MinorType subtype : ifType.getSubTypeList()) {
         subtypes.add(subtype);
       }
       MajorType.Builder builder = MajorType.newBuilder().setMinorType(MinorType.UNION).setMode(DataMode.OPTIONAL);
@@ -121,41 +123,28 @@ public class IfExpression extends LogicalExpressionBase {
       return builder.build();
     }
 
-    MajorType ifType = ifCondition.expression.getMajorType();
-    MajorType elseType = elseExpression.getMajorType();
-    assert ifType.getMinorType() == elseType.getMinorType();
+    MajorType finalType = elseType;
+    if (elseType.getMode() != DataMode.OPTIONAL && ifType.getMode() == DataMode.OPTIONAL) {
+      assert ifType.getMinorType() == elseType.getMinorType();
+      finalType = ifType;
+    }
 
-    //todo extract as utility method
-    // merge two types
-    MajorType.Builder builder = MajorType.newBuilder().setMinorType(ifType.getMinorType());
-
-    // data mode
-    DataMode mode = ifType.getMode();
-    if (ifType.getMode() != elseType.getMode()) {
-      if (ifType.getMode() == DataMode.REPEATED || elseType.getMode() == DataMode.REPEATED) {
-        mode = DataMode.REPEATED;
+    if (!Types.isFixedWidthType(elseType)) {
+      if (elseType.hasPrecision() && ifType.hasPrecision()) {
+        int precision = Math.max(elseType.getPrecision(), ifType.getPrecision());
+        return Types.withPrecision(finalType.getMinorType(), finalType.getMode(), precision);
       } else {
-        mode = DataMode.OPTIONAL;
+        return Types.withMode(finalType.getMinorType(), finalType.getMode());
       }
     }
 
-    builder.setMode(mode);
-
-    // precision
-    if (Types.isStringScalarType(ifType) || CoreDecimalUtility.isDecimalType(ifType)) {
-      if (ifType.hasPrecision() && elseType.hasPrecision()) {
-        builder.setPrecision(Math.max(ifType.getPrecision(),elseType.getPrecision()));
-      }
+    if (CoreDecimalUtility.isDecimalType(finalType)) {
+      int precision = Math.max(elseType.getPrecision(), ifType.getPrecision());
+      int scale = Math.max(elseType.getScale(), ifType.getScale());
+      return Types.withScaleAndPrecision(finalType.getMinorType(), finalType.getMode(), scale, precision);
     }
 
-    // scale
-    if (CoreDecimalUtility.isDecimalType(ifType)) {
-      if (ifType.hasScale() && elseType.hasScale()) {
-        builder.setScale(Math.max(ifType.getScale(),elseType.getScale()));
-      }
-    }
-
-    return builder.build();
+    return finalType;
   }
 
   public static Builder newBuilder() {

@@ -98,12 +98,4 @@ public class TestHBaseQueries extends BaseHBaseTest {
     }
   }
 
-  @Test
-  public void testCast() throws Exception {
-    test("alter system set `drill.exec.functions.cast_empty_string_to_null` = true");
-    String query = "select CAST(t.f.c1 as varchar(30)) from hbase.TestTableNullStr t";
-
-    System.out.println(client.createPreparedStatement(query).get().getPreparedStatement().getColumnsList());
-  }
-
 }
