@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -296,20 +296,21 @@ public class HiveUtilities {
         MajorType.Builder typeBuilder = MajorType.newBuilder().setMinorType(minorType)
             .setMode(DataMode.OPTIONAL); // Hive columns (both regular and partition) could have null values
 
-        if (primitiveTypeInfo.getPrimitiveCategory() == PrimitiveCategory.CHAR ||
-            primitiveTypeInfo.getPrimitiveCategory() == PrimitiveCategory.VARCHAR) {
-          BaseCharTypeInfo baseCharTypeInfo = (BaseCharTypeInfo) primitiveTypeInfo;
-          typeBuilder.setPrecision(baseCharTypeInfo.getLength());
-        }
-
-        if (primitiveTypeInfo.getPrimitiveCategory() == PrimitiveCategory.STRING) {
-          typeBuilder.setPrecision(HiveVarchar.MAX_VARCHAR_LENGTH);
-        }
-
-        if (primitiveTypeInfo.getPrimitiveCategory() == PrimitiveCategory.DECIMAL) {
-          DecimalTypeInfo decimalTypeInfo = (DecimalTypeInfo) primitiveTypeInfo;
-          typeBuilder.setPrecision(decimalTypeInfo.precision())
-              .setScale(decimalTypeInfo.scale()).build();
+        switch (primitiveTypeInfo.getPrimitiveCategory()) {
+          case CHAR:
+          case VARCHAR:
+            BaseCharTypeInfo baseCharTypeInfo = (BaseCharTypeInfo) primitiveTypeInfo;
+            typeBuilder.setPrecision(baseCharTypeInfo.getLength());
+            break;
+          case STRING:
+            typeBuilder.setPrecision(HiveVarchar.MAX_VARCHAR_LENGTH);
+            break;
+          case DECIMAL:
+            DecimalTypeInfo decimalTypeInfo = (DecimalTypeInfo) primitiveTypeInfo;
+            typeBuilder.setPrecision(decimalTypeInfo.getPrecision()).setScale(decimalTypeInfo.getScale());
+            break;
+          default:
+            // do nothing, other primitive categories do not have precision or scale
         }
 
         return typeBuilder.build();
