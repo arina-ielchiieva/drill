@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -30,9 +30,7 @@ import org.apache.calcite.sql.SqlIntervalQualifier;
 import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlLiteral;
 import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.SqlOperator;
 import org.apache.calcite.sql.SqlOperatorBinding;
-import org.apache.calcite.sql.SqlRankFunction;
 import org.apache.calcite.sql.fun.SqlAvgAggFunction;
 import org.apache.calcite.sql.parser.SqlParserPos;
 import org.apache.calcite.sql.type.SqlReturnTypeInference;
@@ -46,7 +44,6 @@ import org.apache.drill.common.expression.MajorTypeInLogicalExpression;
 import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.Types;
-import org.apache.drill.exec.expr.TypeHelper;
 import org.apache.drill.exec.expr.fn.DrillFuncHolder;
 import org.apache.drill.exec.resolver.FunctionResolver;
 import org.apache.drill.exec.resolver.FunctionResolverFactory;
@@ -158,9 +155,14 @@ public class TypeInferenceUtils {
       .put("LEAD", DrillLeadLagSqlReturnTypeInference.INSTANCE)
       .put("LAG", DrillLeadLagSqlReturnTypeInference.INSTANCE)
 
-      // FIRST_VALUE, LAST_VALUE
-      .put("FIRST_VALUE", DrillFirstLastValueSqlReturnTypeInference.INSTANCE)
-      .put("LAST_VALUE", DrillFirstLastValueSqlReturnTypeInference.INSTANCE)
+      // Functions that return the same type
+      .put("LOWER", DrillSameSqlReturnTypeInference.INSTANCE)
+      .put("UPPER", DrillSameSqlReturnTypeInference.INSTANCE)
+      .put("INITCAP", DrillSameSqlReturnTypeInference.INSTANCE)
+      .put("REVERSE", DrillSameSqlReturnTypeInference.INSTANCE)
+
+      .put("FIRST_VALUE", DrillSameSqlReturnTypeInference.INSTANCE)
+      .put("LAST_VALUE", DrillSameSqlReturnTypeInference.INSTANCE)
 
       // Functions rely on DrillReduceAggregatesRule for expression simplification as opposed to getting evaluated directly
       .put(SqlAvgAggFunction.Subtype.AVG.name(), DrillAvgAggSqlReturnTypeInference.INSTANCE)
@@ -213,6 +215,16 @@ public class TypeInferenceUtils {
     } else {
       return new DrillDefaultSqlReturnTypeInference(functions);
     }
+  }
+
+  /**
+   * Checks if given type is string scalar type.
+   *
+   * @param sqlTypeName Calcite's sql type name
+   * @return true if given type is string scalar type
+   */
+  public static boolean isScalarStringType(final SqlTypeName sqlTypeName) {
+    return sqlTypeName == SqlTypeName.VARCHAR || sqlTypeName == SqlTypeName.CHAR;
   }
 
   private static class DrillDefaultSqlReturnTypeInference implements SqlReturnTypeInference {
@@ -415,31 +427,16 @@ public class TypeInferenceUtils {
           isNullable = true;
         }
 
-        if (totalPrecision < TypeHelper.VARCHAR_DEFAULT_CAST_LEN) {
-          if (relDataType.getPrecision() == RelDataType.PRECISION_NOT_SPECIFIED) {
-            totalPrecision = TypeHelper.VARCHAR_DEFAULT_CAST_LEN;
-          } else if (relDataType.getSqlTypeName() == SqlTypeName.VARCHAR || relDataType.getSqlTypeName() == SqlTypeName.CHAR) {
-            totalPrecision += relDataType.getPrecision();
-          } else {
-            totalPrecision = TypeHelper.VARCHAR_DEFAULT_CAST_LEN;
-          }
-        }
-        // If the underlying columns cannot offer information regarding the precision (i.e., the length) of the VarChar,
-        // Drill uses the largest to represent it
-/*        if (relDataType.getPrecision() == TypeHelper.VARCHAR_DEFAULT_CAST_LEN
-            || relDataType.getPrecision() == RelDataType.PRECISION_NOT_SPECIFIED) {
-          precision = TypeHelper.VARCHAR_DEFAULT_CAST_LEN;
+        if (isScalarStringType(relDataType.getSqlTypeName()) && relDataType.getPrecision() != RelDataType.PRECISION_NOT_SPECIFIED) {
+          totalPrecision += relDataType.getPrecision();
         } else {
-          precision += relDataType.getPrecision();
-        } */
-      }
+          totalPrecision = Types.MAX_VARCHAR_LENGTH;
+        }
 
-      if (totalPrecision > TypeHelper.VARCHAR_DEFAULT_CAST_LEN) {
-        totalPrecision = TypeHelper.VARCHAR_DEFAULT_CAST_LEN;
       }
 
       return factory.createTypeWithNullability(
-          factory.createSqlType(SqlTypeName.VARCHAR, totalPrecision),
+          factory.createSqlType(SqlTypeName.VARCHAR, Math.min(totalPrecision, Types.MAX_VARCHAR_LENGTH)),
           isNullable);
     }
   }
@@ -623,8 +620,8 @@ public class TypeInferenceUtils {
     }
   }
 
-  private static class DrillFirstLastValueSqlReturnTypeInference implements SqlReturnTypeInference {
-    private static final DrillFirstLastValueSqlReturnTypeInference INSTANCE = new DrillFirstLastValueSqlReturnTypeInference();
+  private static class DrillSameSqlReturnTypeInference implements SqlReturnTypeInference {
+    private static final DrillSameSqlReturnTypeInference INSTANCE = new DrillSameSqlReturnTypeInference();
     @Override
     public RelDataType inferReturnType(SqlOperatorBinding opBinding) {
       return opBinding.getOperandType(0);
@@ -715,7 +712,7 @@ public class TypeInferenceUtils {
               TimeUnit.MONTH,
               SqlParserPos.ZERO));
     } else if (sqlTypeName == SqlTypeName.VARCHAR) {
-      type = typeFactory.createSqlType(sqlTypeName, TypeHelper.VARCHAR_DEFAULT_CAST_LEN);
+      type = typeFactory.createSqlType(sqlTypeName, Types.MAX_VARCHAR_LENGTH);
     } else {
       type = typeFactory.createSqlType(sqlTypeName);
     }

@@ -96,7 +96,7 @@ public class FindLimit0Visitor extends RelShuttleImpl {
             .setMode(field.getType().isNullable() ? TypeProtos.DataMode.OPTIONAL : TypeProtos.DataMode.REQUIRED)
             .setMinorType(TypeInferenceUtils.getDrillTypeFromCalciteType(sqlTypeName));
 
-        if (SqlTypeName.VARCHAR.equals(sqlTypeName) || SqlTypeName.CHAR.equals(sqlTypeName)) {
+        if (TypeInferenceUtils.isScalarStringType(sqlTypeName)) {
           builder.setPrecision(field.getType().getPrecision());
         }
 

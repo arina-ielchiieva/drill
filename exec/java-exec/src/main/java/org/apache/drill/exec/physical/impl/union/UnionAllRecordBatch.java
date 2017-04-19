@@ -36,7 +36,6 @@ import org.apache.drill.exec.exception.SchemaChangeException;
 import org.apache.drill.exec.expr.ClassGenerator;
 import org.apache.drill.exec.expr.CodeGenerator;
 import org.apache.drill.exec.expr.ExpressionTreeMaterializer;
-import org.apache.drill.exec.expr.ValueVectorReadExpression;
 import org.apache.drill.exec.expr.ValueVectorWriteExpression;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.config.UnionAll;
@@ -593,7 +592,7 @@ public class UnionAllRecordBatch extends AbstractRecordBatch<UnionAll> {
 
         if(hasSameTypeAndMode(leftField, rightField)) {
           MajorType finalType = leftField.getType();
-          if (Types.isStringScalarType(leftField.getType())) {
+          if (Types.isScalarStringType(leftField.getType())) {
             // use max precision
             // case when one doesn't have precision then do not set
             if (leftField.getType().hasPrecision() && rightField.getType().hasPrecision()) {

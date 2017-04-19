@@ -19,28 +19,27 @@ package org.apache.drill.exec.expr.fn;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.Types;
-import org.apache.drill.exec.expr.TypeHelper;
 
 import java.util.List;
 
-public class DrillConcatOperatorFuncHolder extends DrillSimpleFuncHolder {
+public class DrillScalarStringConcatFuncHolder extends DrillSimpleFuncHolder {
 
-  public DrillConcatOperatorFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
+  public DrillScalarStringConcatFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
     super(functionAttributes, initializer);
   }
 
   @Override
   public TypeProtos.MajorType getReturnType(List<LogicalExpression> logicalExpressions) {
     TypeProtos.MajorType returnType = super.getReturnType(logicalExpressions);
-    if (Types.isStringScalarType(returnType)) {
+    if (Types.isScalarStringType(returnType)) {
       int totalPrecision = 0;
       boolean setPrecision = true;
       //todo should we use max length or round during display?
       for (LogicalExpression expression : logicalExpressions) {
         if (expression.getMajorType().hasPrecision()) {
           totalPrecision += expression.getMajorType().getPrecision();
-          if (totalPrecision >= TypeHelper.VARCHAR_DEFAULT_CAST_LEN) {
-            totalPrecision = TypeHelper.VARCHAR_DEFAULT_CAST_LEN;
+          if (totalPrecision >= Types.MAX_VARCHAR_LENGTH) {
+            totalPrecision = Types.MAX_VARCHAR_LENGTH;
             break;
           }
         } else {

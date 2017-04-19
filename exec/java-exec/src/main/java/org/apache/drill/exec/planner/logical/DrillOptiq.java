@@ -294,7 +294,7 @@ public class DrillOptiq {
 
     private LogicalExpression getDrillCastFunctionFromOptiq(RexCall call){
       LogicalExpression arg = call.getOperands().get(0).accept(this);
-      MajorType castType = null;
+      MajorType castType;
 
       switch(call.getType().getSqlTypeName().getName()){
       case "VARCHAR":
@@ -306,8 +306,7 @@ public class DrillOptiq {
       case "FLOAT": castType = Types.required(MinorType.FLOAT4); break;
       case "DOUBLE": castType = Types.required(MinorType.FLOAT8); break;
       case "DECIMAL":
-        if (context.getPlannerSettings().getOptions().
-            getOption(PlannerSettings.ENABLE_DECIMAL_DATA_TYPE_KEY).bool_val == false ) {
+        if (!context.getPlannerSettings().getOptions().getOption(PlannerSettings.ENABLE_DECIMAL_DATA_TYPE_KEY).bool_val) {
           throw UserException
               .unsupportedError()
               .message(ExecErrorConstants.DECIMAL_DISABLE_ERR_MSG)
@@ -334,7 +333,7 @@ public class DrillOptiq {
         case "INTERVAL_YEAR_MONTH": castType = Types.required(MinorType.INTERVALYEAR); break;
         case "INTERVAL_DAY_TIME": castType = Types.required(MinorType.INTERVALDAY); break;
         case "BOOLEAN": castType = Types.required(MinorType.BIT); break;
-        case "BINARY": castType = Types.required(MinorType.VARBINARY).toBuilder().setPrecision(call.getType().getPrecision()).build(); break;
+        case "BINARY": castType = Types.required(MinorType.VARBINARY); break;
         case "ANY": return arg; // Type will be same as argument.
         default: castType = Types.required(MinorType.valueOf(call.getType().getSqlTypeName().getName()));
       }

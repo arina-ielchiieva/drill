@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -635,7 +635,7 @@ public class TestEarlyLimit0Optimization extends BaseTestQuery {
   public void substringTest(final String query) throws Exception {
     @SuppressWarnings("unchecked")
     final List<Pair<SchemaPath, TypeProtos.MajorType>> expectedSchema = Lists.newArrayList(
-        Pair.of(SchemaPath.getSimplePath("s"), Types.withPrecision(TypeProtos.MinorType.VARCHAR, TypeProtos.DataMode.OPTIONAL, 65536)));
+        Pair.of(SchemaPath.getSimplePath("s"), Types.withPrecision(TypeProtos.MinorType.VARCHAR, TypeProtos.DataMode.OPTIONAL, Types.MAX_VARCHAR_LENGTH)));
 
     testBuilder()
         .sqlQuery(query)

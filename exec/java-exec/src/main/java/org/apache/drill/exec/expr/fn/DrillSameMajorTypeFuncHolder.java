@@ -23,9 +23,9 @@ import org.apache.drill.common.util.CoreDecimalUtility;
 
 import java.util.List;
 
-public class DrillSteadyStateSizeFuncHolder extends DrillSimpleFuncHolder {
+public class DrillSameMajorTypeFuncHolder extends DrillSimpleFuncHolder {
 
-  public DrillSteadyStateSizeFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
+  public DrillSameMajorTypeFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
     super(functionAttributes, initializer);
   }
 
@@ -40,7 +40,7 @@ public class DrillSteadyStateSizeFuncHolder extends DrillSimpleFuncHolder {
         .setMode(returnType.getMode());
 
     // precision
-    if (Types.isStringScalarType(majorType) || CoreDecimalUtility.isDecimalType(majorType)) {
+    if (Types.isScalarStringType(majorType) || CoreDecimalUtility.isDecimalType(majorType)) {
       if (majorType.hasPrecision()) {
         builder.setPrecision(majorType.getPrecision());
       }
