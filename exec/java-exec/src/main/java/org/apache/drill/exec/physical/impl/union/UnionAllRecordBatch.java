@@ -29,6 +29,7 @@ import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.types.TypeProtos.DataMode;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.TypeProtos.MinorType;
+import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.exception.ClassTransformationException;
 import org.apache.drill.exec.exception.OutOfMemoryException;
 import org.apache.drill.exec.exception.SchemaChangeException;
@@ -200,14 +201,24 @@ public class UnionAllRecordBatch extends AbstractRecordBatch<UnionAll> {
       // cast data types (Minortype or DataMode)
       if(hasSameTypeAndMode(outputFields.get(index), vw.getValueVector().getField())) {
         // Transfer column
-        if(outputFields.get(index).getPath().equals(inputPath)) {
+
+        MajorType outputFieldType = outputFields.get(index).getType();
+        MaterializedField outputField = MaterializedField.create(outputPath.getAsUnescapedPath(), outputFieldType);
+
+        if (outputFields.get(index).getPath().equals(inputPath.getAsUnescapedPath())) {
+        //todo if(outputFields.get(index).getPath().equals(inputPath.toString())) {
           final LogicalExpression expr = ExpressionTreeMaterializer.materialize(inputPath, current, collector, context.getFunctionRegistry());
           if (collector.hasErrors()) {
             throw new SchemaChangeException(String.format("Failure while trying to materialize incoming schema.  Errors:\n %s.", collector.toErrorString()));
           }
 
-          ValueVectorReadExpression vectorRead = (ValueVectorReadExpression) expr;
-          ValueVector vvOut = container.addOrGet(MaterializedField.create(outputPath.getAsUnescapedPath(), vectorRead.getMajorType()));
+          //ValueVectorReadExpression vectorRead = (ValueVectorReadExpression) expr;
+ /*         MajorType expressionType = vectorRead.getMajorType();
+          if (expressionType.getMinorType() != outputFieldType.getMinorType()) {
+            outputFieldType = expressionType;
+          }*/
+          //ValueVector vvOut = container.addOrGet(MaterializedField.create(outputPath.getAsUnescapedPath(), outputFieldType));
+          ValueVector vvOut = container.addOrGet(outputField);
           TransferPair tp = vvIn.makeTransferPair(vvOut);
           transfers.add(tp);
         // Copy data in order to rename the column
@@ -217,7 +228,12 @@ public class UnionAllRecordBatch extends AbstractRecordBatch<UnionAll> {
             throw new SchemaChangeException(String.format("Failure while trying to materialize incoming schema.  Errors:\n %s.", collector.toErrorString()));
           }
 
-          MaterializedField outputField = MaterializedField.create(outputPath.getAsUnescapedPath(), expr.getMajorType());
+     /*     MajorType expressionType = expr.getMajorType();
+          if (expressionType.getMinorType() != outputFieldType.getMinorType()) {
+            outputFieldType = expressionType;
+          }*/
+
+          //MaterializedField outputField = MaterializedField.create(outputPath.getAsUnescapedPath(), outputFieldType);
           ValueVector vv = container.addOrGet(outputField, callBack);
           allocationVectors.add(vv);
           TypedFieldId fid = container.getValueVectorId(SchemaPath.getSimplePath(outputField.getPath()));
@@ -576,7 +592,18 @@ public class UnionAllRecordBatch extends AbstractRecordBatch<UnionAll> {
         MaterializedField rightField = rightIter.next();
 
         if(hasSameTypeAndMode(leftField, rightField)) {
-          outputFields.add(MaterializedField.create(leftField.getPath(), leftField.getType()));
+          MajorType finalType = leftField.getType();
+          if (Types.isStringScalarType(leftField.getType())) {
+            // use max precision
+            // case when one doesn't have precision then do not set
+            if (leftField.getType().hasPrecision() && rightField.getType().hasPrecision()) {
+              finalType = Types.withPrecision(leftField.getType().getMinorType(), leftField.getDataMode(),
+                  Math.max(leftField.getPrecision(), rightField.getPrecision()));
+            } else {
+              finalType = Types.withMode(leftField.getType().getMinorType(), leftField.getDataMode());
+            }
+          }
+          outputFields.add(MaterializedField.create(leftField.getPath(), finalType));
         } else {
           // If the output type is not the same,
           // cast the column of one of the table to a data type which is the Least Restrictive

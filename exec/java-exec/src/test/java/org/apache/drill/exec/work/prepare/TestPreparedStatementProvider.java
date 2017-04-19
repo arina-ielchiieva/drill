@@ -381,6 +381,25 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     }
   }
 
+  @Test
+  public void union() throws Exception {
+    String query = "select * from\n" +
+        "(select cast('AAA' as varchar(3)) as ee from (values(1))\n" +
+        "union\n" +
+        "select cast('AAA' as varchar(5)) as ex from (values(1))\n" +
+        ")";
+    System.out.println(createPrepareStmt(query, false, null).getColumnsList());
+
+    //todo also for limit 0 optimization
+/*    System.out.println("-------------LIMIT 0 OPTIMIZATION-------------");
+    try {
+      test("alter session set `planner.enable_limit0_optimization` = true");
+      System.out.println(createPrepareStmt(query, false, null).getColumnsList());
+    } finally {
+      test("alter session reset `planner.enable_limit0_optimization`");
+    }*/
+  }
+
   /* Helper method which creates a prepared statement for given query. */
   private static PreparedStatement createPrepareStmt(String query, boolean expectFailure, ErrorType errorType) throws Exception {
     CreatePreparedStatementResp resp = client.createPreparedStatement(query).get();
