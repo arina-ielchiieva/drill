@@ -608,8 +608,15 @@ public class UnionAllRecordBatch extends AbstractRecordBatch<UnionAll> {
           // If the output type is not the same,
           // cast the column of one of the table to a data type which is the Least Restrictive
           MinorType outputMinorType;
+          MajorType.Builder builder = MajorType.newBuilder();
           if(leftField.getType().getMinorType() == rightField.getType().getMinorType()) {
             outputMinorType = leftField.getType().getMinorType();
+            if (outputMinorType == MinorType.VARCHAR) {
+              if (leftField.getType().hasPrecision() && rightField.getType().hasPrecision()) {
+                int precision = Math.max(leftField.getType().getPrecision(), rightField.getType().getPrecision());
+                builder.setPrecision(precision);
+              }
+            }
           } else {
             List<MinorType> types = Lists.newLinkedList();
             types.add(leftField.getType().getMinorType());
@@ -628,9 +635,9 @@ public class UnionAllRecordBatch extends AbstractRecordBatch<UnionAll> {
           dataModes.add(rightField.getType().getMode());
           DataMode dataMode = TypeCastRules.getLeastRestrictiveDataMode(dataModes);
 
-          MajorType.Builder builder = MajorType.newBuilder();
           builder.setMinorType(outputMinorType);
           builder.setMode(dataMode);
+
           outputFields.add(MaterializedField.create(leftField.getPath(), builder.build()));
         }
         ++index;
