@@ -26,11 +26,11 @@ import java.util.List;
 
 /**
  * Function holder for functions with function scope set as
- * {@link org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope#VAR_LEN_CAST}.
+ * {@link org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope#SCALAR_STRING_CAST}.
  */
-public class DrillVarLenCastFuncHolder extends DrillSimpleFuncHolder {
+public class DrillScalarStringCastFuncHolder extends DrillSimpleFuncHolder {
 
-  public DrillVarLenCastFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
+  public DrillScalarStringCastFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
     super(functionAttributes, initializer);
   }
 
@@ -44,7 +44,7 @@ public class DrillVarLenCastFuncHolder extends DrillSimpleFuncHolder {
   @Override
   public TypeProtos.MajorType getReturnType(List<LogicalExpression> logicalExpressions) {
     Preconditions.checkState(logicalExpressions.size() == 2,
-        "Variable-length cast function invoked with incorrect number of arguments: " + logicalExpressions.size());
+        "Scalar string cast function invoked with incorrect number of arguments: " + logicalExpressions.size());
 
     TypeProtos.MajorType returnType = super.getReturnType(logicalExpressions);
     LogicalExpression logicalExpression = logicalExpressions.get(1);

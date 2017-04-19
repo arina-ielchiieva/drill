@@ -31,6 +31,9 @@ import com.google.protobuf.TextFormat;
 public class Types {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Types.class);
 
+  public static final int MAX_VARCHAR_LENGTH = 65536;
+  public static final int UNDEFINED = 0;
+
   public static final MajorType NULL = required(MinorType.NULL);
   public static final MajorType LATE_BIND_TYPE = optional(MinorType.LATE);
   public static final MajorType REQUIRED_BIT = required(MinorType.BIT);
@@ -282,7 +285,7 @@ public class Types {
 
   public static int getJdbcDisplaySize(MajorType type) {
     if (type.getMode() == DataMode.REPEATED || type.getMinorType() == MinorType.LIST) {
-      return 0;
+      return UNDEFINED;
     }
 
     final int precision = getPrecision(type);
@@ -340,18 +343,18 @@ public class Types {
     case INTERVALYEAR:
       return precision > 0
           ? 5 + precision // P..Y12M
-          : 0; // if precision is not set, return 0 because there's not enough info
+          : UNDEFINED; // if precision is not set, return 0 because there's not enough info
 
     case INTERVALDAY:
       return precision > 0
           ? 12 + precision // P..DT12H60M60S assuming fractional seconds precision is not supported
-          : 0; // if precision is not set, return 0 because there's not enough info
+          : UNDEFINED; // if precision is not set, return 0 because there's not enough info
 
     case INTERVAL:
     case MAP:
     case LATE:
     case NULL:
-    case UNION:           return 0;
+    case UNION:           return UNDEFINED;
 
     default:
       throw new UnsupportedOperationException(
@@ -399,7 +402,7 @@ public class Types {
   }
 
 
-  public static boolean isStringScalarType(final MajorType type) {
+  public static boolean isScalarStringType(final MajorType type) {
     if (type.getMode() == REPEATED) {
       return false;
     }
@@ -645,32 +648,32 @@ public class Types {
    * @return precision value
    */
   public static int getPrecision(MajorType majorType) {
-    MinorType type = majorType.getMinorType();
-
     if (majorType.hasPrecision()) {
       return majorType.getPrecision();
     }
 
-    return type == MinorType.VARBINARY || type == MinorType.VARCHAR ? 65536 : 0;
+    return isScalarStringType(majorType) ? MAX_VARCHAR_LENGTH : UNDEFINED;
   }
 
   /**
    * Get the <code>scale</code> of given type.
-   * @param majorType
-   * @return
+   *
+   * @param majorType major type
+   * @return scale value
    */
   public static int getScale(MajorType majorType) {
     if (majorType.hasScale()) {
       return majorType.getScale();
     }
 
-    return 0;
+    return UNDEFINED;
   }
 
   /**
-   * Is the given type column be used in ORDER BY clause?
-   * @param type
-   * @return
+   * Checks if the given type column be used in ORDER BY clause.
+   *
+   * @param type minor type
+   * @return true if type can be used in ORDER BY clause
    */
   public static boolean isSortable(MinorType type) {
     // Currently only map and list columns are not sortable.

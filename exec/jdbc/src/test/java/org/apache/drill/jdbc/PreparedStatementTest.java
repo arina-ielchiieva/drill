@@ -109,7 +109,6 @@ public class PreparedStatementTest extends JdbcTestBase {
   }
 
   @Test
-  //todo currently fails with cast
   public void testQueryMetadataInPreparedStatement() throws SQLException {
     try(PreparedStatement stmt = connection.prepareStatement(
         "SELECT " +

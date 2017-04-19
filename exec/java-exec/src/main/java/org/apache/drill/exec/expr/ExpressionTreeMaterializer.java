@@ -219,7 +219,7 @@ public class ExpressionTreeMaterializer {
        * using an arbitrary value. We trim down the size of the stored bytes
        * to the actual size so this size doesn't really matter.
        */
-      castArgs.add(new ValueExpressions.LongExpression(TypeHelper.VARCHAR_DEFAULT_CAST_LEN, null));
+      castArgs.add(new ValueExpressions.LongExpression(Types.MAX_VARCHAR_LENGTH, null));
     }
     else if (CoreDecimalUtility.isDecimalType(toType)) {
       // Add the scale and precision to the arguments of the implicit cast

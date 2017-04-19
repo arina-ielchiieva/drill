@@ -26,6 +26,7 @@ import java.util.List;
 
 import org.apache.commons.codec.EncoderException;
 import org.apache.drill.BaseTestQuery;
+import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.proto.UserBitShared.DrillPBError.ErrorType;
 import org.apache.drill.exec.proto.UserProtos.ColumnSearchability;
 import org.apache.drill.exec.proto.UserProtos.ColumnUpdatability;
@@ -55,11 +56,11 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
 
     List<ExpectedColumnResult> expMetadata = ImmutableList.of(
         new ExpectedColumnResult("region_id", "BIGINT", true, 20, 0, 0, true, Long.class.getName()),
-        new ExpectedColumnResult("sales_city", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
-        new ExpectedColumnResult("sales_state_province", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
-        new ExpectedColumnResult("sales_district", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
-        new ExpectedColumnResult("sales_region", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
-        new ExpectedColumnResult("sales_country", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
+        new ExpectedColumnResult("sales_city", "CHARACTER VARYING", true, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName()),
+        new ExpectedColumnResult("sales_state_province", "CHARACTER VARYING", true, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName()),
+        new ExpectedColumnResult("sales_district", "CHARACTER VARYING", true, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName()),
+        new ExpectedColumnResult("sales_region", "CHARACTER VARYING", true, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName()),
+        new ExpectedColumnResult("sales_country", "CHARACTER VARYING", true, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName()),
         new ExpectedColumnResult("sales_district_id", "BIGINT", true, 20, 0, 0, true, Long.class.getName())
     );
 
@@ -84,7 +85,7 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     PreparedStatement preparedStatement = createPrepareStmt(query, false, null);
 
     List<ExpectedColumnResult> expMetadata = ImmutableList.of(
-        new ExpectedColumnResult("sales_city", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
+        new ExpectedColumnResult("sales_city", "CHARACTER VARYING", true, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName()),
         new ExpectedColumnResult("cnt", "BIGINT", false, 20, 0, 0, true, Long.class.getName())
     );
 
@@ -272,9 +273,9 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
 
     List<ExpectedColumnResult> expMetadata = ImmutableList.of(
         new ExpectedColumnResult("two_casts", "CHARACTER VARYING", false, 20, 20, 0, false, String.class.getName()),
-        new ExpectedColumnResult("max_length", "CHARACTER VARYING", false, 65536, 65536, 0, false, String.class.getName()), //todo max length case
-        new ExpectedColumnResult("one_unknown", "CHARACTER VARYING", false, 65536, 65536, 0, false, String.class.getName()),
-        new ExpectedColumnResult("two_unknown", "CHARACTER VARYING", false, 65536, 65536, 0, false, String.class.getName()),
+        new ExpectedColumnResult("max_length", "CHARACTER VARYING", false, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName()), //todo max length case
+        new ExpectedColumnResult("one_unknown", "CHARACTER VARYING", false, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName()),
+        new ExpectedColumnResult("two_unknown", "CHARACTER VARYING", false, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName()),
         new ExpectedColumnResult("one_constant", "CHARACTER VARYING", false, 11, 11, 0, false, String.class.getName()),
         new ExpectedColumnResult("two_constants", "CHARACTER VARYING", false, 2, 2, 0, false, String.class.getName()),
         new ExpectedColumnResult("right_null", "CHARACTER VARYING", false, 20, 20, 0, false, String.class.getName()),
@@ -352,9 +353,9 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
         new ExpectedColumnResult("col_231", "CHARACTER VARYING", false, 3, 3, 0, false, String.class.getName()),
         new ExpectedColumnResult("col_321", "CHARACTER VARYING", false, 3, 3, 0, false, String.class.getName()),
         new ExpectedColumnResult("col_312", "CHARACTER VARYING", false, 3, 3, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_unk1", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_unk2", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_unk3", "CHARACTER VARYING", true, 65536, 65536, 0, false, String.class.getName())
+        new ExpectedColumnResult("col_unk1", "CHARACTER VARYING", true, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_unk2", "CHARACTER VARYING", true, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_unk3", "CHARACTER VARYING", true, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName())
     );
 
     verifyMetadata(expMetadata, createPrepareStmt(query, false, null).getColumnsList());
@@ -411,56 +412,42 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     String query = "select c_varchar from optional_type_v union all select c_varchar from required_type_v";
     System.out.println(createPrepareStmt(query, false, null).getColumnsList());
 
-/*    System.out.println("-------------LIMIT 0 OPTIMIZATION-------------");
+    System.out.println("-------------LIMIT 0 OPTIMIZATION-------------");
     try {
       test("alter session set `planner.enable_limit0_optimization` = true");
       System.out.println(createPrepareStmt(query, false, null).getColumnsList());
     } finally {
       test("alter session reset `planner.enable_limit0_optimization`");
-    }*/
+    }
   }
-
-  /*
-  create or replace view optional_type_v as
-select
-        cast(c_varchar as varchar(100))		as c_varchar,
-        cast(c_integer as integer)		as c_integer,
-        cast(c_bigint as bigint)		as c_bigint,
-        cast(c_float as float)			as c_float,
-        cast(c_double as double)		as c_double,
-        cast(c_date as date)			as c_date,
-        cast(c_time as time)			as c_time,
-        cast(c_timestamp as timestamp)		as c_timestamp,
-        cast(c_boolean as boolean)		as c_boolean
-from
-        j1
-;
-
-create or replace view required_type_v as
-select
-        cast(c_varchar as varchar(100))		as c_varchar,
-        cast(c_integer as integer)		as c_integer,
-        cast(c_bigint as bigint)		as c_bigint,
-        cast(c_float as float)			as c_float,
-        cast(c_double as double)		as c_double,
-        cast(c_date as date)			as c_date,
-        cast(c_time as time)			as c_time,
-        cast(c_timestamp as timestamp)		as c_timestamp,
-        cast(c_boolean as boolean)		as c_boolean
-from
-        j3
-;
-
-   */
 
   @Test
   public void varbinary() throws Exception {
-    String query = "select  cast(`varbinary_col` AS varbinary(65000))\n" +
+    String query = "select cast(`varbinary_col` AS varbinary(65000))\n" +
         "from cp.`/parquet/alltypes.json`";
 
     System.out.println(createPrepareStmt(query, false, null).getColumnsList());
 
         System.out.println("-------------LIMIT 0 OPTIMIZATION-------------");
+    try {
+      test("alter session set `planner.enable_limit0_optimization` = true");
+      System.out.println(createPrepareStmt(query, false, null).getColumnsList());
+    } finally {
+      test("alter session reset `planner.enable_limit0_optimization`");
+    }
+  }
+
+  @Test
+  public void sameSize() throws Exception {
+    String query = "select cast(varchar_col as varchar(30)) as c,\n" +
+        " upper(cast(varchar_col as varchar(30))) as uc,\n" +
+        " initcap(cast(varchar_col as varchar(30))) as ic,\n" +
+        " lower(cast(varchar_col as varchar(30))) as lc,\n" +
+        " reverse(cast(varchar_col as varchar(30))) as rc\n" +
+        "from cp.`/parquet/alltypes.json`";
+    System.out.println(createPrepareStmt(query, false, null).getColumnsList());
+
+    System.out.println("-------------LIMIT 0 OPTIMIZATION-------------");
     try {
       test("alter session set `planner.enable_limit0_optimization` = true");
       System.out.println(createPrepareStmt(query, false, null).getColumnsList());

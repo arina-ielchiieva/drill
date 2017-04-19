@@ -188,46 +188,49 @@ public class FunctionConverter {
           template.isBinaryCommutative(),
           isDeteministic, registeredNames, ps, outputField, works, template.costCategory(), template.isNiladic());
       switch (template.scope()) {
-      case POINT_AGGREGATE:
-        return new DrillAggFuncHolder(functionAttributes, initializer);
-      case DECIMAL_AGGREGATE:
-        return new DrillDecimalAggFuncHolder(functionAttributes, initializer);
-      case DECIMAL_SUM_AGGREGATE:
-        return new DrillDecimalSumAggFuncHolder(functionAttributes, initializer);
-      case SIMPLE:
-        if (outputField.isComplexWriter) {
-          return new DrillComplexWriterFuncHolder(functionAttributes, initializer);
-        } else {
-          return new DrillSimpleFuncHolder(functionAttributes, initializer);
-        }
-      case SC_BOOLEAN_OPERATOR:
-        return new DrillBooleanOPHolder(functionAttributes, initializer);
-      case DECIMAL_MAX_SCALE:
-          return new DrillDecimalMaxScaleFuncHolder(functionAttributes, initializer);
-      case DECIMAL_MUL_SCALE:
-          return new DrillDecimalSumScaleFuncHolder(functionAttributes, initializer);
-      case DECIMAL_ADD_SCALE:
-          return new DrillDecimalAddFuncHolder(functionAttributes, initializer);
-      case DECIMAL_CAST:
-          return new DrillDecimalCastFuncHolder(functionAttributes, initializer);
-      case DECIMAL_DIV_SCALE:
-          return new DrillDecimalDivScaleFuncHolder(functionAttributes, initializer);
-      case DECIMAL_MOD_SCALE:
-          return new DrillDecimalModScaleFuncHolder(functionAttributes, initializer);
-      case DECIMAL_SET_SCALE:
-          return new DrillDecimalSetScaleFuncHolder(functionAttributes, initializer);
-      case DECIMAL_ZERO_SCALE:
-          return new DrillDecimalZeroScaleFuncHolder(functionAttributes, initializer);
-      case VAR_LEN_CAST:
-          return new DrillVarLenCastFuncHolder(functionAttributes, initializer);
-      case CONCAT_OPERATOR:
-          return new DrillConcatOperatorFuncHolder(functionAttributes, initializer);
-      case STEADY_STATE_SIZE:
-        return new DrillSteadyStateSizeFuncHolder(functionAttributes, initializer);
-      case HOLISTIC_AGGREGATE:
-      case RANGE_AGGREGATE:
-      default:
-        return failure("Unsupported Function Type.", func);
+        case POINT_AGGREGATE:
+          return new DrillAggFuncHolder(functionAttributes, initializer);
+        case DECIMAL_AGGREGATE:
+          return new DrillDecimalAggFuncHolder(functionAttributes, initializer);
+        case DECIMAL_SUM_AGGREGATE:
+          return new DrillDecimalSumAggFuncHolder(functionAttributes, initializer);
+        case SIMPLE:
+          if (outputField.isComplexWriter) {
+            return new DrillComplexWriterFuncHolder(functionAttributes, initializer);
+          } else {
+            return new DrillSimpleFuncHolder(functionAttributes, initializer);
+          }
+        case SC_BOOLEAN_OPERATOR:
+          return new DrillBooleanOPHolder(functionAttributes, initializer);
+        case DECIMAL_MAX_SCALE:
+            return new DrillDecimalMaxScaleFuncHolder(functionAttributes, initializer);
+        case DECIMAL_MUL_SCALE:
+            return new DrillDecimalSumScaleFuncHolder(functionAttributes, initializer);
+        case DECIMAL_ADD_SCALE:
+            return new DrillDecimalAddFuncHolder(functionAttributes, initializer);
+        case DECIMAL_CAST:
+            return new DrillDecimalCastFuncHolder(functionAttributes, initializer);
+        case DECIMAL_DIV_SCALE:
+            return new DrillDecimalDivScaleFuncHolder(functionAttributes, initializer);
+        case DECIMAL_MOD_SCALE:
+            return new DrillDecimalModScaleFuncHolder(functionAttributes, initializer);
+        case DECIMAL_SET_SCALE:
+            return new DrillDecimalSetScaleFuncHolder(functionAttributes, initializer);
+        case DECIMAL_ZERO_SCALE:
+            return new DrillDecimalZeroScaleFuncHolder(functionAttributes, initializer);
+        case SCALAR_STRING_CAST:
+            return new DrillScalarStringCastFuncHolder(functionAttributes, initializer);
+        case SCALAR_STRING_CONCAT:
+            return new DrillScalarStringConcatFuncHolder(functionAttributes, initializer);
+        case SCALAR_SUBSTRING:
+          //todo
+          return new DrillScalarStringConcatFuncHolder(functionAttributes, initializer);
+        case SAME_MAJOR_TYPE:
+          return new DrillSameMajorTypeFuncHolder(functionAttributes, initializer);
+        case HOLISTIC_AGGREGATE:
+        case RANGE_AGGREGATE:
+        default:
+          return failure("Unsupported Function Type.", func);
       }
     } catch (Exception | NoSuchFieldError | AbstractMethodError ex) {
       return failure("Failure while creating function holder.", ex, func);

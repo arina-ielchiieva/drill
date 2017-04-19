@@ -52,7 +52,7 @@ import org.apache.drill.exec.expr.fn.impl.DateUtility;
  */
 
 @SuppressWarnings("unused")
-@FunctionTemplate(name = "cast${type.to?upper_case}", scope = FunctionTemplate.FunctionScope.VAR_LEN_CAST, nulls=NullHandling.NULL_IF_NULL,
+@FunctionTemplate(name = "cast${type.to?upper_case}", scope = FunctionTemplate.FunctionScope.SCALAR_STRING_CAST, nulls=NullHandling.NULL_IF_NULL,
   costCategory = FunctionCostCategory.COMPLEX)
 public class Cast${type.from}To${type.to} implements DrillSimpleFunc {
 
