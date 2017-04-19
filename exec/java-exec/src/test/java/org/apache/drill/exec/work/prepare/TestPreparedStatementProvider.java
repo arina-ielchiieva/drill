@@ -400,6 +400,76 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     }*/
   }
 
+  //@Test
+  public void requireOptionalUnion() throws Exception {
+    test("use dfs_test.tmp");
+    test("create or replace view optional_type_v as select cast(c_varchar as varchar(100))\t\tas c_varchar from\n" +
+        "dfs.`F:\\git_repo\\drill-test-framework\\framework\\resources\\Datasources\\subqueries\\j1`");
+    test("create or replace view required_type_v as select cast(c_varchar as varchar(100))\t\tas c_varchar from\n" +
+        "dfs.`F:\\git_repo\\drill-test-framework\\framework\\resources\\Datasources\\subqueries\\j3`");
+
+    String query = "select c_varchar from optional_type_v union all select c_varchar from required_type_v";
+    System.out.println(createPrepareStmt(query, false, null).getColumnsList());
+
+/*    System.out.println("-------------LIMIT 0 OPTIMIZATION-------------");
+    try {
+      test("alter session set `planner.enable_limit0_optimization` = true");
+      System.out.println(createPrepareStmt(query, false, null).getColumnsList());
+    } finally {
+      test("alter session reset `planner.enable_limit0_optimization`");
+    }*/
+  }
+
+  /*
+  create or replace view optional_type_v as
+select
+        cast(c_varchar as varchar(100))		as c_varchar,
+        cast(c_integer as integer)		as c_integer,
+        cast(c_bigint as bigint)		as c_bigint,
+        cast(c_float as float)			as c_float,
+        cast(c_double as double)		as c_double,
+        cast(c_date as date)			as c_date,
+        cast(c_time as time)			as c_time,
+        cast(c_timestamp as timestamp)		as c_timestamp,
+        cast(c_boolean as boolean)		as c_boolean
+from
+        j1
+;
+
+create or replace view required_type_v as
+select
+        cast(c_varchar as varchar(100))		as c_varchar,
+        cast(c_integer as integer)		as c_integer,
+        cast(c_bigint as bigint)		as c_bigint,
+        cast(c_float as float)			as c_float,
+        cast(c_double as double)		as c_double,
+        cast(c_date as date)			as c_date,
+        cast(c_time as time)			as c_time,
+        cast(c_timestamp as timestamp)		as c_timestamp,
+        cast(c_boolean as boolean)		as c_boolean
+from
+        j3
+;
+
+   */
+
+  @Test
+  public void varbinary() throws Exception {
+    String query = "select  cast(`varbinary_col` AS varbinary(65000))\n" +
+        "from cp.`/parquet/alltypes.json`";
+
+    System.out.println(createPrepareStmt(query, false, null).getColumnsList());
+
+        System.out.println("-------------LIMIT 0 OPTIMIZATION-------------");
+    try {
+      test("alter session set `planner.enable_limit0_optimization` = true");
+      System.out.println(createPrepareStmt(query, false, null).getColumnsList());
+    } finally {
+      test("alter session reset `planner.enable_limit0_optimization`");
+    }
+  }
+
+
   /* Helper method which creates a prepared statement for given query. */
   private static PreparedStatement createPrepareStmt(String query, boolean expectFailure, ErrorType errorType) throws Exception {
     CreatePreparedStatementResp resp = client.createPreparedStatement(query).get();
