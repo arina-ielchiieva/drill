@@ -19,40 +19,29 @@ package org.apache.drill.exec.expr.fn;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.Types;
-import org.apache.drill.common.util.CoreDecimalUtility;
 
 import java.util.List;
 
-public class DrillSameMajorTypeFuncHolder extends DrillSimpleFuncHolder {
+public class DrillConcatFuncHolder extends DrillSimpleFuncHolder {
 
-  public DrillSameMajorTypeFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
+  public DrillConcatFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
     super(functionAttributes, initializer);
   }
 
   @Override
   public TypeProtos.MajorType getReturnType(List<LogicalExpression> logicalExpressions) {
     TypeProtos.MajorType returnType = super.getReturnType(logicalExpressions);
-    assert logicalExpressions.size() == 1;
-    TypeProtos.MajorType majorType = logicalExpressions.get(0).getMajorType();
-
-    TypeProtos.MajorType.Builder builder = TypeProtos.MajorType.newBuilder()
-        .setMinorType(returnType.getMinorType())
-        .setMode(returnType.getMode());
-
-    // precision
-    if (Types.isScalarStringType(majorType) || CoreDecimalUtility.isDecimalType(majorType)) {
-      if (majorType.hasPrecision()) {
-        builder.setPrecision(majorType.getPrecision());
+    if (Types.isScalarStringType(returnType)) { //todo why do we check? security check?
+      int totalPrecision = 0;
+      for (LogicalExpression expression : logicalExpressions) {
+        if (expression.getMajorType().hasPrecision()) {
+          totalPrecision += expression.getMajorType().getPrecision();
+        } else {
+          return returnType;
+        }
       }
+      return returnType.toBuilder().setPrecision(totalPrecision).build();
     }
-
-    // scale
-    if (CoreDecimalUtility.isDecimalType(majorType)) {
-      if (majorType.hasScale()) {
-        builder.setScale(majorType.getScale());
-      }
-    }
-
-    return builder.build();
+    return returnType;
   }
 }

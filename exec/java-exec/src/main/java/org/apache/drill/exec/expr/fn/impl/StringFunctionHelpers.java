@@ -21,6 +21,7 @@ package org.apache.drill.exec.expr.fn.impl;
 import io.netty.buffer.DrillBuf;
 import io.netty.util.internal.PlatformDependent;
 
+import org.apache.calcite.rel.type.RelDataType;
 import org.apache.drill.exec.expr.holders.NullableVarCharHolder;
 import org.apache.drill.exec.expr.holders.VarCharHolder;
 import org.apache.drill.exec.memory.BoundsChecking;
@@ -247,6 +248,45 @@ public class StringFunctionHelpers {
     } catch(IllegalArgumentException ex) {
       return false;
     }
+  }
+
+  /**
+   * Calculates target length after substring function will be applied.
+   * useEnd flag is used to distinguish between substring(value, offset) and
+   * substring(source, offset, length). If useEnd flag is set to false,
+   * length to cut is not taken into account during calculation.
+   *
+   * Calculation rules for substring(value, offset):
+   * <ul>If offset is corrupted (less then or equals 0), target length is 0.<ul/>
+   * <ul>If source length is undefined, target length is undefined.<ul/>
+   * <ul>If source length after offset is less then or equals 0, target length is 0. <ul/>
+   * <ul>For all other cases, target length is source length after offset. <ul/>
+   *
+   * Calculation rules for substring(value, offset, length):
+   * <ul>If offset or length is corrupted (less then or equals 0), target length is 0.<ul/>
+   * <ul>If source length is undefined, target length is the same as length to cut.<ul/>
+   * <ul>If source length after offset is less then length to cut, target length is source length after offset.<ul/>
+   * <ul>For all other cases, target length is length to cut.<ul/>
+   *
+   * @param sourceLength source length
+   * @param offset offset
+   * @param length length to cut
+   * @param useEnd if length to cut should be used in calculation
+   * @return target length
+   */
+  public static int calculateSubstringLength(int sourceLength, int offset, int length, boolean useEnd) {
+    if (offset <= 0 || (useEnd && length <= 0)) {
+      return 0;
+    }
+
+    if (sourceLength == RelDataType.PRECISION_NOT_SPECIFIED) {
+      return useEnd ? length : RelDataType.PRECISION_NOT_SPECIFIED;
+    }
+
+    // Substring offset count starts with 1 (not 0), indicating first character in string.
+    // That's why when we calculate source length after offset, we need to add + 1 to receive correct result.
+    int sourceLengthAfterOffset = Math.max(sourceLength - offset + 1, 0);
+    return useEnd && sourceLengthAfterOffset >= length ? length : sourceLengthAfterOffset;
   }
 
   private static int[] memGetDate(long memoryAddress, int start, int end){

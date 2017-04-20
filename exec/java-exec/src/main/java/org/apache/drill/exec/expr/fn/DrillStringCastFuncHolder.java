@@ -16,42 +16,37 @@
  */
 package org.apache.drill.exec.expr.fn;
 
+import com.google.common.primitives.Ints;
 import org.apache.drill.common.expression.LogicalExpression;
+import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.types.TypeProtos;
-import org.apache.drill.common.types.Types;
 
 import java.util.List;
 
-public class DrillScalarStringConcatFuncHolder extends DrillSimpleFuncHolder {
+/**
+ * Function holder for functions with function scope set as
+ * {@link org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope#STRING_CAST}.
+ */
+public class DrillStringCastFuncHolder extends DrillSimpleFuncHolder {
 
-  public DrillScalarStringConcatFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
+  public DrillStringCastFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
     super(functionAttributes, initializer);
   }
 
+  /**
+   * Defines function return type and sets cast length as type precision
+   * if cast length is simple long expression.
+   *
+   * @param logicalExpressions logical expressions
+   * @return return type
+   */
   @Override
   public TypeProtos.MajorType getReturnType(List<LogicalExpression> logicalExpressions) {
     TypeProtos.MajorType returnType = super.getReturnType(logicalExpressions);
-    if (Types.isScalarStringType(returnType)) {
-      int totalPrecision = 0;
-      boolean setPrecision = true;
-      //todo should we use max length or round during display?
-      for (LogicalExpression expression : logicalExpressions) {
-        if (expression.getMajorType().hasPrecision()) {
-          totalPrecision += expression.getMajorType().getPrecision();
-          if (totalPrecision >= Types.MAX_VARCHAR_LENGTH) {
-            totalPrecision = Types.MAX_VARCHAR_LENGTH;
-            break;
-          }
-        } else {
-          setPrecision = false;
-          break;
-        }
-      }
-      if (setPrecision) {
-        if (!(returnType.hasPrecision() && returnType.getPrecision() != totalPrecision)) {
-          return Types.withPrecision(returnType.getMinorType(), returnType.getMode(), totalPrecision);
-        }
-      }
+    LogicalExpression logicalExpression = logicalExpressions.get(1);
+    if (logicalExpressions.get(1) instanceof ValueExpressions.LongExpression) {
+      long precision = ((ValueExpressions.LongExpression) logicalExpression).getLong();
+      return returnType.toBuilder().setPrecision(Ints.checkedCast(precision)).build();
     }
     return returnType;
   }

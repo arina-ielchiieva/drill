@@ -21,10 +21,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.sql.Date;
-import java.util.Collections;
 import java.util.List;
 
-import org.apache.commons.codec.EncoderException;
 import org.apache.drill.BaseTestQuery;
 import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.proto.UserBitShared.DrillPBError.ErrorType;
@@ -137,7 +135,7 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
   }
 
   @Test
-  public void queryWithVarLenCasts() throws Exception {
+  public void queryWithScalarStringCasts() throws Exception {
     String query = "select\n" +
         "cast(col_int as varchar(30)) as col_int,\n" +
         "cast(col_vrchr as varchar(31)) as col_vrchr,\n" +
@@ -273,7 +271,7 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
 
     List<ExpectedColumnResult> expMetadata = ImmutableList.of(
         new ExpectedColumnResult("two_casts", "CHARACTER VARYING", false, 20, 20, 0, false, String.class.getName()),
-        new ExpectedColumnResult("max_length", "CHARACTER VARYING", false, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName()), //todo max length case
+        new ExpectedColumnResult("max_length", "CHARACTER VARYING", false, 120000, 120000, 0, false, String.class.getName()),
         new ExpectedColumnResult("one_unknown", "CHARACTER VARYING", false, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName()),
         new ExpectedColumnResult("two_unknown", "CHARACTER VARYING", false, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName()),
         new ExpectedColumnResult("one_constant", "CHARACTER VARYING", false, 11, 11, 0, false, String.class.getName()),
@@ -307,17 +305,84 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
 
   @Test
   public void substring() throws Exception {
-    // both give 65536
-    //String query = "SELECT concat(cast(sales_city as varchar(10)), '_D') as c FROM cp.`region.json` LIMIT 0";
-    //String query = "SELECT concat(cast(sales_city as varchar(10)), sales_city) as c FROM cp.`region.json` LIMIT 0";
-    String query = "SELECT substring(cast(sales_city as varchar(10)), 1, 2) as c FROM cp.`region.json` LIMIT 0";
+    String query = "select\n" +
+        "substring(sales_city, 1, 2) as unk,\n" + // 2
+        "substring(cast(sales_city as varchar(10)), 1, 2) as unk1,\n" + // 2
+        "substring(cast(sales_city as varchar(1)), 1, 2) as unk2,\n" + // 1
+        "substring(cast(sales_city as varchar(2)), 1, 2) as unk3,\n" + // 2
+        "substring(cast(sales_city as varchar(10)), -1, 2) as unk4,\n" + // 0
+        "substring(cast(sales_city as varchar(10)), 1, -2) as unk5,\n" + // 0
+        "substring(cast(sales_city as varchar(10)), 11, 2) as unk6,\n" + // 0
+        "substring(cast(sales_city as varchar(10)), 5, 10) as unk7,\n" + // 6
+        "substring(cast(sales_city as varchar(10)), 5) as unk8,\n" + // 6
+        "substring(sales_city, 5) as unk9,\n" + // 65536
+        "substring(cast(sales_city as varchar(10)), 10) as unk10,\n" + // 1
+        "substring(cast(sales_city as varchar(10)), 11) as unk11,\n" + // 0
+        "substring(sales_city, -1) as unk12,\n" + // 0
+        "substring(sales_city, -1, 2) as unk13,\n" + // 0
+        "substring(sales_city, 1, -2) as unk14,\n" + // 0
+        "substring(sales_city, '^N') as unk15,\n" + // 65536
+        "substring(sales_city, 0, 2) as unk16,\n" + // 0
+        "substring(sales_city, 1, 0) as unk17,\n" + // 0
+        "substring(sales_city, 0) as unk18\n" + // 0
+        "from cp.`region.json` limit 0";
+
+    //test("alter session set `planner.enable_limit0_optimization` = true");
+    List<ResultColumnMetadata> columnsList = createPrepareStmt(query, false, null).getColumnsList();
+    for (ResultColumnMetadata resultColumnMetadata : columnsList) {
+      System.out.println(resultColumnMetadata.getColumnName() + " - " + resultColumnMetadata.getPrecision());
+    }
+    //System.out.println(columnsList);
+  }
+
+  @Test
+  public void testEachSubstring() throws Exception {
+    String query = "select\n" +
+/*        "substring(sales_city, 1, 2) as unk,\n" + // 2
+        "substring(cast(sales_city as varchar(10)), 1, 2) as unk1,\n" + // 2
+        "substring(cast(sales_city as varchar(1)), 1, 2) as unk2,\n" + // 1
+        "substring(cast(sales_city as varchar(2)), 1, 2) as unk3,\n" + // 2
+        "substring(cast(sales_city as varchar(10)), -1, 2) as unk4,\n" + // 0
+        "substring(cast(sales_city as varchar(10)), 1, -2) as unk5,\n" + // 0
+        "substring(cast(sales_city as varchar(10)), 11, 2) as unk6,\n" + // 0
+        "substring(cast(sales_city as varchar(10)), 5, 10) as unk7,\n" + // 6
+        "substring(cast(sales_city as varchar(10)), 5) as unk8,\n" + // 6
+        "substring(sales_city, 5) as unk9,\n" + // 65536
+        "substring(cast(sales_city as varchar(10)), 10) as unk10,\n" + // 1
+        "substring(cast(sales_city as varchar(10)), 11) as unk11,\n" + // 0
+        "substring(sales_city, -1) as unk12,\n" + // 0
+        "substring(sales_city, -1, 2) as unk13,\n" + // 0
+        "substring(sales_city, 1, -2) as unk14,\n" + // 0
+        "substring(sales_city, '^N') as unk15,\n" + // 65536
+        "substring(sales_city, 0, 2) as unk16,\n" + // 0
+        "substring(sales_city, 1, 0) as unk17,\n" + // 0*/
+        "substring(sales_city, 0) as unk18\n" + // 0
+        "from cp.`region.json` limit 0";
+
+    //test("alter session set `planner.enable_limit0_optimization` = true");
+    List<ResultColumnMetadata> columnsList = createPrepareStmt(query, false, null).getColumnsList();
+    for (ResultColumnMetadata resultColumnMetadata : columnsList) {
+      System.out.println(resultColumnMetadata.getColumnName() + " - " + resultColumnMetadata.getPrecision());
+    }
+  }
+
+  @Test
+  public void pad() throws Exception {
+    // + lpad
+    String query = "SELECT\n" +
+        "rpad(cast(sales_city as varchar(10)), 10, 'A') as c,\n" +
+        "rpad(cast(sales_city as varchar(10)), 0, 'A') as c1,\n" +
+        "rpad(cast(sales_city as varchar(10)), -1, 'A') as c2,\n" +
+        "rpad(cast(sales_city as varchar(10)), 9, 'A') as c3,\n" +
+        "rpad(sales_city, 10, 'A') as c4\n" + // works without initial precision :)
+        "FROM cp.`region.json` LIMIT 0";
     PreparedStatement preparedStatement = createPrepareStmt(query, false, null);
     System.out.println(preparedStatement.getColumnsList());
 
 
-    test("alter session set `planner.enable_limit0_optimization` = true");
+/*    test("alter session set `planner.enable_limit0_optimization` = true");
     preparedStatement = createPrepareStmt(query, false, null);
-    System.out.println(preparedStatement.getColumnsList());
+    System.out.println(preparedStatement.getColumnsList());*/
   }
 
   @Test
@@ -368,8 +433,43 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     }
   }
 
+  //todo test queries with limit 0 and without and then with enabled limit 0 optimization
   @Test
-  public void queryWithVarLenCastForDecimal() throws Exception {
+  public void functionsWithTheSameScalarStringSize() throws Exception {
+    String query = "select\n" +
+        "lower(sales_city) as lower_col,\n" +
+        "upper(sales_city) as upper_col,\n" +
+        "initcap(sales_city) as initcap_col,\n" +
+        "reverse(sales_city) as reverse_col,\n" +
+        "lower(cast(sales_city as varchar(30))) as lower_cast_col,\n" +
+        "upper(cast(sales_city as varchar(30))) as upper_cast_col,\n" +
+        "initcap(cast(sales_city as varchar(30))) as initcap_cast_col,\n" +
+        "reverse(cast(sales_city as varchar(30))) as reverse_cast_col\n" +
+        "from cp.`region.json` limit 0";
+
+    List<ExpectedColumnResult> expMetadata = ImmutableList.of(
+        new ExpectedColumnResult("lower_col", "CHARACTER VARYING", true, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName()),
+        new ExpectedColumnResult("upper_col", "CHARACTER VARYING", true, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName()),
+        new ExpectedColumnResult("initcap_col", "CHARACTER VARYING", true, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName()),
+        new ExpectedColumnResult("reverse_col", "CHARACTER VARYING", true, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName()),
+        new ExpectedColumnResult("lower_cast_col", "CHARACTER VARYING", true, 30, 30, 0, false, String.class.getName()),
+        new ExpectedColumnResult("upper_cast_col", "CHARACTER VARYING", true, 30, 30, 0, false, String.class.getName()),
+        new ExpectedColumnResult("initcap_cast_col", "CHARACTER VARYING", true, 30, 30, 0, false, String.class.getName()),
+        new ExpectedColumnResult("reverse_cast_col", "CHARACTER VARYING", true, 30, 30, 0, false, String.class.getName())
+    );
+
+    verifyMetadata(expMetadata, createPrepareStmt(query, false, null).getColumnsList());
+
+    try {
+      test("alter session set `planner.enable_limit0_optimization` = true");
+      verifyMetadata(expMetadata, createPrepareStmt(query, false, null).getColumnsList());
+    } finally {
+      test("alter session reset `planner.enable_limit0_optimization`");
+    }
+  }
+
+  @Test
+  public void queryWithScalarStringCastForDecimal() throws Exception {
     try {
       test("alter session set `planner.enable_decimal_data_type` = true");
       String query = "select cast(commission_pct as varchar(50)) as commission_pct from cp.`parquet/fixedlenDecimal.parquet` limit 1";
@@ -429,25 +529,6 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     System.out.println(createPrepareStmt(query, false, null).getColumnsList());
 
         System.out.println("-------------LIMIT 0 OPTIMIZATION-------------");
-    try {
-      test("alter session set `planner.enable_limit0_optimization` = true");
-      System.out.println(createPrepareStmt(query, false, null).getColumnsList());
-    } finally {
-      test("alter session reset `planner.enable_limit0_optimization`");
-    }
-  }
-
-  @Test
-  public void sameSize() throws Exception {
-    String query = "select cast(varchar_col as varchar(30)) as c,\n" +
-        " upper(cast(varchar_col as varchar(30))) as uc,\n" +
-        " initcap(cast(varchar_col as varchar(30))) as ic,\n" +
-        " lower(cast(varchar_col as varchar(30))) as lc,\n" +
-        " reverse(cast(varchar_col as varchar(30))) as rc\n" +
-        "from cp.`/parquet/alltypes.json`";
-    System.out.println(createPrepareStmt(query, false, null).getColumnsList());
-
-    System.out.println("-------------LIMIT 0 OPTIMIZATION-------------");
     try {
       test("alter session set `planner.enable_limit0_optimization` = true");
       System.out.println(createPrepareStmt(query, false, null).getColumnsList());
