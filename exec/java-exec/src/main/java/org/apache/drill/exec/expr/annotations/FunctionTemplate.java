@@ -107,10 +107,11 @@ public @interface FunctionTemplate {
     DECIMAL_SET_SCALE,
     DECIMAL_ZERO_SCALE,
     SC_BOOLEAN_OPERATOR,
-    SCALAR_STRING_CAST,
-    SCALAR_STRING_CONCAT,
-    SCALAR_SUBSTRING,
-    SAME_MAJOR_TYPE
+    STRING_CAST,
+    CONCAT,
+    SUBSTRING,
+    PAD,
+    SAME_IN_OUT_TYPE
   }
 
   public static enum FunctionCostCategory {

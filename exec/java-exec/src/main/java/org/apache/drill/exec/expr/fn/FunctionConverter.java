@@ -218,15 +218,16 @@ public class FunctionConverter {
             return new DrillDecimalSetScaleFuncHolder(functionAttributes, initializer);
         case DECIMAL_ZERO_SCALE:
             return new DrillDecimalZeroScaleFuncHolder(functionAttributes, initializer);
-        case SCALAR_STRING_CAST:
-            return new DrillScalarStringCastFuncHolder(functionAttributes, initializer);
-        case SCALAR_STRING_CONCAT:
-            return new DrillScalarStringConcatFuncHolder(functionAttributes, initializer);
-        case SCALAR_SUBSTRING:
-          //todo
-          return new DrillScalarStringConcatFuncHolder(functionAttributes, initializer);
-        case SAME_MAJOR_TYPE:
-          return new DrillSameMajorTypeFuncHolder(functionAttributes, initializer);
+        case STRING_CAST:
+            return new DrillStringCastFuncHolder(functionAttributes, initializer);
+        case CONCAT:
+            return new DrillConcatFuncHolder(functionAttributes, initializer);
+        case SUBSTRING:
+          return new DrillSubstringFuncHolder(functionAttributes, initializer);
+        case PAD:
+          return new DrillPadFuncHolder(functionAttributes, initializer);
+        case SAME_IN_OUT_TYPE:
+          return new DrillSameInOutTypeFuncHolder(functionAttributes, initializer);
         case HOLISTIC_AGGREGATE:
         case RANGE_AGGREGATE:
         default:

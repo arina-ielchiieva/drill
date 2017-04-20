@@ -16,46 +16,27 @@
  */
 package org.apache.drill.exec.expr.fn;
 
-import com.google.common.base.Preconditions;
-import com.google.common.primitives.Ints;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.types.TypeProtos;
 
 import java.util.List;
 
-/**
- * Function holder for functions with function scope set as
- * {@link org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope#SCALAR_STRING_CAST}.
- */
-public class DrillScalarStringCastFuncHolder extends DrillSimpleFuncHolder {
+public class DrillPadFuncHolder extends DrillSimpleFuncHolder {
 
-  public DrillScalarStringCastFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
+  public DrillPadFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
     super(functionAttributes, initializer);
   }
 
-  /**
-   * Defines function return type and sets cast length as type precision
-   * if cast length is simple long expression.
-   *
-   * @param logicalExpressions logical expressions
-   * @return return type
-   */
   @Override
   public TypeProtos.MajorType getReturnType(List<LogicalExpression> logicalExpressions) {
-    Preconditions.checkState(logicalExpressions.size() == 2,
-        "Scalar string cast function invoked with incorrect number of arguments: " + logicalExpressions.size());
-
     TypeProtos.MajorType returnType = super.getReturnType(logicalExpressions);
-    LogicalExpression logicalExpression = logicalExpressions.get(1);
-    if (logicalExpressions.get(1) instanceof ValueExpressions.LongExpression) {
-      long precision = ((ValueExpressions.LongExpression) logicalExpression).getLong();
-      return TypeProtos.MajorType.newBuilder()
-          .setMinorType(returnType.getMinorType())
-          .setMode(returnType.getMode())
-          .setPrecision(Ints.checkedCast(precision))
-          .build();
+    if (logicalExpressions.get(1).iterator().hasNext() &&
+        logicalExpressions.get(1).iterator().next() instanceof ValueExpressions.IntExpression) {
+      int precision = ((ValueExpressions.IntExpression) logicalExpressions.get(1).iterator().next()).getInt();
+      return returnType.toBuilder().setPrecision(Math.max(precision, 0)).build();
     }
     return returnType;
   }
+
 }

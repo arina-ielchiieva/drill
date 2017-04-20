@@ -483,7 +483,7 @@ public class StringFunctions{
   /*
    * Convert string to lower case.
    */
-  @FunctionTemplate(name = "lower", scope = FunctionScope.SAME_MAJOR_TYPE, nulls = NullHandling.NULL_IF_NULL)
+  @FunctionTemplate(name = "lower", scope = FunctionScope.SAME_IN_OUT_TYPE, nulls = NullHandling.NULL_IF_NULL)
   public static class LowerCase implements DrillSimpleFunc {
     @Param VarCharHolder input;
     @Output VarCharHolder out;
@@ -515,7 +515,7 @@ public class StringFunctions{
   /*
    * Convert string to upper case.
    */
-  @FunctionTemplate(name = "upper", scope = FunctionScope.SAME_MAJOR_TYPE, nulls = NullHandling.NULL_IF_NULL)
+  @FunctionTemplate(name = "upper", scope = FunctionScope.SAME_IN_OUT_TYPE, nulls = NullHandling.NULL_IF_NULL)
   public static class UpperCase implements DrillSimpleFunc {
 
     @Param VarCharHolder input;
@@ -549,7 +549,7 @@ public class StringFunctions{
   // Follow Postgre.
   //  -- Valid "offset": [1, string_length],
   //  -- Valid "length": [1, up to string_length - offset + 1], if length > string_length - offset +1, get the substr up to the string_lengt.
-  @FunctionTemplate(names = {"substring", "substr"}, scope = FunctionScope.SIMPLE, nulls = NullHandling.NULL_IF_NULL)
+  @FunctionTemplate(names = {"substring", "substr"}, scope = FunctionScope.SUBSTRING, nulls = NullHandling.NULL_IF_NULL)
   public static class Substring implements DrillSimpleFunc {
     @Param VarCharHolder string;
     @Param BigIntHolder offset;
@@ -587,7 +587,7 @@ public class StringFunctions{
     }
   }
 
-  @FunctionTemplate(names = {"substring", "substr"}, scope = FunctionScope.SIMPLE, nulls = NullHandling.NULL_IF_NULL)
+  @FunctionTemplate(names = {"substring", "substr"}, scope = FunctionScope.SUBSTRING, nulls = NullHandling.NULL_IF_NULL)
   public static class SubstringOffset implements DrillSimpleFunc {
     @Param VarCharHolder string;
     @Param BigIntHolder offset;
@@ -620,7 +620,7 @@ public class StringFunctions{
     }
   }
 
-  @FunctionTemplate(names = {"substring", "substr" }, scope = FunctionScope.SIMPLE, nulls = NullHandling.INTERNAL)
+  @FunctionTemplate(names = {"substring", "substr" }, scope = FunctionScope.SUBSTRING, nulls = NullHandling.INTERNAL)
   public static class SubstringRegex implements DrillSimpleFunc {
     @Param VarCharHolder input;
     @Param(constant=true) VarCharHolder pattern;
@@ -652,7 +652,7 @@ public class StringFunctions{
     }
   }
 
-  @FunctionTemplate(names = {"substring", "substr" }, scope = FunctionScope.SIMPLE, nulls = NullHandling.INTERNAL)
+  @FunctionTemplate(names = {"substring", "substr" }, scope = FunctionScope.SUBSTRING, nulls = NullHandling.INTERNAL)
   public static class SubstringRegexNullable implements DrillSimpleFunc {
     @Param NullableVarCharHolder input;
     @Param(constant=true) VarCharHolder pattern;
@@ -775,7 +775,7 @@ public class StringFunctions{
   }
 
 
-  @FunctionTemplate(name = "initcap", scope = FunctionScope.SAME_MAJOR_TYPE, nulls = NullHandling.NULL_IF_NULL)
+  @FunctionTemplate(name = "initcap", scope = FunctionScope.SAME_IN_OUT_TYPE, nulls = NullHandling.NULL_IF_NULL)
   public static class InitCap implements DrillSimpleFunc {
     @Param VarCharHolder input;
     @Output VarCharHolder out;
@@ -860,7 +860,7 @@ public class StringFunctions{
    * Fill up the string to length 'length' by prepending the characters 'fill' in the beginning of 'text'.
    * If the string is already longer than length, then it is truncated (on the right).
    */
-  @FunctionTemplate(name = "lpad", scope = FunctionScope.SIMPLE, nulls = NullHandling.NULL_IF_NULL)
+  @FunctionTemplate(name = "lpad", scope = FunctionScope.PAD, nulls = NullHandling.NULL_IF_NULL)
   public static class Lpad implements DrillSimpleFunc {
     @Param  VarCharHolder text;
     @Param  BigIntHolder length;
@@ -935,7 +935,7 @@ public class StringFunctions{
    * Fill up the string to length 'length' by prepending the character ' ' in the beginning of 'text'.
    * If the string is already longer than length, then it is truncated (on the right).
    */
-  @FunctionTemplate(name = "lpad", scope = FunctionScope.SIMPLE, nulls = NullHandling.NULL_IF_NULL)
+  @FunctionTemplate(name = "lpad", scope = FunctionScope.PAD, nulls = NullHandling.NULL_IF_NULL)
   public static class LpadTwoArg implements DrillSimpleFunc {
     @Param  VarCharHolder text;
     @Param  BigIntHolder length;
@@ -994,7 +994,7 @@ public class StringFunctions{
    * Fill up the string to length "length" by appending the characters 'fill' at the end of 'text'
    * If the string is already longer than length then it is truncated.
    */
-  @FunctionTemplate(name = "rpad", scope = FunctionScope.SIMPLE, nulls = NullHandling.NULL_IF_NULL)
+  @FunctionTemplate(name = "rpad", scope = FunctionScope.PAD, nulls = NullHandling.NULL_IF_NULL)
   public static class Rpad implements DrillSimpleFunc {
     @Param  VarCharHolder text;
     @Param  BigIntHolder length;
@@ -1072,7 +1072,7 @@ public class StringFunctions{
    * Fill up the string to length "length" by appending the characters ' ' at the end of 'text'
    * If the string is already longer than length then it is truncated.
    */
-  @FunctionTemplate(name = "rpad", scope = FunctionScope.SIMPLE, nulls = NullHandling.NULL_IF_NULL)
+  @FunctionTemplate(name = "rpad", scope = FunctionScope.PAD, nulls = NullHandling.NULL_IF_NULL)
   public static class RpadTwoArg implements DrillSimpleFunc {
     @Param  VarCharHolder text;
     @Param  BigIntHolder length;
@@ -1389,7 +1389,7 @@ public class StringFunctions{
 
   }
 
-  @FunctionTemplate(name = "concatOperator", scope = FunctionScope.SCALAR_STRING_CONCAT, nulls = NullHandling.NULL_IF_NULL)
+  @FunctionTemplate(name = "concatOperator", scope = FunctionScope.CONCAT, nulls = NullHandling.NULL_IF_NULL)
   public static class ConcatOperator implements DrillSimpleFunc {
     @Param  VarCharHolder left;
     @Param  VarCharHolder right;
@@ -1418,7 +1418,7 @@ public class StringFunctions{
 
   //Concatenate the text representations of the arguments. NULL arguments are ignored.
   //TODO: NullHanding.INTERNAL for DrillSimpleFunc requires change in code generation.
-  @FunctionTemplate(name = "concat", scope = FunctionScope.SCALAR_STRING_CONCAT, nulls = NullHandling.INTERNAL)
+  @FunctionTemplate(name = "concat", scope = FunctionScope.CONCAT, nulls = NullHandling.INTERNAL)
   public static class Concat implements DrillSimpleFunc {
     @Param  VarCharHolder left;
     @Param  VarCharHolder right;
@@ -1445,7 +1445,7 @@ public class StringFunctions{
     }
   }
 
-  @FunctionTemplate(name = "concat", scope = FunctionScope.SCALAR_STRING_CONCAT, nulls = NullHandling.INTERNAL)
+  @FunctionTemplate(name = "concat", scope = FunctionScope.CONCAT, nulls = NullHandling.INTERNAL)
   public static class ConcatRightNullInput implements DrillSimpleFunc {
     @Param  VarCharHolder left;
     @Param  NullableVarCharHolder right;
@@ -1474,7 +1474,7 @@ public class StringFunctions{
     }
   }
 
-  @FunctionTemplate(name = "concat", scope = FunctionScope.SCALAR_STRING_CONCAT, nulls = NullHandling.INTERNAL)
+  @FunctionTemplate(name = "concat", scope = FunctionScope.CONCAT, nulls = NullHandling.INTERNAL)
   public static class ConcatLeftNullInput implements DrillSimpleFunc {
     @Param  NullableVarCharHolder left;
     @Param  VarCharHolder right;
@@ -1503,7 +1503,7 @@ public class StringFunctions{
     }
   }
 
-  @FunctionTemplate(name = "concat", scope = FunctionScope.SCALAR_STRING_CONCAT, nulls = NullHandling.INTERNAL)
+  @FunctionTemplate(name = "concat", scope = FunctionScope.CONCAT, nulls = NullHandling.INTERNAL)
   public static class ConcatBothNullInput implements DrillSimpleFunc {
     @Param  NullableVarCharHolder left;
     @Param  NullableVarCharHolder right;
@@ -1682,7 +1682,7 @@ public class StringFunctions{
   /**
   * Returns the reverse string for given input.
   */
-  @FunctionTemplate(name = "reverse", scope = FunctionScope.SAME_MAJOR_TYPE, nulls = NullHandling.NULL_IF_NULL)
+  @FunctionTemplate(name = "reverse", scope = FunctionScope.SAME_IN_OUT_TYPE, nulls = NullHandling.NULL_IF_NULL)
   public static class ReverseString implements DrillSimpleFunc {
     @Param  VarCharHolder in;
     @Output VarCharHolder out;
