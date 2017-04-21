@@ -298,7 +298,7 @@ public abstract class DrillFuncHolder extends AbstractFuncHolder {
   public MajorType getReturnType(final List<LogicalExpression> logicalExpressions) {
     if (returnValue.type.getMinorType() == MinorType.UNION) {
       final Set<MinorType> subTypes = Sets.newHashSet();
-      for(final ValueReference ref : parameters) {
+      for (final ValueReference ref : parameters) {
         subTypes.add(ref.getType().getMinorType());
       }
 
@@ -306,7 +306,7 @@ public abstract class DrillFuncHolder extends AbstractFuncHolder {
           .setMinorType(MinorType.UNION)
           .setMode(DataMode.OPTIONAL);
 
-      for(final MinorType subType : subTypes) {
+      for (final MinorType subType : subTypes) {
         builder.addSubType(subType);
       }
       return builder.build();
@@ -332,7 +332,7 @@ public abstract class DrillFuncHolder extends AbstractFuncHolder {
 
   /**
    * Calculates return type data mode based on give logical expressions.
-   * If null handling strategy is internal, return non-nullable data mode.
+   * If null handling strategy is internal, return return value data mode.
    * If null handling strategy is null if null and at least one of the input types are nullable,
    * return nullable data mode.
    *
@@ -347,7 +347,7 @@ public abstract class DrillFuncHolder extends AbstractFuncHolder {
         }
       }
     }
-    return DataMode.REQUIRED;
+    return returnValue.type.getMode();
   }
 
   @Override
