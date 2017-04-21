@@ -502,7 +502,7 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
     }*/
   }
 
-  @Test
+  //@Test
   public void requireOptionalUnion() throws Exception {
     test("use dfs_test.tmp");
     test("create or replace view optional_type_v as select cast(c_varchar as varchar(100))\t\tas c_varchar from\n" +

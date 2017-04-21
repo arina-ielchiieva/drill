@@ -868,11 +868,10 @@ public class ExpressionTreeMaterializer {
         List<LogicalExpression> newArgs = Lists.newArrayList();
         newArgs.add(input);  //input_expr
 
-        if (Types.isScalarStringType(type)) {
+        //VarLen type
+        if (!Types.isFixedWidthType(type)) {
           newArgs.add(new ValueExpressions.LongExpression(type.getPrecision(), null));
-        }
-
-        if (CoreDecimalUtility.isDecimalType(type)) {
+        }  if (CoreDecimalUtility.isDecimalType(type)) {
             newArgs.add(new ValueExpressions.LongExpression(type.getPrecision(), null));
             newArgs.add(new ValueExpressions.LongExpression(type.getScale(), null));
         }
