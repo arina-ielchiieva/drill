@@ -20,6 +20,7 @@ import com.google.common.primitives.Ints;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.types.TypeProtos;
+import org.apache.drill.common.types.Types;
 
 import java.util.List;
 

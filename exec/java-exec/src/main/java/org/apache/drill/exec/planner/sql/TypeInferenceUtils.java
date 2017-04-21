@@ -24,6 +24,7 @@ import com.google.common.collect.Lists;
 import org.apache.calcite.avatica.util.TimeUnit;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
+import org.apache.calcite.rex.RexCallBinding;
 import org.apache.calcite.sql.SqlCallBinding;
 import org.apache.calcite.sql.SqlCharStringLiteral;
 import org.apache.calcite.sql.SqlDynamicParam;
@@ -437,9 +438,9 @@ public class TypeInferenceUtils {
           totalPrecision = Types.MAX_VARCHAR_LENGTH;
           break;
         }
-
       }
 
+      totalPrecision = totalPrecision > Types.MAX_VARCHAR_LENGTH ? Types.MAX_VARCHAR_LENGTH : totalPrecision;
       boolean isNullable = isNullIfNull && isNullable(opBinding.collectOperandTypes());
 
       return opBinding.getTypeFactory().createTypeWithNullability(
@@ -471,13 +472,20 @@ public class TypeInferenceUtils {
 
     @Override
     public RelDataType inferReturnType(SqlOperatorBinding opBinding) {
+      if (opBinding instanceof SqlCallBinding) {
+        SqlNode secondOperand = ((SqlCallBinding) opBinding).operand(1);
+        Preconditions.checkArgument(secondOperand instanceof SqlNumericLiteral, "Second operand in pad functions must be numeric");
+        int precision = ((SqlNumericLiteral) secondOperand).intValue(true);
 
-      SqlNode secondOperand = ((SqlCallBinding) opBinding).operand(1);
-      Preconditions.checkArgument(secondOperand instanceof SqlNumericLiteral, "Second operand in pad functions must be numeric");
-      int precision = ((SqlNumericLiteral) secondOperand).intValue(true);
+        RelDataType sqlType = opBinding.getTypeFactory().createSqlType(SqlTypeName.VARCHAR, Math.max(precision, 0));
+        return opBinding.getTypeFactory().createTypeWithNullability(sqlType, isNullable(opBinding.collectOperandTypes()));
+      }
 
-      RelDataType sqlType = opBinding.getTypeFactory().createSqlType(SqlTypeName.VARCHAR, Math.max(precision, 0));
-      return opBinding.getTypeFactory().createTypeWithNullability(sqlType, isNullable(opBinding.collectOperandTypes()));
+      return createCalciteTypeWithNullability(
+          opBinding.getTypeFactory(),
+          SqlTypeName.VARCHAR,
+          isNullable(opBinding.collectOperandTypes()));
+
     }
   }
 
@@ -498,12 +506,18 @@ public class TypeInferenceUtils {
 
     @Override
     public RelDataType inferReturnType(SqlOperatorBinding opBinding) {
-      final RelDataTypeFactory factory = opBinding.getTypeFactory();
+      if (!(opBinding instanceof SqlCallBinding)) {
+        return createCalciteTypeWithNullability(
+            opBinding.getTypeFactory(),
+            SqlTypeName.VARCHAR,
+            isNullable(opBinding.collectOperandTypes()));
+      }
 
+      RelDataTypeFactory factory = opBinding.getTypeFactory();
       boolean isNullable = isNullable(opBinding.collectOperandTypes());
 
       int sourceLength = isScalarStringType(opBinding.getOperandType(0).getSqlTypeName()) ?
-          opBinding.getOperandType(0).getPrecision() : RelDataType.PRECISION_NOT_SPECIFIED;
+          opBinding.getOperandType(0).getPrecision() : Types.MAX_VARCHAR_LENGTH;
 
       boolean offsetOnly = false;
 
@@ -513,7 +527,7 @@ public class TypeInferenceUtils {
           offsetOnly = true;
         } else {
           // substring(source, regexp)
-          RelDataType sqlType = factory.createSqlType(SqlTypeName.VARCHAR, sourceLength == RelDataType.PRECISION_NOT_SPECIFIED ? Types.MAX_VARCHAR_LENGTH : sourceLength);
+          RelDataType sqlType = factory.createSqlType(SqlTypeName.VARCHAR, sourceLength);
           return factory.createTypeWithNullability(sqlType, isNullable);
         }
       }
@@ -522,7 +536,7 @@ public class TypeInferenceUtils {
       Preconditions.checkArgument(secondOperand instanceof SqlNumericLiteral, "Position operands in substring functions must be numeric");
 
       int offset = ((SqlNumericLiteral) secondOperand).intValue(true);
-      int length = RelDataType.PRECISION_NOT_SPECIFIED;
+      int length = Types.MAX_VARCHAR_LENGTH;
 
       if (!offsetOnly) {
         // substring(source, offset, length)
@@ -532,10 +546,6 @@ public class TypeInferenceUtils {
       }
 
       int targetLength = StringFunctionHelpers.calculateSubstringLength(sourceLength, offset, length, !offsetOnly);
-      if (targetLength == RelDataType.PRECISION_NOT_SPECIFIED) {
-        return createCalciteTypeWithNullability(factory, SqlTypeName.VARCHAR, isNullable);
-      }
-
       RelDataType sqlType = factory.createSqlType(SqlTypeName.VARCHAR, targetLength);
       return factory.createTypeWithNullability(sqlType, isNullable);
     }

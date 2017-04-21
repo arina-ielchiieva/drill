@@ -212,10 +212,12 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
 
     String query = "SELECT " +
         //"concat(registration, '_D'), " +
-        "concat(voter_id, '_D') FROM voter_csv_v limit 0";
+        //"concat(voter_id, '_D') FROM voter_csv_v limit 0";
+        "substr(voter_id, 2) FROM voter_csv_v limit 0";
     //String query = "SELECT * FROM voter_csv_v where voter_id=10 limit 0";
-    //PreparedStatement preparedStatement1 = createPrepareStmt(query, false, null);
-    //System.out.println(preparedStatement1.getColumnsList());
+    PreparedStatement preparedStatement1 = createPrepareStmt(query, false, null);
+    System.out.println(preparedStatement1.getColumnsList());
+    System.out.println("--------------------LIMIT 0---------------------");
     test("alter session set `planner.enable_limit0_optimization` = true");
     PreparedStatement preparedStatement2 = createPrepareStmt(query, false, null);
     System.out.println(preparedStatement2.getColumnsList());
@@ -315,7 +317,7 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
         "substring(cast(sales_city as varchar(10)), 11, 2) as unk6,\n" + // 0
         "substring(cast(sales_city as varchar(10)), 5, 10) as unk7,\n" + // 6
         "substring(cast(sales_city as varchar(10)), 5) as unk8,\n" + // 6
-        "substring(sales_city, 5) as unk9,\n" + // 65536
+        "substring(sales_city, 5) as unk9,\n" + // 65532
         "substring(cast(sales_city as varchar(10)), 10) as unk10,\n" + // 1
         "substring(cast(sales_city as varchar(10)), 11) as unk11,\n" + // 0
         "substring(sales_city, -1) as unk12,\n" + // 0
@@ -338,27 +340,9 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
 
   @Test
   public void testEachSubstring() throws Exception {
-    String query = "select\n" +
-/*        "substring(sales_city, 1, 2) as unk,\n" + // 2
-        "substring(cast(sales_city as varchar(10)), 1, 2) as unk1,\n" + // 2
-        "substring(cast(sales_city as varchar(1)), 1, 2) as unk2,\n" + // 1
-        "substring(cast(sales_city as varchar(2)), 1, 2) as unk3,\n" + // 2
-        "substring(cast(sales_city as varchar(10)), -1, 2) as unk4,\n" + // 0
-        "substring(cast(sales_city as varchar(10)), 1, -2) as unk5,\n" + // 0
-        "substring(cast(sales_city as varchar(10)), 11, 2) as unk6,\n" + // 0
-        "substring(cast(sales_city as varchar(10)), 5, 10) as unk7,\n" + // 6
-        "substring(cast(sales_city as varchar(10)), 5) as unk8,\n" + // 6
-        "substring(sales_city, 5) as unk9,\n" + // 65536
-        "substring(cast(sales_city as varchar(10)), 10) as unk10,\n" + // 1
-        "substring(cast(sales_city as varchar(10)), 11) as unk11,\n" + // 0
-        "substring(sales_city, -1) as unk12,\n" + // 0
-        "substring(sales_city, -1, 2) as unk13,\n" + // 0
-        "substring(sales_city, 1, -2) as unk14,\n" + // 0
-        "substring(sales_city, '^N') as unk15,\n" + // 65536
-        "substring(sales_city, 0, 2) as unk16,\n" + // 0
-        "substring(sales_city, 1, 0) as unk17,\n" + // 0*/
-        "substring(sales_city, 0) as unk18\n" + // 0
-        "from cp.`region.json` limit 0";
+    String query = "select n_name from cp.`tpch/nation.parquet` order by substr(n_name, 2, 5) limit 3";
+    //String query = "select n_comment, n_name, n_nationkey, n_regionkey from cp.`tpch/nation.parquet` order by lpad(n_name, 10) limit 3";
+    //String query = "select n_name from cp.`tpch/nation.parquet` order by lpad(n_name, 10) limit 3";
 
     //test("alter session set `planner.enable_limit0_optimization` = true");
     List<ResultColumnMetadata> columnsList = createPrepareStmt(query, false, null).getColumnsList();
