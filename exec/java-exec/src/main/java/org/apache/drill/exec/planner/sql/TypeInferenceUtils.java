@@ -513,7 +513,8 @@ public class TypeInferenceUtils {
           offsetOnly = true;
         } else {
           // substring(source, regexp)
-          return createCalciteTypeWithNullability(factory, SqlTypeName.VARCHAR, isNullable);
+          RelDataType sqlType = factory.createSqlType(SqlTypeName.VARCHAR, sourceLength == RelDataType.PRECISION_NOT_SPECIFIED ? Types.MAX_VARCHAR_LENGTH : sourceLength);
+          return factory.createTypeWithNullability(sqlType, isNullable);
         }
       }
 

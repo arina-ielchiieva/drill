@@ -111,7 +111,7 @@ public @interface FunctionTemplate {
     CONCAT,
     SUBSTRING,
     PAD,
-    SAME_IN_OUT_TYPE
+    SAME_IN_OUT_LENGTH
   }
 
   public static enum FunctionCostCategory {

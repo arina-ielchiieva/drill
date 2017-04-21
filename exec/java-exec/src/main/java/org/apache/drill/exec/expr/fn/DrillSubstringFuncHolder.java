@@ -44,7 +44,7 @@ public class DrillSubstringFuncHolder extends DrillSimpleFuncHolder {
         offsetOnly = true;
       } else {
         // substring(source, regexp)
-        return returnType;
+        return sourceLength == RelDataType.PRECISION_NOT_SPECIFIED ? returnType : returnType.toBuilder().setPrecision(sourceLength).build();
       }
     }
 

@@ -226,8 +226,8 @@ public class FunctionConverter {
           return new DrillSubstringFuncHolder(functionAttributes, initializer);
         case PAD:
           return new DrillPadFuncHolder(functionAttributes, initializer);
-        case SAME_IN_OUT_TYPE:
-          return new DrillSameInOutTypeFuncHolder(functionAttributes, initializer);
+        case SAME_IN_OUT_LENGTH:
+          return new DrillSameInOutLengthFuncHolder(functionAttributes, initializer);
         case HOLISTIC_AGGREGATE:
         case RANGE_AGGREGATE:
         default:

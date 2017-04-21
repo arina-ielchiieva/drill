@@ -632,10 +632,10 @@ public class TestEarlyLimit0Optimization extends BaseTestQuery {
     checkThatQueryPlanIsOptimized(query);
   }
 
-  public void substringTest(final String query) throws Exception {
+  public void substringTest(final String query, int precision) throws Exception {
     @SuppressWarnings("unchecked")
     final List<Pair<SchemaPath, TypeProtos.MajorType>> expectedSchema = Lists.newArrayList(
-        Pair.of(SchemaPath.getSimplePath("s"), Types.withPrecision(TypeProtos.MinorType.VARCHAR, TypeProtos.DataMode.OPTIONAL, Types.MAX_VARCHAR_LENGTH)));
+        Pair.of(SchemaPath.getSimplePath("s"), Types.withPrecision(TypeProtos.MinorType.VARCHAR, TypeProtos.DataMode.OPTIONAL, precision)));
 
     testBuilder()
         .sqlQuery(query)
@@ -654,11 +654,11 @@ public class TestEarlyLimit0Optimization extends BaseTestQuery {
 
   @Test
   public void substring() throws Exception {
-    substringTest("SELECT SUBSTRING(full_name, 1, 5) AS s FROM " + viewName);
+    substringTest("SELECT SUBSTRING(full_name, 1, 5) AS s FROM " + viewName, 5);
   }
 
   @Test
   public void substr() throws Exception {
-    substringTest("SELECT SUBSTR(full_name, 1, 5) AS s FROM " + viewName);
+    substringTest("SELECT SUBSTR(full_name, 1, 5) AS s FROM " + viewName, 5);
   }
 }
