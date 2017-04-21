@@ -27,7 +27,6 @@ import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.common.expression.ExpressionPosition;
 import org.apache.drill.common.expression.FunctionHolderExpression;
 import org.apache.drill.common.expression.LogicalExpression;
-import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.DataMode;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.TypeProtos.MinorType;
@@ -312,16 +311,7 @@ public abstract class DrillFuncHolder extends AbstractFuncHolder {
       }
       return builder.build();
     }
-
-    if(nullHandling == NullHandling.NULL_IF_NULL) {
-      // if any one of the input types is nullable, then return nullable return type
-      for(final LogicalExpression logicalExpression : logicalExpressions) {
-        if(logicalExpression.getMajorType().getMode() == TypeProtos.DataMode.OPTIONAL) {
-          return Types.optional(returnValue.type.getMinorType());
-        }
-      }
-    }
-    return returnValue.type;
+    return returnValue.type.toBuilder().setMode(getReturnTypeDataMode(logicalExpressions)).build();
   }
 
   public NullHandling getNullHandling() {
@@ -338,6 +328,26 @@ public abstract class DrillFuncHolder extends AbstractFuncHolder {
 
   public int getCostCategory() {
     return attributes.getCostCategory().getValue();
+  }
+
+  /**
+   * Calculates return type data mode based on give logical expressions.
+   * If null handling strategy is internal, return non-nullable data mode.
+   * If null handling strategy is null if null and at least one of the input types are nullable,
+   * return nullable data mode.
+   *
+   * @param logicalExpressions logical expressions
+   * @return data mode
+   */
+  public DataMode getReturnTypeDataMode(final List<LogicalExpression> logicalExpressions) {
+    if (nullHandling == NullHandling.NULL_IF_NULL) {
+      for (final LogicalExpression logicalExpression : logicalExpressions) {
+        if (logicalExpression.getMajorType().getMode() == DataMode.OPTIONAL) {
+          return DataMode.OPTIONAL;
+        }
+      }
+    }
+    return DataMode.REQUIRED;
   }
 
   @Override

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -65,7 +64,6 @@ import org.apache.drill.common.expression.ValueExpressions.TimeStampExpression;
 import org.apache.drill.common.expression.fn.CastFunctions;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
 import org.apache.drill.common.expression.visitors.ConditionalExprOptimizer;
-import org.apache.drill.common.expression.visitors.ExprVisitor;
 import org.apache.drill.common.expression.visitors.ExpressionValidator;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.DataMode;
@@ -81,7 +79,6 @@ import org.apache.drill.exec.expr.fn.DrillFuncHolder;
 import org.apache.drill.exec.expr.fn.ExceptionFunction;
 import org.apache.drill.exec.expr.fn.FunctionLookupContext;
 import org.apache.drill.exec.expr.stat.TypedFieldExpr;
-import org.apache.drill.exec.record.MaterializeVisitor;
 import org.apache.drill.exec.record.TypedFieldId;
 import org.apache.drill.exec.record.VectorAccessible;
 import org.apache.drill.exec.resolver.FunctionResolver;
@@ -443,7 +440,6 @@ public class ExpressionTreeMaterializer {
               parmType = MajorType.newBuilder().setMinorType(parmType.getMinorType()).setMode(parmType.getMode()).
                   setScale(currentArg.getMajorType().getScale()).setPrecision(computePrecision(currentArg)).build();
             }
-            //todo can we upgrade for varchar?
             argsWithCast.add(addCastExpression(currentArg, parmType, functionLookupContext, errorCollector));
           }
         }
@@ -470,7 +466,6 @@ public class ExpressionTreeMaterializer {
               parmType = MajorType.newBuilder().setMinorType(parmType.getMinorType()).setMode(parmType.getMode()).
                   setScale(currentArg.getMajorType().getScale()).setPrecision(computePrecision(currentArg)).build();
             }
-            //todo can we upgrade for varchar?
             extArgsWithCast.add(addCastExpression(call.args.get(i), parmType, functionLookupContext, errorCollector));
           }
         }
@@ -617,7 +612,6 @@ public class ExpressionTreeMaterializer {
       return new FunctionCall(isFuncName, args, ExpressionPosition.UNKNOWN);
     }
 
-    //todo check if we need make any changes here for data types merging
     public LogicalExpression visitIfExpression(IfExpression ifExpr, FunctionLookupContext functionLookupContext) {
       IfExpression.IfCondition conditions = ifExpr.ifCondition;
       LogicalExpression newElseExpr = ifExpr.elseExpression.accept(this, functionLookupContext);
@@ -861,27 +855,9 @@ public class ExpressionTreeMaterializer {
         // if the type still isn't fully bound, leave as cast expression.
         return new CastExpression(input, e.getMajorType(), e.getPosition());
       } else if (newMinor == MinorType.NULL) {
-        // if input is a NULL expression, remove cast expression and return a TypedNullConstant directly.
-        MajorType.Builder builder = MajorType.newBuilder()
-            .setMode(DataMode.OPTIONAL)
-            .setMinorType(e.getMajorType().getMinorType());
-
-        if (!Types.isFixedWidthType(e.getMajorType())) {
-          if (e.getMajorType().hasPrecision()) {
-            builder.setPrecision(e.getMajorType().getPrecision());
-          }
-        }
-
-        if (CoreDecimalUtility.isDecimalType(e.getMajorType())) {
-          if (e.getMajorType().hasPrecision()) {
-            builder.setPrecision(e.getMajorType().getPrecision());
-          }
-          if (e.getMajorType().hasScale()) {
-            builder.setScale(e.getMajorType().getScale());
-          }
-        }
-
-        return new TypedNullConstant(builder.build());
+        // if input is a NULL expression, remove cast expression and return a TypedNullConstant directly
+        // preserve original precision and scale if present
+        return new TypedNullConstant(e.getMajorType().toBuilder().setMode(DataMode.OPTIONAL).build());
       } else {
         // if the type is fully bound, convert to functioncall and materialze the function.
         MajorType type = e.getMajorType();
@@ -892,8 +868,7 @@ public class ExpressionTreeMaterializer {
         List<LogicalExpression> newArgs = Lists.newArrayList();
         newArgs.add(input);  //input_expr
 
-        //VarLen type
-        if (!Types.isFixedWidthType(type)) {
+        if (Types.isScalarStringType(type)) {
           newArgs.add(new ValueExpressions.LongExpression(type.getPrecision(), null));
         }
 
@@ -958,11 +933,7 @@ public class ExpressionTreeMaterializer {
         // 2) or "to" length is unknown (0 means unknown length?).
         // Case 1 and case 2 mean that cast will do nothing.
         // In other cases, cast is required to trim the "from" according to "to" length.
-        if ( (to.getPrecision() >= from.getPrecision() && from.getPrecision() > 0) || to.getPrecision() == 0) {
-          return true;
-        } else {
-          return false;
-        }
+        return (to.getPrecision() >= from.getPrecision() && from.getPrecision() > 0) || to.getPrecision() == 0;
 
       default:
         errorCollector.addGeneralError(pos, String.format("Casting rules are unknown for type %s.", from));

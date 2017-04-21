@@ -18,7 +18,6 @@ package org.apache.drill.exec.expr.fn;
 
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos;
-import org.apache.drill.common.types.Types;
 
 import java.util.List;
 
@@ -31,17 +30,26 @@ public class DrillConcatFuncHolder extends DrillSimpleFuncHolder {
   @Override
   public TypeProtos.MajorType getReturnType(List<LogicalExpression> logicalExpressions) {
     TypeProtos.MajorType returnType = super.getReturnType(logicalExpressions);
-    if (Types.isScalarStringType(returnType)) { //todo why do we check? security check?
-      int totalPrecision = 0;
-      for (LogicalExpression expression : logicalExpressions) {
-        if (expression.getMajorType().hasPrecision()) {
-          totalPrecision += expression.getMajorType().getPrecision();
-        } else {
-          return returnType;
-        }
+    int totalPrecision = 0;
+    for (LogicalExpression expression : logicalExpressions) {
+      if (expression.getMajorType().hasPrecision()) {
+        totalPrecision += expression.getMajorType().getPrecision();
+      } else {
+        //if at least one expression has unknown precision,
+        return returnType;
       }
-      return returnType.toBuilder().setPrecision(totalPrecision).build();
     }
-    return returnType;
+    return returnType.toBuilder().setPrecision(totalPrecision).build();
   }
 }
+
+/*
+    if(nullHandling == NullHandling.NULL_IF_NULL) {
+      // if any one of the input types is nullable, then return nullable return type
+      for(final LogicalExpression logicalExpression : logicalExpressions) {
+        if(logicalExpression.getMajorType().getMode() == TypeProtos.DataMode.OPTIONAL) {
+          return Types.optional(returnValue.type.getMinorType());
+        }
+      }
+    }
+ */

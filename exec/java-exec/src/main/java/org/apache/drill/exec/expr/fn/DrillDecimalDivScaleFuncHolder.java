@@ -23,7 +23,6 @@ import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.util.DecimalScalePrecisionDivideFunction;
-import org.apache.drill.exec.expr.annotations.FunctionTemplate.NullHandling;
 import org.apache.drill.exec.util.DecimalUtility;
 
 public class DrillDecimalDivScaleFuncHolder extends DrillSimpleFuncHolder{
@@ -39,19 +38,7 @@ public class DrillDecimalDivScaleFuncHolder extends DrillSimpleFuncHolder{
    */
   @Override
   public MajorType getReturnType(List<LogicalExpression> args) {
-
-    TypeProtos.DataMode mode = returnValue.type.getMode();
-
-    if (nullHandling == NullHandling.NULL_IF_NULL) {
-      // if any one of the input types is nullable, then return nullable return type
-      for (LogicalExpression e : args) {
-        if (e.getMajorType().getMode() == TypeProtos.DataMode.OPTIONAL) {
-          mode = TypeProtos.DataMode.OPTIONAL;
-          break;
-        }
-      }
-    }
-
+    TypeProtos.DataMode mode = getReturnTypeDataMode(args);
 
     /* Get the result's scale and precision. This is a function scope for Divide function, assert we have
      * only two inputs

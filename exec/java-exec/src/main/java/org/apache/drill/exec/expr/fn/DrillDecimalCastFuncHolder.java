@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -24,7 +24,6 @@ import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.MajorType;
-import org.apache.drill.exec.expr.annotations.FunctionTemplate.NullHandling;
 
 public class DrillDecimalCastFuncHolder extends DrillSimpleFuncHolder {
 
@@ -34,18 +33,7 @@ public class DrillDecimalCastFuncHolder extends DrillSimpleFuncHolder {
 
     @Override
     public MajorType getReturnType(List<LogicalExpression> args) {
-
-        TypeProtos.DataMode mode = returnValue.type.getMode();
-
-        if (nullHandling == NullHandling.NULL_IF_NULL) {
-            // if any one of the input types is nullable, then return nullable return type
-            for (LogicalExpression e : args) {
-                if (e.getMajorType().getMode() == TypeProtos.DataMode.OPTIONAL) {
-                    mode = TypeProtos.DataMode.OPTIONAL;
-                    break;
-                }
-            }
-        }
+        TypeProtos.DataMode mode = getReturnTypeDataMode(args);
 
         if (args.size() != 3) {
             StringBuilder err = new StringBuilder();
