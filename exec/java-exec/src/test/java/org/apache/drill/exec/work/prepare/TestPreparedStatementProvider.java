@@ -324,7 +324,8 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
         "substring(sales_city, '^N') as unk15,\n" + // 65536
         "substring(sales_city, 0, 2) as unk16,\n" + // 0
         "substring(sales_city, 1, 0) as unk17,\n" + // 0
-        "substring(sales_city, 0) as unk18\n" + // 0
+        "substring(sales_city, 0) as unk18,\n" + // 0
+        "substring(cast(sales_city as varchar(10)), '^N') as unk19\n" + // 10
         "from cp.`region.json` limit 0";
 
     //test("alter session set `planner.enable_limit0_optimization` = true");

@@ -23,9 +23,9 @@ import org.apache.drill.common.util.CoreDecimalUtility;
 
 import java.util.List;
 
-public class DrillSameInOutTypeFuncHolder extends DrillSimpleFuncHolder {
+public class DrillSameInOutLengthFuncHolder extends DrillSimpleFuncHolder {
 
-  public DrillSameInOutTypeFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
+  public DrillSameInOutLengthFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
     super(functionAttributes, initializer);
   }
 

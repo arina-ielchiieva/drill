@@ -483,7 +483,7 @@ public class StringFunctions{
   /*
    * Convert string to lower case.
    */
-  @FunctionTemplate(name = "lower", scope = FunctionScope.SAME_IN_OUT_TYPE, nulls = NullHandling.NULL_IF_NULL)
+  @FunctionTemplate(name = "lower", scope = FunctionScope.SAME_IN_OUT_LENGTH, nulls = NullHandling.NULL_IF_NULL)
   public static class LowerCase implements DrillSimpleFunc {
     @Param VarCharHolder input;
     @Output VarCharHolder out;
@@ -515,7 +515,7 @@ public class StringFunctions{
   /*
    * Convert string to upper case.
    */
-  @FunctionTemplate(name = "upper", scope = FunctionScope.SAME_IN_OUT_TYPE, nulls = NullHandling.NULL_IF_NULL)
+  @FunctionTemplate(name = "upper", scope = FunctionScope.SAME_IN_OUT_LENGTH, nulls = NullHandling.NULL_IF_NULL)
   public static class UpperCase implements DrillSimpleFunc {
 
     @Param VarCharHolder input;
@@ -775,7 +775,7 @@ public class StringFunctions{
   }
 
 
-  @FunctionTemplate(name = "initcap", scope = FunctionScope.SAME_IN_OUT_TYPE, nulls = NullHandling.NULL_IF_NULL)
+  @FunctionTemplate(name = "initcap", scope = FunctionScope.SAME_IN_OUT_LENGTH, nulls = NullHandling.NULL_IF_NULL)
   public static class InitCap implements DrillSimpleFunc {
     @Param VarCharHolder input;
     @Output VarCharHolder out;
@@ -1682,7 +1682,7 @@ public class StringFunctions{
   /**
   * Returns the reverse string for given input.
   */
-  @FunctionTemplate(name = "reverse", scope = FunctionScope.SAME_IN_OUT_TYPE, nulls = NullHandling.NULL_IF_NULL)
+  @FunctionTemplate(name = "reverse", scope = FunctionScope.SAME_IN_OUT_LENGTH, nulls = NullHandling.NULL_IF_NULL)
   public static class ReverseString implements DrillSimpleFunc {
     @Param  VarCharHolder in;
     @Output VarCharHolder out;
