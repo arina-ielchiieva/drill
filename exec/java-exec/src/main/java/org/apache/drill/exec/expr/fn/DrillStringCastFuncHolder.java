@@ -42,12 +42,15 @@ public class DrillStringCastFuncHolder extends DrillSimpleFuncHolder {
    */
   @Override
   public TypeProtos.MajorType getReturnType(List<LogicalExpression> logicalExpressions) {
-    TypeProtos.MajorType returnType = super.getReturnType(logicalExpressions);
+    TypeProtos.MajorType.Builder builder = TypeProtos.MajorType.newBuilder()
+        .setMinorType(getReturnType().getMinorType())
+        .setMode(getReturnTypeDataMode(logicalExpressions));
+
     LogicalExpression logicalExpression = logicalExpressions.get(1);
     if (logicalExpressions.get(1) instanceof ValueExpressions.LongExpression) {
       long precision = ((ValueExpressions.LongExpression) logicalExpression).getLong();
-      return returnType.toBuilder().setPrecision(Ints.checkedCast(precision)).build();
+      builder.setPrecision(Ints.checkedCast(precision)).build();
     }
-    return returnType;
+    return builder.build();
   }
 }

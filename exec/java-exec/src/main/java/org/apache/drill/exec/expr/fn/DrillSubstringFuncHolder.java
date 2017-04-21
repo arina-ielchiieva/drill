@@ -32,7 +32,10 @@ public class DrillSubstringFuncHolder extends DrillSimpleFuncHolder {
 
   @Override
   public TypeProtos.MajorType getReturnType(List<LogicalExpression> logicalExpressions) {
-    TypeProtos.MajorType returnType = super.getReturnType(logicalExpressions);
+    TypeProtos.MajorType.Builder builder = TypeProtos.MajorType.newBuilder()
+        .setMinorType(getReturnType().getMinorType())
+        .setMode(getReturnTypeDataMode(logicalExpressions));
+
     int sourceLength = logicalExpressions.get(0).getMajorType().hasPrecision() ?
         logicalExpressions.get(0).getMajorType().getPrecision() : RelDataType.PRECISION_NOT_SPECIFIED;
 
@@ -44,7 +47,7 @@ public class DrillSubstringFuncHolder extends DrillSimpleFuncHolder {
         offsetOnly = true;
       } else {
         // substring(source, regexp)
-        return sourceLength == RelDataType.PRECISION_NOT_SPECIFIED ? returnType : returnType.toBuilder().setPrecision(sourceLength).build();
+        return sourceLength == RelDataType.PRECISION_NOT_SPECIFIED ? builder.build() : builder.setPrecision(sourceLength).build();
       }
     }
 
@@ -56,14 +59,14 @@ public class DrillSubstringFuncHolder extends DrillSimpleFuncHolder {
       if (logicalExpressions.get(2).iterator().hasNext()
           && logicalExpressions.get(2).iterator().next() instanceof ValueExpressions.IntExpression) {
         // substring(source, offset, length)
-        length = ((ValueExpressions.IntExpression) logicalExpressions.get(2).iterator().next()).getInt();;
+        length = ((ValueExpressions.IntExpression) logicalExpressions.get(2).iterator().next()).getInt();
       } else {
-        // we could not define length parameter, return original type
-        return returnType;
+        // we could not define length parameter, return initial return type
+        return builder.build();
       }
     }
 
     int targetLength = StringFunctionHelpers.calculateSubstringLength(sourceLength, offset, length, !offsetOnly);
-    return targetLength == RelDataType.PRECISION_NOT_SPECIFIED ? returnType : returnType.toBuilder().setPrecision(targetLength).build();
+    return targetLength == RelDataType.PRECISION_NOT_SPECIFIED ? builder.build() : builder.setPrecision(targetLength).build();
   }
 }

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,16 +18,11 @@
 package org.apache.drill.exec.expr.fn;
 
 import java.util.List;
-import java.util.Map;
 
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.util.DecimalScalePrecisionAddFunction;
-import org.apache.drill.exec.expr.DrillSimpleFunc;
-import org.apache.drill.exec.expr.annotations.FunctionTemplate;
-import org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope;
-import org.apache.drill.exec.expr.annotations.FunctionTemplate.NullHandling;
 import org.apache.drill.exec.util.DecimalUtility;
 
 public class DrillDecimalAddFuncHolder extends DrillSimpleFuncHolder{
@@ -43,20 +38,7 @@ public class DrillDecimalAddFuncHolder extends DrillSimpleFuncHolder{
    */
   @Override
   public MajorType getReturnType(List<LogicalExpression> args) {
-
-    TypeProtos.DataMode mode = returnValue.type.getMode();
-
-    if (nullHandling == NullHandling.NULL_IF_NULL) {
-      // if any one of the input types is nullable, then return nullable return type
-      for (LogicalExpression e : args) {
-        if (e.getMajorType().getMode() == TypeProtos.DataMode.OPTIONAL) {
-          mode = TypeProtos.DataMode.OPTIONAL;
-          break;
-        }
-      }
-    }
-
-
+    TypeProtos.DataMode mode = getReturnTypeDataMode(args);
     /* Get the result's scale and precision. This is a function scope for add function, assert we have
      * only two inputs
      */

@@ -31,21 +31,18 @@ public class DrillSameInOutLengthFuncHolder extends DrillSimpleFuncHolder {
 
   @Override
   public TypeProtos.MajorType getReturnType(List<LogicalExpression> logicalExpressions) {
-    TypeProtos.MajorType returnType = super.getReturnType(logicalExpressions);
     TypeProtos.MajorType majorType = logicalExpressions.get(0).getMajorType();
 
     TypeProtos.MajorType.Builder builder = TypeProtos.MajorType.newBuilder()
-        .setMinorType(returnType.getMinorType())
-        .setMode(returnType.getMode());
+        .setMinorType(getReturnType().getMinorType())
+        .setMode(getReturnTypeDataMode(logicalExpressions));
 
-    // precision
     if (Types.isScalarStringType(majorType) || CoreDecimalUtility.isDecimalType(majorType)) {
       if (majorType.hasPrecision()) {
         builder.setPrecision(majorType.getPrecision());
       }
     }
 
-    // scale
     if (CoreDecimalUtility.isDecimalType(majorType)) {
       if (majorType.hasScale()) {
         builder.setScale(majorType.getScale());
