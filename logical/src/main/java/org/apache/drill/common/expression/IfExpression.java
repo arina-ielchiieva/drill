@@ -123,7 +123,7 @@ public class IfExpression extends LogicalExpressionBase {
     }
 
     MajorType.Builder builder = MajorType.newBuilder().setMinorType(ifType.getMinorType());
-    builder.setMode(elseType.getMode() == DataMode.OPTIONAL || ifType.getMode() == DataMode.OPTIONAL ? DataMode.OPTIONAL : DataMode.REQUIRED);
+    builder.setMode(elseType.getMode() == DataMode.OPTIONAL || ifType.getMode() == DataMode.OPTIONAL ? DataMode.OPTIONAL : elseType.getMode());
     builder = Types.calculateTypePrecisionAndScale(ifType, elseType, builder);
     return builder.build();
   }
