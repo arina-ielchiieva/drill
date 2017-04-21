@@ -601,21 +601,20 @@ public class TypeInferenceUtils {
     @Override
     public RelDataType inferReturnType(SqlOperatorBinding opBinding) {
       final RelDataTypeFactory factory = opBinding.getTypeFactory();
+      final boolean isNullable = opBinding.getOperandType(1).isNullable();
 
-      final SqlNode firstOperand = ((SqlCallBinding) opBinding).operand(0);
-      if(!(firstOperand instanceof SqlCharStringLiteral)) {
+      if (!(opBinding instanceof SqlCallBinding) || !(((SqlCallBinding) opBinding).operand(0) instanceof SqlCharStringLiteral)) {
         return createCalciteTypeWithNullability(factory,
             SqlTypeName.ANY,
-            opBinding.getOperandType(1).isNullable());
+            isNullable);
       }
 
-      final String part = ((SqlCharStringLiteral) firstOperand)
+      final String part = ((SqlCharStringLiteral) ((SqlCallBinding) opBinding).operand(0))
           .getNlsString()
           .getValue()
           .toUpperCase();
 
       final SqlTypeName sqlTypeName = getSqlTypeNameForTimeUnit(part);
-      final boolean isNullable = opBinding.getOperandType(1).isNullable();
       return createCalciteTypeWithNullability(
           factory,
           sqlTypeName,

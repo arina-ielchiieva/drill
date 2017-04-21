@@ -339,8 +339,9 @@ public class TestPreparedStatementProvider extends BaseTestQuery {
   }
 
   @Test
-  public void testEachSubstring() throws Exception {
-    String query = "select n_name from cp.`tpch/nation.parquet` order by substr(n_name, 2, 5) limit 3";
+  public void funcInOrderBy() throws Exception {
+    //String query = "select n_name from cp.`tpch/nation.parquet` order by substr(n_name, 2, 5) limit 3";
+    String query = "SELECT birth_date FROM cp.`employee.json` order by date_part('day', birth_date) LIMIT 20";
     //String query = "select n_comment, n_name, n_nationkey, n_regionkey from cp.`tpch/nation.parquet` order by lpad(n_name, 10) limit 3";
     //String query = "select n_name from cp.`tpch/nation.parquet` order by lpad(n_name, 10) limit 3";
 
