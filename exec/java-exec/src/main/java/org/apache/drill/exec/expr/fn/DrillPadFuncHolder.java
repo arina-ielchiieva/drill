@@ -30,14 +30,17 @@ public class DrillPadFuncHolder extends DrillSimpleFuncHolder {
 
   @Override
   public TypeProtos.MajorType getReturnType(List<LogicalExpression> logicalExpressions) {
-    TypeProtos.MajorType returnType = super.getReturnType(logicalExpressions);
+    TypeProtos.MajorType.Builder builder = TypeProtos.MajorType.newBuilder()
+        .setMinorType(getReturnType().getMinorType())
+        .setMode(getReturnTypeDataMode(logicalExpressions));
+
     if (logicalExpressions.get(1).iterator().hasNext() &&
         logicalExpressions.get(1).iterator().next() instanceof ValueExpressions.IntExpression) {
       int precision = ((ValueExpressions.IntExpression) logicalExpressions.get(1).iterator().next()).getInt();
       // if pad length is less than zero, output length is 0
-      return returnType.toBuilder().setPrecision(Math.max(precision, 0)).build();
+      builder.setPrecision(Math.max(precision, 0));
     }
-    return returnType;
+    return builder.build();
   }
 
 }

@@ -27,7 +27,6 @@ import org.apache.drill.common.types.TypeProtos.DataMode;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.TypeProtos.MinorType;
 import org.apache.drill.common.types.Types;
-import org.apache.drill.common.util.CoreDecimalUtility;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -123,28 +122,10 @@ public class IfExpression extends LogicalExpressionBase {
       return builder.build();
     }
 
-    MajorType finalType = elseType;
-    if (elseType.getMode() != DataMode.OPTIONAL && ifType.getMode() == DataMode.OPTIONAL) {
-      assert ifType.getMinorType() == elseType.getMinorType();
-      finalType = ifType;
-    }
-
-    if (!Types.isFixedWidthType(elseType)) {
-      if (elseType.hasPrecision() && ifType.hasPrecision()) {
-        int precision = Math.max(elseType.getPrecision(), ifType.getPrecision());
-        return Types.withPrecision(finalType.getMinorType(), finalType.getMode(), precision);
-      } else {
-        return Types.withMode(finalType.getMinorType(), finalType.getMode());
-      }
-    }
-
-    if (CoreDecimalUtility.isDecimalType(finalType)) {
-      int precision = Math.max(elseType.getPrecision(), ifType.getPrecision());
-      int scale = Math.max(elseType.getScale(), ifType.getScale());
-      return Types.withScaleAndPrecision(finalType.getMinorType(), finalType.getMode(), scale, precision);
-    }
-
-    return finalType;
+    MajorType.Builder builder = MajorType.newBuilder().setMinorType(ifType.getMinorType());
+    builder.setMode(elseType.getMode() == DataMode.OPTIONAL || ifType.getMode() == DataMode.OPTIONAL ? DataMode.OPTIONAL : DataMode.REQUIRED);
+    builder = Types.calculateTypePrecisionAndScale(ifType, elseType, builder);
+    return builder.build();
   }
 
   public static Builder newBuilder() {

@@ -27,6 +27,7 @@ import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.TypeProtos.MinorType;
 
 import com.google.protobuf.TextFormat;
+import org.apache.drill.common.util.CoreDecimalUtility;
 
 public class Types {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Types.class);
@@ -678,5 +679,28 @@ public class Types {
   public static boolean isSortable(MinorType type) {
     // Currently only map and list columns are not sortable.
     return type != MinorType.MAP && type != MinorType.LIST;
+  }
+
+  /**
+   * Sets max precision from both types if these types are string scalar types.
+   * Sets max precision and scale from both types if these types are decimal types.
+   *
+   * @param leftType type from left side
+   * @param rightType type from right side
+   * @param typeBuilder type builder
+   * @return type builder
+   */
+  public static MajorType.Builder calculateTypePrecisionAndScale(MajorType leftType, MajorType rightType, MajorType.Builder typeBuilder) {
+    boolean isScalarString = Types.isScalarStringType(leftType) && Types.isScalarStringType(rightType);
+    boolean isDecimal = CoreDecimalUtility.isDecimalType(leftType);
+
+    if ((isScalarString || isDecimal) && leftType.hasPrecision() && rightType.hasPrecision()) {
+      typeBuilder.setPrecision(Math.max(leftType.getPrecision(), rightType.getPrecision()));
+    }
+
+    if (isDecimal && leftType.hasScale() && rightType.hasScale()) {
+      typeBuilder.setScale(Math.max(leftType.getScale(), rightType.getScale()));
+    }
+    return typeBuilder;
   }
 }
