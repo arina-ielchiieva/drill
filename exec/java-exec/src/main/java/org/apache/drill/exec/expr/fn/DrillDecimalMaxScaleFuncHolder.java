@@ -42,6 +42,9 @@ public class DrillDecimalMaxScaleFuncHolder extends DrillSimpleFuncHolder {
     }
 
     return TypeProtos.MajorType.newBuilder()
-        .setMinorType(getReturnType().getMinorType()).setScale(scale).setPrecision(precision).setMode(mode).build();
+        .setMinorType(getReturnType().getMinorType())
+        .setScale(scale).setPrecision(precision)
+        .setMode(mode)
+        .build();
   }
 }

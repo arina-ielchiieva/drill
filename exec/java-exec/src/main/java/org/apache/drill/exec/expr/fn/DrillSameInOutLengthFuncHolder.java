@@ -37,18 +37,7 @@ public class DrillSameInOutLengthFuncHolder extends DrillSimpleFuncHolder {
         .setMinorType(getReturnType().getMinorType())
         .setMode(getReturnTypeDataMode(logicalExpressions));
 
-    if (Types.isScalarStringType(majorType) || CoreDecimalUtility.isDecimalType(majorType)) {
-      if (majorType.hasPrecision()) {
-        builder.setPrecision(majorType.getPrecision());
-      }
-    }
-
-    if (CoreDecimalUtility.isDecimalType(majorType)) {
-      if (majorType.hasScale()) {
-        builder.setScale(majorType.getScale());
-      }
-    }
-
+    builder = Types.calculateTypePrecisionAndScale(majorType, majorType, builder);
     return builder.build();
   }
 }

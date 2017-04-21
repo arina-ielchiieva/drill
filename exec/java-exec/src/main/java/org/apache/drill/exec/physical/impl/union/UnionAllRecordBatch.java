@@ -26,7 +26,6 @@ import org.apache.drill.common.expression.ErrorCollector;
 import org.apache.drill.common.expression.ErrorCollectorImpl;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
-import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.DataMode;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.TypeProtos.MinorType;
@@ -575,7 +574,7 @@ public class UnionAllRecordBatch extends AbstractRecordBatch<UnionAll> {
 
         if (hasSameTypeAndMode(leftField, rightField)) {
           MajorType.Builder builder = MajorType.newBuilder().setMinorType(leftField.getType().getMinorType()).setMode(leftField.getDataMode());
-          builder = setTypePrecision(leftField.getType(), rightField.getType(), builder);
+          builder = Types.calculateTypePrecisionAndScale(leftField.getType(), rightField.getType(), builder);
           outputFields.add(MaterializedField.create(leftField.getPath(), builder.build()));
         } else {
           // If the output type is not the same,
@@ -583,7 +582,7 @@ public class UnionAllRecordBatch extends AbstractRecordBatch<UnionAll> {
           MajorType.Builder builder = MajorType.newBuilder();
           if (leftField.getType().getMinorType() == rightField.getType().getMinorType()) {
             builder.setMinorType(leftField.getType().getMinorType());
-            builder = setTypePrecision(leftField.getType(), rightField.getType(), builder);
+            builder = Types.calculateTypePrecisionAndScale(leftField.getType(), rightField.getType(), builder);
           } else {
             List<MinorType> types = Lists.newLinkedList();
             types.add(leftField.getType().getMinorType());
@@ -609,23 +608,6 @@ public class UnionAllRecordBatch extends AbstractRecordBatch<UnionAll> {
       }
 
       assert !leftIter.hasNext() && ! rightIter.hasNext() : "Mis-match of column count should have been detected when validating sqlNode at planning";
-    }
-
-    /**
-     * Sets max precision from both types if these types are string scalar types.
-     *
-     * @param leftType type from left side
-     * @param rightType type from right side
-     * @param typeBuilder type builder
-     * @return type builder
-     */
-    private MajorType.Builder setTypePrecision(MajorType leftType, MajorType rightType, MajorType.Builder typeBuilder) {
-      if (Types.isScalarStringType(leftType) && Types.isScalarStringType(rightType)) {
-        if (leftType.hasPrecision() && rightType.hasPrecision()) {
-          typeBuilder.setPrecision(Math.max(leftType.getPrecision(), rightType.getPrecision()));
-        }
-      }
-      return typeBuilder;
     }
 
     private void inferOutputFieldsFromSingleSide(final BatchSchema schemaForNames, final BatchSchema schemaForTypes) {
