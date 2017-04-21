@@ -1,4 +1,4 @@
-/*******************************************************************************
+/*
 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -15,13 +15,12 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- ******************************************************************************/
+*/
 package org.apache.drill.exec.expr.fn.impl;
 
 import io.netty.buffer.DrillBuf;
 import io.netty.util.internal.PlatformDependent;
 
-import org.apache.calcite.rel.type.RelDataType;
 import org.apache.drill.exec.expr.holders.NullableVarCharHolder;
 import org.apache.drill.exec.expr.holders.VarCharHolder;
 import org.apache.drill.exec.memory.BoundsChecking;
@@ -258,13 +257,11 @@ public class StringFunctionHelpers {
    *
    * Calculation rules for substring(value, offset):
    * <ul>If offset is corrupted (less then or equals 0), target length is 0.<ul/>
-   * <ul>If source length is undefined, target length is undefined.<ul/>
    * <ul>If source length after offset is less then or equals 0, target length is 0. <ul/>
    * <ul>For all other cases, target length is source length after offset. <ul/>
    *
    * Calculation rules for substring(value, offset, length):
    * <ul>If offset or length is corrupted (less then or equals 0), target length is 0.<ul/>
-   * <ul>If source length is undefined, target length is the same as length to cut.<ul/>
    * <ul>If source length after offset is less then length to cut, target length is source length after offset.<ul/>
    * <ul>For all other cases, target length is length to cut.<ul/>
    *
@@ -278,11 +275,6 @@ public class StringFunctionHelpers {
     if (offset <= 0 || (useEnd && length <= 0)) {
       return 0;
     }
-
-    if (sourceLength == RelDataType.PRECISION_NOT_SPECIFIED) {
-      return useEnd ? length : RelDataType.PRECISION_NOT_SPECIFIED;
-    }
-
     // Substring offset count starts with 1 (not 0), indicating first character in string.
     // That's why when we calculate source length after offset, we need to add + 1 to receive correct result.
     int sourceLengthAfterOffset = Math.max(sourceLength - offset + 1, 0);

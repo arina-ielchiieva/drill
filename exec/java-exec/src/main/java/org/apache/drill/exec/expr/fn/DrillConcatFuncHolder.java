@@ -18,6 +18,7 @@ package org.apache.drill.exec.expr.fn;
 
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos;
+import org.apache.drill.common.types.Types;
 
 import java.util.List;
 
@@ -42,6 +43,6 @@ public class DrillConcatFuncHolder extends DrillSimpleFuncHolder {
         return builder.build();
       }
     }
-    return builder.setPrecision(totalPrecision).build();
+    return builder.setPrecision(totalPrecision > Types.MAX_VARCHAR_LENGTH ? Types.MAX_VARCHAR_LENGTH : totalPrecision).build();
   }
 }

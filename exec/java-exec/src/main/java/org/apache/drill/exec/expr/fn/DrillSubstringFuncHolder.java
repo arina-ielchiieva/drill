@@ -20,6 +20,7 @@ import org.apache.calcite.rel.type.RelDataType;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.types.TypeProtos;
+import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.expr.fn.impl.StringFunctionHelpers;
 
 import java.util.List;
@@ -37,7 +38,7 @@ public class DrillSubstringFuncHolder extends DrillSimpleFuncHolder {
         .setMode(getReturnTypeDataMode(logicalExpressions));
 
     int sourceLength = logicalExpressions.get(0).getMajorType().hasPrecision() ?
-        logicalExpressions.get(0).getMajorType().getPrecision() : RelDataType.PRECISION_NOT_SPECIFIED;
+        logicalExpressions.get(0).getMajorType().getPrecision() : Types.MAX_VARCHAR_LENGTH;
 
     boolean offsetOnly = false;
     if (logicalExpressions.size() == 2) {
@@ -47,13 +48,13 @@ public class DrillSubstringFuncHolder extends DrillSimpleFuncHolder {
         offsetOnly = true;
       } else {
         // substring(source, regexp)
-        return sourceLength == RelDataType.PRECISION_NOT_SPECIFIED ? builder.build() : builder.setPrecision(sourceLength).build();
+        return builder.setPrecision(sourceLength).build();
       }
     }
 
     // calculate start & end
     int offset = ((ValueExpressions.IntExpression) logicalExpressions.get(1).iterator().next()).getInt();
-    int length = RelDataType.PRECISION_NOT_SPECIFIED;
+    int length = Types.MAX_VARCHAR_LENGTH;
 
     if (!offsetOnly) {
       if (logicalExpressions.get(2).iterator().hasNext()
@@ -67,6 +68,6 @@ public class DrillSubstringFuncHolder extends DrillSimpleFuncHolder {
     }
 
     int targetLength = StringFunctionHelpers.calculateSubstringLength(sourceLength, offset, length, !offsetOnly);
-    return targetLength == RelDataType.PRECISION_NOT_SPECIFIED ? builder.build() : builder.setPrecision(targetLength).build();
+    return builder.setPrecision(targetLength).build();
   }
 }
