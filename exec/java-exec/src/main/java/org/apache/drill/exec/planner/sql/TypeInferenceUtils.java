@@ -144,6 +144,8 @@ public class TypeInferenceUtils {
       .put("CONVERT_FROM", DrillDeferToExecSqlReturnTypeInference.INSTANCE)
       .put("SUBSTRING", DrillSubstringSqlReturnTypeInference.INSTANCE)
       .put("SUBSTR", DrillSubstringSqlReturnTypeInference.INSTANCE)
+      .put("LEFT", DrillLeftRightSqlReturnTypeInference.INSTANCE)
+      .put("RIGHT", DrillLeftRightSqlReturnTypeInference.INSTANCE)
 
       // Functions that return the same type
       .put("LOWER", DrillSameSqlReturnTypeInference.INSTANCE)
@@ -505,6 +507,7 @@ public class TypeInferenceUtils {
 
     @Override
     public RelDataType inferReturnType(SqlOperatorBinding opBinding) {
+      boolean isNullable = isNullable(opBinding.collectOperandTypes());
       if (!(opBinding instanceof SqlCallBinding)) {
         return createCalciteTypeWithNullability(
             opBinding.getTypeFactory(),
@@ -513,8 +516,6 @@ public class TypeInferenceUtils {
       }
 
       RelDataTypeFactory factory = opBinding.getTypeFactory();
-      boolean isNullable = isNullable(opBinding.collectOperandTypes());
-
       int sourceLength = isScalarStringType(opBinding.getOperandType(0).getSqlTypeName()) ?
           opBinding.getOperandType(0).getPrecision() : Types.MAX_VARCHAR_LENGTH;
 
@@ -545,6 +546,38 @@ public class TypeInferenceUtils {
       }
 
       int targetLength = StringFunctionHelpers.calculateSubstringLength(sourceLength, offset, length, !offsetOnly);
+      RelDataType sqlType = factory.createSqlType(SqlTypeName.VARCHAR, targetLength);
+      return factory.createTypeWithNullability(sqlType, isNullable);
+    }
+  }
+
+  private static class DrillLeftRightSqlReturnTypeInference implements SqlReturnTypeInference {
+    private static final DrillLeftRightSqlReturnTypeInference INSTANCE = new DrillLeftRightSqlReturnTypeInference();
+
+    @Override
+    public RelDataType inferReturnType(SqlOperatorBinding opBinding) {
+      boolean isNullable = opBinding.getOperandType(0).isNullable();
+      if (!(opBinding instanceof SqlCallBinding)) {
+        return createCalciteTypeWithNullability(
+            opBinding.getTypeFactory(),
+            SqlTypeName.VARCHAR,
+            isNullable(opBinding.collectOperandTypes()));
+      }
+
+      RelDataTypeFactory factory = opBinding.getTypeFactory();
+      int sourceLength = isScalarStringType(opBinding.getOperandType(0).getSqlTypeName()) ?
+          opBinding.getOperandType(0).getPrecision() : Types.MAX_VARCHAR_LENGTH;
+
+      SqlNode secondOperand = ((SqlCallBinding) opBinding).operand(1);
+      Preconditions.checkArgument(secondOperand instanceof SqlNumericLiteral, "Position operands in left / right functions must be numeric");
+
+      int originalOffset = ((SqlNumericLiteral) secondOperand).intValue(true);
+      boolean isNegativeOffset = originalOffset < 0;
+
+      int offset = isNegativeOffset ? Math.abs(originalOffset) + 1 : 1;
+      int length = isNegativeOffset ? -1 : Math.abs(originalOffset);
+
+      int targetLength = StringFunctionHelpers.calculateSubstringLength(sourceLength, offset, length, !isNegativeOffset);
       RelDataType sqlType = factory.createSqlType(SqlTypeName.VARCHAR, targetLength);
       return factory.createTypeWithNullability(sqlType, isNullable);
     }

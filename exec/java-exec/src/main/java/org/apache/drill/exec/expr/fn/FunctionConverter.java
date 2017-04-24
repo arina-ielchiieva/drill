@@ -224,6 +224,8 @@ public class FunctionConverter {
             return new DrillConcatFuncHolder(functionAttributes, initializer);
         case SUBSTRING:
           return new DrillSubstringFuncHolder(functionAttributes, initializer);
+        case LEFT_RIGHT:
+          return new DrillLeftRightFuncHolder(functionAttributes, initializer);
         case PAD:
           return new DrillPadFuncHolder(functionAttributes, initializer);
         case SAME_IN_OUT_LENGTH:

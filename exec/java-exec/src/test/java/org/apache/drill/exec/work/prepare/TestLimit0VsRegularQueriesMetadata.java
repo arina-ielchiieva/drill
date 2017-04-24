@@ -20,6 +20,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.ExecConstants;
+import org.apache.drill.exec.proto.UserProtos;
 import org.junit.Test;
 
 import java.util.List;
@@ -352,6 +353,8 @@ public class TestLimit0VsRegularQueriesMetadata extends PreparedStatementTestBas
 
     verifyResults(query, expectedMetadata);
   }
+
+  //todo left right unit test
 
 
   private void verifyResults(String query, List<ExpectedColumnResult> expectedMetadata) throws Exception {
