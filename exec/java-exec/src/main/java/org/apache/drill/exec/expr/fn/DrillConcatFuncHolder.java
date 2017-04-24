@@ -22,12 +22,26 @@ import org.apache.drill.common.types.Types;
 
 import java.util.List;
 
+/**
+ * Function holder for functions with function scope set as
+ * {@link org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope#CONCAT}.
+ */
 public class DrillConcatFuncHolder extends DrillSimpleFuncHolder {
 
   public DrillConcatFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
     super(functionAttributes, initializer);
   }
 
+  /**
+   * Defines function return type and sets precision if it can be calculated.
+   * Return type precision is sum of input types precisions.
+   * If at least one input type does not have precision, return type will be without precision.
+   * If calculated precision is greater than {@link Types#MAX_VARCHAR_LENGTH},
+   * it is replaced with {@link Types#MAX_VARCHAR_LENGTH}.
+   *
+   * @param logicalExpressions logical expressions
+   * @return return type
+   */
   @Override
   public TypeProtos.MajorType getReturnType(List<LogicalExpression> logicalExpressions) {
     TypeProtos.MajorType.Builder builder = TypeProtos.MajorType.newBuilder()

@@ -16,7 +16,6 @@
  */
 package org.apache.drill.exec.expr.fn;
 
-import org.apache.calcite.rel.type.RelDataType;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.types.TypeProtos;
@@ -25,12 +24,39 @@ import org.apache.drill.exec.expr.fn.impl.StringFunctionHelpers;
 
 import java.util.List;
 
+/**
+ * Function holder for functions with function scope set as
+ * {@link org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope#SUBSTRING}.
+ */
 public class DrillSubstringFuncHolder extends DrillSimpleFuncHolder {
 
   public DrillSubstringFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
     super(functionAttributes, initializer);
   }
 
+  /**
+   * Defines function return type and calculates output precision.
+   * If input precision is not set, we assume inout type has max varchar value {@link Types#MAX_VARCHAR_LENGTH}.
+   *
+   * <b>substring(source, regexp)<b/>
+   * <ul/>If input precision is known, output precision is max varchar value {@link Types#MAX_VARCHAR_LENGTH}.<ul/>
+   *
+   * <b>substring(source, offset)<b/>
+   * <ul>If input precision is unknown then output precision is max varchar value {@link Types#MAX_VARCHAR_LENGTH}.<ul/>
+   * <ul>If input precision is known, output precision is input precision minus offset plus 1
+   * since offset starts from 1.<ul/>
+   * <ul>If offset value is greater than input precision or offset value is corrupted (less then equals zero),
+   * output precision is zero.<ul/>
+   *
+   * <b>substring(source, offset, length)<b/>
+   * <ul>If offset value is greater than input precision or offset or length values are corrupted (less then equals zero),
+   * output precision is zero.<ul/>
+   * <ul>If source length (including offset) is less than substring length, output precision is source length (including offset).<ul/>
+   * <ul>If source length (including offset) is greater than substring length, output precision is substring length.<ul/>
+   *
+   * @param logicalExpressions logical expressions
+   * @return return type
+   */
   @Override
   public TypeProtos.MajorType getReturnType(List<LogicalExpression> logicalExpressions) {
     TypeProtos.MajorType.Builder builder = TypeProtos.MajorType.newBuilder()

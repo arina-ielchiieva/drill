@@ -22,12 +22,23 @@ import org.apache.drill.common.types.TypeProtos;
 
 import java.util.List;
 
+/**
+ * Function holder for functions with function scope set as
+ * {@link org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope#PAD}.
+ */
 public class DrillPadFuncHolder extends DrillSimpleFuncHolder {
 
   public DrillPadFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
     super(functionAttributes, initializer);
   }
 
+  /**
+   * Defines function return type and sets precision if it pad length parameter is int expression.
+   * If pad length is less than zero, return type precision is 0.
+   *
+   * @param logicalExpressions logical expressions
+   * @return return type
+   */
   @Override
   public TypeProtos.MajorType getReturnType(List<LogicalExpression> logicalExpressions) {
     TypeProtos.MajorType.Builder builder = TypeProtos.MajorType.newBuilder()

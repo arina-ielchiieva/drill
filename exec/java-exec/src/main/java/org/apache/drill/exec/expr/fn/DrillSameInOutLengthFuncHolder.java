@@ -19,16 +19,25 @@ package org.apache.drill.exec.expr.fn;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.Types;
-import org.apache.drill.common.util.CoreDecimalUtility;
 
 import java.util.List;
 
+/**
+ * Function holder for functions with function scope set as
+ * {@link org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope#SAME_IN_OUT_LENGTH}.
+ */
 public class DrillSameInOutLengthFuncHolder extends DrillSimpleFuncHolder {
 
   public DrillSameInOutLengthFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
     super(functionAttributes, initializer);
   }
 
+  /**
+   * Defines function return type and sets precision and scale if input type has them.
+   *
+   * @param logicalExpressions logical expressions
+   * @return return type
+   */
   @Override
   public TypeProtos.MajorType getReturnType(List<LogicalExpression> logicalExpressions) {
     TypeProtos.MajorType majorType = logicalExpressions.get(0).getMajorType();

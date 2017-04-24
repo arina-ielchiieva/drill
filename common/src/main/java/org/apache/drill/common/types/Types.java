@@ -403,6 +403,12 @@ public class Types {
   }
 
 
+  /**
+   * Checks is given major type is string scalar type.
+   *
+   * @param type major type
+   * @return true if given major type is scalar string, false otherwise
+   */
   public static boolean isScalarStringType(final MajorType type) {
     if (type.getMode() == REPEATED) {
       return false;
@@ -479,6 +485,14 @@ public class Types {
     return MajorType.newBuilder().setMode(mode).setMinorType(type).build();
   }
 
+  /**
+   * Builds major type using given minor type, data mode and precision.
+   *
+   * @param type minor type
+   * @param mode data mode
+   * @param precision precision value
+   * @return major type
+   */
   public static MajorType withPrecision(final MinorType type, final DataMode mode, final int precision) {
     return MajorType.newBuilder().setMinorType(type).setMode(mode).setPrecision(precision).build();
   }

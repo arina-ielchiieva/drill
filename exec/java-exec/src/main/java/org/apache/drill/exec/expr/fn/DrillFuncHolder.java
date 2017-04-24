@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -332,7 +332,7 @@ public abstract class DrillFuncHolder extends AbstractFuncHolder {
 
   /**
    * Calculates return type data mode based on give logical expressions.
-   * If null handling strategy is internal, return return value data mode.
+   * If null handling strategy is internal, returns return value data mode.
    * If null handling strategy is null if null and at least one of the input types are nullable,
    * return nullable data mode.
    *

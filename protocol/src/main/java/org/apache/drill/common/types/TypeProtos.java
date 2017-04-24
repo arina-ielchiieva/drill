@@ -862,7 +862,7 @@ public final class TypeProtos {
      * <code>optional int32 precision = 4;</code>
      *
      * <pre>
-     * used for decimal types or as optional length for var len values
+     * used for decimal types or as optional length for fixed size values
      * </pre>
      */
     boolean hasPrecision();
@@ -870,7 +870,7 @@ public final class TypeProtos {
      * <code>optional int32 precision = 4;</code>
      *
      * <pre>
-     * used for decimal types or as optional length for var len values
+     * used for decimal types or as optional length for fixed size values
      * </pre>
      */
     int getPrecision();
@@ -1161,7 +1161,7 @@ public final class TypeProtos {
      * <code>optional int32 precision = 4;</code>
      *
      * <pre>
-     * used for decimal types or as optional length for var len values
+     * used for decimal types or as optional length for fixed size values
      * </pre>
      */
     public boolean hasPrecision() {
@@ -1171,7 +1171,7 @@ public final class TypeProtos {
      * <code>optional int32 precision = 4;</code>
      *
      * <pre>
-     * used for decimal types or as optional length for var len values
+     * used for decimal types or as optional length for fixed size values
      * </pre>
      */
     public int getPrecision() {
@@ -1713,7 +1713,7 @@ public final class TypeProtos {
        * <code>optional int32 precision = 4;</code>
        *
        * <pre>
-       * used for decimal types or as optional length for var len values
+       * used for decimal types or as optional length for fixed size values
        * </pre>
        */
       public boolean hasPrecision() {
@@ -1723,7 +1723,7 @@ public final class TypeProtos {
        * <code>optional int32 precision = 4;</code>
        *
        * <pre>
-       * used for decimal types or as optional length for var len values
+       * used for decimal types or as optional length for fixed size values
        * </pre>
        */
       public int getPrecision() {
@@ -1733,7 +1733,7 @@ public final class TypeProtos {
        * <code>optional int32 precision = 4;</code>
        *
        * <pre>
-       * used for decimal types or as optional length for var len values
+       * used for decimal types or as optional length for fixed size values
        * </pre>
        */
       public Builder setPrecision(int value) {
@@ -1746,7 +1746,7 @@ public final class TypeProtos {
        * <code>optional int32 precision = 4;</code>
        *
        * <pre>
-       * used for decimal types or as optional length for var len values
+       * used for decimal types or as optional length for fixed size values
        * </pre>
        */
       public Builder clearPrecision() {

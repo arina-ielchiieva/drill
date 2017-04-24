@@ -251,7 +251,7 @@ public class TestLimit0VsRegularQueriesMetadata extends PreparedStatementTestBas
         "%1$s(cast(sales_city as varchar(10)), 0, 'A') as col_zero_pad,\n" +
         "%1$s(cast(sales_city as varchar(10)), -1, 'A') as col_negative_pad,\n" +
         "%1$s(cast(sales_city as varchar(10)), 9, 'A') as col_lower_pad,\n" +
-        "%1$s(cast(sales_city as varchar(10)), 20, 'A') as col_higher_pad,\n" +
+        "%1$s(cast(sales_city as varchar(10)), 20, 'A') as col_greater_pad,\n" +
         "%1$s(sales_city, 10, 'A') as col_unk_source_length\n" +
         "from cp.`region.json`";
 
@@ -260,7 +260,7 @@ public class TestLimit0VsRegularQueriesMetadata extends PreparedStatementTestBas
         new ExpectedColumnResult("col_zero_pad", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
         new ExpectedColumnResult("col_negative_pad", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
         new ExpectedColumnResult("col_lower_pad", "CHARACTER VARYING", true, 9, 9, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_higher_pad", "CHARACTER VARYING", true, 20, 20, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_greater_pad", "CHARACTER VARYING", true, 20, 20, 0, false, String.class.getName()),
         new ExpectedColumnResult("col_unk_source_length", "CHARACTER VARYING", true, 10, 10, 0, false, String.class.getName())
     );
 

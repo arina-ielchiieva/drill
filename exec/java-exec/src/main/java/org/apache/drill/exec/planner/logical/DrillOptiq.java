@@ -511,7 +511,7 @@ public class DrillOptiq {
         return ValueExpressions.getBit(((Boolean) literal.getValue()));
       case CHAR:
         if (isLiteralNull(literal)) {
-          return createVarLenNullExpr(literal.getType().getPrecision());
+          return createStringNullExpr(literal.getType().getPrecision());
         }
         return ValueExpressions.getChar(((NlsString)literal.getValue()).getValue(), literal.getType().getPrecision());
       case DOUBLE:
@@ -555,12 +555,12 @@ public class DrillOptiq {
         return ValueExpressions.getFloat8(dbl);
       case VARCHAR:
         if (isLiteralNull(literal)) {
-          return createVarLenNullExpr(literal.getType().getPrecision());
+          return createStringNullExpr(literal.getType().getPrecision());
         }
         return ValueExpressions.getChar(((NlsString)literal.getValue()).getValue(), literal.getType().getPrecision());
       case SYMBOL:
         if (isLiteralNull(literal)) {
-          return createVarLenNullExpr(literal.getType().getPrecision());
+          return createStringNullExpr(literal.getType().getPrecision());
         }
         return ValueExpressions.getChar(literal.getValue().toString(), literal.getType().getPrecision());
       case DATE:
@@ -599,11 +599,25 @@ public class DrillOptiq {
       }
     }
 
+    /**
+     * Create nullable major type using given minor type
+     * and wraps it in typed null constant.
+     *
+     * @param type minor type
+     * @return typed null constant instance
+     */
     private TypedNullConstant createNullExpr(MinorType type) {
       return new TypedNullConstant(Types.optional(type));
     }
 
-    private TypedNullConstant createVarLenNullExpr(int precision) {
+    /**
+     * Create nullable varchar major type with given precision
+     * and wraps it in typed null constant.
+     *
+     * @param precision precision value
+     * @return typed null constant instance
+     */
+    private TypedNullConstant createStringNullExpr(int precision) {
       return new TypedNullConstant(Types.withPrecision(MinorType.VARCHAR, TypeProtos.DataMode.OPTIONAL, precision));
     }
   }
