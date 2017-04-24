@@ -413,7 +413,7 @@ public class TypeInferenceUtils {
   }
 
   private static class DrillConcatSqlReturnTypeInference implements SqlReturnTypeInference {
-    // Difference between concat function and concat operator ('||') is that concat functions resolves nulls internally,
+    // Difference between concat function and concat operator ('||') is that concat function resolves nulls internally,
     // i.e. does not return nulls at all.
     private static final DrillConcatSqlReturnTypeInference INSTANCE_CONCAT = new DrillConcatSqlReturnTypeInference(false);
     private static final DrillConcatSqlReturnTypeInference INSTANCE_CONCAT_OP = new DrillConcatSqlReturnTypeInference(true);
