@@ -16,8 +16,8 @@
  */
 package org.apache.drill.exec.work.prepare;
 
-import com.beust.jcommander.internal.Lists;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.ExecConstants;
 import org.junit.Test;
@@ -360,10 +360,11 @@ public class TestLimit0VsRegularQueriesMetadata extends PreparedStatementTestBas
 
     // limit 0 query
     try {
-      test("alter session set `%s` = true;", ExecConstants.EARLY_LIMIT0_OPT_KEY);
-      verifyMetadata(expectedMetadata, createPrepareStmt(String.format("select * from (%s) t limit 0", query), false, null).getColumnsList());
+      test("alter session set `%s` = true", ExecConstants.EARLY_LIMIT0_OPT_KEY);
+      verifyMetadata(expectedMetadata, createPrepareStmt(String.format("select * from (%s) t limit 0", query), false, null)
+          .getColumnsList());
     } finally {
-      test("alter session reset `%s`;", ExecConstants.EARLY_LIMIT0_OPT_KEY);
+      test("alter session reset `%s`", ExecConstants.EARLY_LIMIT0_OPT_KEY);
     }
   }
 
