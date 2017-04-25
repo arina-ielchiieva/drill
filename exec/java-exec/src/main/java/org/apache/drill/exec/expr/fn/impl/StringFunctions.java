@@ -694,7 +694,7 @@ public class StringFunctions{
   // If length > total charcounts, return the whole string.
   // If length = 0, return empty
   // If length < 0, and |length| > total charcounts, return empty.
-  @FunctionTemplate(name = "left", scope = FunctionScope.LEFT_RIGHT, nulls = NullHandling.NULL_IF_NULL)
+  @FunctionTemplate(name = "left", scope = FunctionScope.STRING_LEFT_RIGHT, nulls = NullHandling.NULL_IF_NULL)
   public static class Left implements DrillSimpleFunc {
     @Param VarCharHolder string;
     @Param BigIntHolder length;
@@ -731,7 +731,7 @@ public class StringFunctions{
   }
 
   //Return last 'length' characters in the string. When 'length' is negative, return all but first |length| characters.
-  @FunctionTemplate(name = "right", scope = FunctionScope.LEFT_RIGHT, nulls = NullHandling.NULL_IF_NULL)
+  @FunctionTemplate(name = "right", scope = FunctionScope.STRING_LEFT_RIGHT, nulls = NullHandling.NULL_IF_NULL)
   public static class Right implements DrillSimpleFunc {
     @Param VarCharHolder string;
     @Param BigIntHolder length;

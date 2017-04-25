@@ -161,12 +161,46 @@ public class TestLimit0VsRegularQueriesMetadata extends PreparedStatementTestBas
         new ExpectedColumnResult("col_with_cast_excessive_offset", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
         new ExpectedColumnResult("col_cast_regexp", "CHARACTER VARYING", true, 10, 10, 0, false, String.class.getName()),
         new ExpectedColumnResult("col_cast_int", "CHARACTER VARYING", true, 10, 10, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_cast_int_offset_only", "CHARACTER VARYING", true, 65535, 65535, 0, false, String.class.getName()) // ?
+        new ExpectedColumnResult("col_cast_int_offset_only", "CHARACTER VARYING", true, 65535, 65535, 0, false, String.class.getName())
     );
 
     List<String> substringAlias = Lists.newArrayList("substring", "substr");
     for (String alias : substringAlias) {
       verifyResults(String.format(query, alias), expectedMetadata);
+    }
+  }
+
+  @Test
+  public void stringLeftRight() throws Exception {
+    String query = "select\n" +
+        "`%1$s`(sales_city, 10) as col_unk_positive,\n" +
+        "`%1$s`(sales_city, -10) as col_unk_negative,\n" +
+        "`%1$s`(sales_city, 0) as col_unk_zero,\n" +
+        "`%1$s`(cast(sales_city as varchar(30)), 10) as col_cast_positive,\n" +
+        "`%1$s`(cast(sales_city as varchar(30)), -10) as col_cast_negative,\n" +
+        "`%1$s`(cast(sales_city as varchar(30)), 0) as col_cast_zero,\n" +
+        "`%1$s`(cast(sales_city as varchar(30)), 30) as col_cast_same_positive_length,\n" +
+        "`%1$s`(cast(sales_city as varchar(30)), -30) as col_cast_same_negative_length,\n" +
+        "`%1$s`(cast(sales_city as varchar(30)), 35) as col_cast_excessive_positive_length,\n" +
+        "`%1$s`(cast(sales_city as varchar(30)), -35) as col_cast_excessive_negative_length\n" +
+        "from cp.`region.json`";
+
+    List<ExpectedColumnResult> expectedMetadata = ImmutableList.of(
+        new ExpectedColumnResult("col_unk_positive", "CHARACTER VARYING", true, 10, 10, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_unk_negative", "CHARACTER VARYING", true, 65526, 65526, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_unk_zero", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_cast_positive", "CHARACTER VARYING", true, 10, 10, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_cast_negative", "CHARACTER VARYING", true, 20, 20, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_cast_zero", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_cast_same_positive_length", "CHARACTER VARYING", true, 30, 30, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_cast_same_negative_length", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_cast_excessive_positive_length", "CHARACTER VARYING", true, 30, 30, 0, false, String.class.getName()),
+        new ExpectedColumnResult("col_cast_excessive_negative_length", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName())
+    );
+
+    List<String> functions = Lists.newArrayList("left", "right");
+    for (String function : functions) {
+      verifyResults(String.format(query, function), expectedMetadata);
     }
   }
 
@@ -353,9 +387,6 @@ public class TestLimit0VsRegularQueriesMetadata extends PreparedStatementTestBas
 
     verifyResults(query, expectedMetadata);
   }
-
-  //todo left right unit test
-
 
   private void verifyResults(String query, List<ExpectedColumnResult> expectedMetadata) throws Exception {
     // regular query

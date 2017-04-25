@@ -144,8 +144,8 @@ public class TypeInferenceUtils {
       .put("CONVERT_FROM", DrillDeferToExecSqlReturnTypeInference.INSTANCE)
       .put("SUBSTRING", DrillSubstringSqlReturnTypeInference.INSTANCE)
       .put("SUBSTR", DrillSubstringSqlReturnTypeInference.INSTANCE)
-      .put("LEFT", DrillLeftRightSqlReturnTypeInference.INSTANCE)
-      .put("RIGHT", DrillLeftRightSqlReturnTypeInference.INSTANCE)
+      .put("LEFT", DrillStringLeftRightSqlReturnTypeInference.INSTANCE)
+      .put("RIGHT", DrillStringLeftRightSqlReturnTypeInference.INSTANCE)
 
       // Functions that return the same type
       .put("LOWER", DrillSameSqlReturnTypeInference.INSTANCE)
@@ -551,8 +551,8 @@ public class TypeInferenceUtils {
     }
   }
 
-  private static class DrillLeftRightSqlReturnTypeInference implements SqlReturnTypeInference {
-    private static final DrillLeftRightSqlReturnTypeInference INSTANCE = new DrillLeftRightSqlReturnTypeInference();
+  private static class DrillStringLeftRightSqlReturnTypeInference implements SqlReturnTypeInference {
+    private static final DrillStringLeftRightSqlReturnTypeInference INSTANCE = new DrillStringLeftRightSqlReturnTypeInference();
 
     @Override
     public RelDataType inferReturnType(SqlOperatorBinding opBinding) {
@@ -569,15 +569,10 @@ public class TypeInferenceUtils {
           opBinding.getOperandType(0).getPrecision() : Types.MAX_VARCHAR_LENGTH;
 
       SqlNode secondOperand = ((SqlCallBinding) opBinding).operand(1);
-      Preconditions.checkArgument(secondOperand instanceof SqlNumericLiteral, "Position operands in left / right functions must be numeric");
+      Preconditions.checkArgument(secondOperand instanceof SqlNumericLiteral, "Length operand in string left / right functions must be numeric");
+      int length = ((SqlNumericLiteral) secondOperand).intValue(true);
 
-      int originalOffset = ((SqlNumericLiteral) secondOperand).intValue(true);
-      boolean isNegativeOffset = originalOffset < 0;
-
-      int offset = isNegativeOffset ? Math.abs(originalOffset) + 1 : 1;
-      int length = isNegativeOffset ? -1 : Math.abs(originalOffset);
-
-      int targetLength = StringFunctionHelpers.calculateSubstringLength(sourceLength, offset, length, !isNegativeOffset);
+      int targetLength = StringFunctionHelpers.calculateStringLeftRightLength(sourceLength, length);
       RelDataType sqlType = factory.createSqlType(SqlTypeName.VARCHAR, targetLength);
       return factory.createTypeWithNullability(sqlType, isNullable);
     }

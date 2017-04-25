@@ -36,7 +36,6 @@ public class DrillSubstringFuncHolder extends DrillSimpleFuncHolder {
 
   /**
    * Defines function return type and calculates output precision.
-   * If input precision is not set, we assume inout type has max varchar value {@link Types#MAX_VARCHAR_LENGTH}.
    *
    * <b>substring(source, regexp)<b/>
    * <ul/>If input precision is known, output precision is max varchar value {@link Types#MAX_VARCHAR_LENGTH}.<ul/>

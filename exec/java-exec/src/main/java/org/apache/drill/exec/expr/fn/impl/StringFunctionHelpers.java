@@ -250,6 +250,29 @@ public class StringFunctionHelpers {
   }
 
   /**
+   * Calculates target length after left / right functions are applied.
+   * Target length calculation logic for left and right functions is the same,
+   * they substring string the same way, just from different sides of the string.
+   *
+   * {@link #calculateSubstringLength(int, int, int, boolean)} is used for calculation.
+   * <ul>If given length is positive or equals zero, offset is 1, substring length is given length,
+   * useEnd flag is set to true.</ul>
+   * <ul>If given length is negative, offset is given length + 1, useEnd flag is set to false.</ul>
+   *
+   * @param sourceLength source length
+   * @param length length
+   * @return target length
+   */
+  public static int calculateStringLeftRightLength(int sourceLength, int length) {
+    boolean isNegativeOffset = length < 0;
+
+    int offset = isNegativeOffset ? Math.abs(length) + 1 : 1;
+    int substringLength = isNegativeOffset ? -1 : Math.abs(length);
+
+    return calculateSubstringLength(sourceLength, offset, substringLength, !isNegativeOffset);
+  }
+
+  /**
    * Calculates target length after substring function will be applied.
    * useEnd flag is used to distinguish between substring(value, offset) and
    * substring(source, offset, length). If useEnd flag is set to false,
