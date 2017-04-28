@@ -17,25 +17,25 @@
  */
 package org.apache.drill.exec.expr.fn;
 
-import java.util.List;
-
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.util.DecimalScalePrecisionMulFunction;
 import org.apache.drill.exec.util.DecimalUtility;
 
-public class DrillDecimalSumScaleFuncHolder extends DrillSimpleFuncHolder{
+import java.util.List;
+
+public class DrillDecimalSumScaleFuncHolder extends DrillSimpleFuncHolder {
 
 
   public DrillDecimalSumScaleFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
     super(functionAttributes, initializer);
   }
 
-    @Override
-    public MajorType getReturnType(List<LogicalExpression> args) {
+  @Override
+  public MajorType getReturnType(List<LogicalExpression> args) {
 
-        TypeProtos.DataMode mode = getReturnTypeDataMode(args);
+    TypeProtos.DataMode mode = getReturnTypeDataMode(args);
 
     /* Get the result's scale and precision. This is a function scope for Multiply function, assert we have
      * only two inputs
@@ -49,9 +49,9 @@ public class DrillDecimalSumScaleFuncHolder extends DrillSimpleFuncHolder{
             .setScale(outputScalePrec.getOutputScale()).setPrecision(outputScalePrec.getOutputPrecision()).setMode(mode).build());
     }
 
-    @Override
-    public boolean checkPrecisionRange() {
-        return true;
-    }
+  @Override
+  public boolean checkPrecisionRange() {
+    return true;
+  }
 
 }

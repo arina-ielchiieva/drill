@@ -36,17 +36,18 @@ public class DrillStringLeftRightFuncHolder extends DrillSimpleFuncHolder  {
 
   /**
    * Defines function return type and calculates output precision.
-   *
    * Target length calculation logic for left and right functions is the same,
    * they substring string the same way, just from different sides of the string.
-   *
-   * <b>left(source, length)</b>
+   * <br/>
+   * <b>left(source, length)</b><br/>
    * <b>right(source, length)</b>
    *
-   * <ul>If length is positive, target length is given length.</ul>
-   * <ul>If length is negative, target length is source length minus given length.
-   * If after substraction length is negative, target length is 0.</ul>
-   * <ul>If length is 0, target length is 0.<ul/>
+   * <ul>
+   * <li>If length is positive, target length is given length.</li>
+   * <li>If length is negative, target length is source length minus given length.
+   * If after substraction length is negative, target length is 0.</li>
+   * <li>If length is 0, target length is 0.</li>
+   * </ul>
    *
    * @param logicalExpressions logical expressions
    * @return return type
@@ -57,8 +58,11 @@ public class DrillStringLeftRightFuncHolder extends DrillSimpleFuncHolder  {
         .setMinorType(getReturnType().getMinorType())
         .setMode(getReturnTypeDataMode(logicalExpressions));
 
-    int sourceLength = logicalExpressions.get(0).getMajorType().hasPrecision() ?
-        logicalExpressions.get(0).getMajorType().getPrecision() : Types.MAX_VARCHAR_LENGTH;
+    if (!logicalExpressions.get(0).getMajorType().hasPrecision()) {
+      return builder.build();
+    }
+
+    int sourceLength = logicalExpressions.get(0).getMajorType().getPrecision();
 
     if (logicalExpressions.get(1).iterator().hasNext()
         && logicalExpressions.get(1).iterator().next() instanceof ValueExpressions.IntExpression) {

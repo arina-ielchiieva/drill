@@ -36,25 +36,29 @@ public class DrillSubstringFuncHolder extends DrillSimpleFuncHolder {
 
   /**
    * Defines function return type and calculates output precision.
+   * <p/>
+   * <b>substring(source, regexp)</b>
+   * <ul><li>If input precision is known, output precision is max varchar value {@link Types#MAX_VARCHAR_LENGTH}.</li></ul>
    *
-   * <b>substring(source, regexp)<b/>
-   * <ul/>If input precision is known, output precision is max varchar value {@link Types#MAX_VARCHAR_LENGTH}.<ul/>
+   * <b>substring(source, offset)</b>
+   * <ul>
+   * <li>If input precision is unknown then output precision is max varchar value {@link Types#MAX_VARCHAR_LENGTH}.</li>
+   * <li>If input precision is known, output precision is input precision minus offset plus 1
+   * since offset starts from 1.</li>
+   * <li>If offset value is greater than input precision or offset value is corrupted (less then equals zero),
+   * output precision is zero.</li>
+   * </ul>
    *
-   * <b>substring(source, offset)<b/>
-   * <ul>If input precision is unknown then output precision is max varchar value {@link Types#MAX_VARCHAR_LENGTH}.<ul/>
-   * <ul>If input precision is known, output precision is input precision minus offset plus 1
-   * since offset starts from 1.<ul/>
-   * <ul>If offset value is greater than input precision or offset value is corrupted (less then equals zero),
-   * output precision is zero.<ul/>
-   *
-   * <b>substring(source, offset, length)<b/>
-   * <ul>If offset value is greater than input precision or offset or length values are corrupted (less then equals zero),
-   * output precision is zero.<ul/>
-   * <ul>If source length (including offset) is less than substring length, output precision is source length (including offset).<ul/>
-   * <ul>If source length (including offset) is greater than substring length, output precision is substring length.<ul/>
+   * <b>substring(source, offset, length)</b>
+   * <ul>
+   * <li>If offset value is greater than input precision or offset or length values are corrupted (less then equals zero),
+   * output precision is zero.</li>
+   * <li>If source length (including offset) is less than substring length, output precision is source length (including offset).</li>
+   * <li>If source length (including offset) is greater than substring length, output precision is substring length.</li>
+   * </ul>
    *
    * @param logicalExpressions logical expressions
-   * @return return type
+   * @return function return type
    */
   @Override
   public TypeProtos.MajorType getReturnType(List<LogicalExpression> logicalExpressions) {
@@ -62,8 +66,11 @@ public class DrillSubstringFuncHolder extends DrillSimpleFuncHolder {
         .setMinorType(getReturnType().getMinorType())
         .setMode(getReturnTypeDataMode(logicalExpressions));
 
-    int sourceLength = logicalExpressions.get(0).getMajorType().hasPrecision() ?
-        logicalExpressions.get(0).getMajorType().getPrecision() : Types.MAX_VARCHAR_LENGTH;
+    if (!logicalExpressions.get(0).getMajorType().hasPrecision()) {
+      return builder.build();
+    }
+
+    int sourceLength = logicalExpressions.get(0).getMajorType().getPrecision();
 
     boolean offsetOnly = false;
     if (logicalExpressions.size() == 2) {

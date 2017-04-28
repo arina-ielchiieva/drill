@@ -253,12 +253,12 @@ public class StringFunctionHelpers {
    * Calculates target length after left / right functions are applied.
    * Target length calculation logic for left and right functions is the same,
    * they substring string the same way, just from different sides of the string.
-   *
    * {@link #calculateSubstringLength(int, int, int, boolean)} is used for calculation.
-   * <ul>If given length is positive or equals zero, offset is 1, substring length is given length,
-   * useEnd flag is set to true.</ul>
-   * <ul>If given length is negative, offset is given length + 1, useEnd flag is set to false.</ul>
-   *
+   * <ul>
+   * <li>If given length is positive or equals zero, offset is 1, substring length is given length,
+   * useEnd flag is set to true.</li>
+   * <li>If given length is negative, offset is given length + 1, useEnd flag is set to false.</li>
+   * </ul>
    * @param sourceLength source length
    * @param length length
    * @return target length
@@ -278,15 +278,19 @@ public class StringFunctionHelpers {
    * substring(source, offset, length). If useEnd flag is set to false,
    * length to cut is not taken into account during calculation.
    *
-   * Calculation rules for substring(value, offset):
-   * <ul>If offset is corrupted (less then or equals 0), target length is 0.<ul/>
-   * <ul>If source length after offset is less then or equals 0, target length is 0. <ul/>
-   * <ul>For all other cases, target length is source length after offset. <ul/>
+   * <b>Calculation rules for substring(value, offset):</b>
+   * <ul>
+   * <li>If offset is corrupted (less then or equals 0), target length is 0.</li>
+   * <li>If source length after offset is less then or equals 0, target length is 0.</li>
+   * <li>For all other cases, target length is source length after offset. </li>
+   * </ul>
    *
-   * Calculation rules for substring(value, offset, length):
-   * <ul>If offset or length is corrupted (less then or equals 0), target length is 0.<ul/>
-   * <ul>If source length after offset is less then length to cut, target length is source length after offset.<ul/>
-   * <ul>For all other cases, target length is length to cut.<ul/>
+   * <b>Calculation rules for substring(value, offset, length):</b>
+   * <ul>
+   * <li>If offset or length is corrupted (less then or equals 0), target length is 0.</li>
+   * <li>If source length after offset is less then length to cut, target length is source length after offset.</li>
+   * <li>For all other cases, target length is length to cut.</li>
+   * </ul>
    *
    * @param sourceLength source length
    * @param offset offset

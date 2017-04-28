@@ -110,6 +110,7 @@ public @interface FunctionTemplate {
     STRING_CAST,
     CONCAT,
     SUBSTRING,
+    // for string functions `left` and `right`
     STRING_LEFT_RIGHT,
     PAD,
     SAME_IN_OUT_LENGTH
