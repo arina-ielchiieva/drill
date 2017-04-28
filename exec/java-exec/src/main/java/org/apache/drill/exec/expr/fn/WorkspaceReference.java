@@ -17,34 +17,48 @@
  */
 package org.apache.drill.exec.expr.fn;
 
-import org.apache.drill.common.expression.LogicalExpression;
-import org.apache.drill.common.types.TypeProtos;
+import com.google.common.base.Preconditions;
 import org.apache.drill.common.types.TypeProtos.MajorType;
+import org.apache.drill.common.types.Types;
 
-import java.util.List;
+public class WorkspaceReference {
 
-public class DrillDecimalMaxScaleFuncHolder extends DrillSimpleFuncHolder {
+  private final Class<?> type;
+  private final String name;
+  private final boolean inject;
+  private MajorType majorType;
 
-  public DrillDecimalMaxScaleFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
-    super(functionAttributes, initializer);
+  public WorkspaceReference(Class<?> type, String name, boolean inject) {
+    Preconditions.checkNotNull(type);
+    Preconditions.checkNotNull(name);
+    this.type = type;
+    this.name = name;
+    this.inject = inject;
+  }
+
+  void setMajorType(MajorType majorType) {
+    this.majorType = majorType;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public boolean isInject() {
+    return inject;
+  }
+
+  public Class<?> getType() {
+    return type;
+  }
+
+  public MajorType getMajorType() {
+    return majorType;
   }
 
   @Override
-  public MajorType getReturnType(List<LogicalExpression> args) {
-
-    TypeProtos.DataMode mode = getReturnTypeDataMode(args);
-    int scale = 0;
-    int precision = 0;
-
-    for (LogicalExpression e : args) {
-      scale = Math.max(scale, e.getMajorType().getScale());
-      precision = Math.max(precision, e.getMajorType().getPrecision());
-    }
-
-    return TypeProtos.MajorType.newBuilder()
-        .setMinorType(getReturnType().getMinorType())
-        .setScale(scale).setPrecision(precision)
-        .setMode(mode)
-        .build();
+  public String toString() {
+    return "WorkspaceReference [type= " + type +", major type=" + Types.toString(majorType) + ", name=" + name + "]";
   }
+
 }

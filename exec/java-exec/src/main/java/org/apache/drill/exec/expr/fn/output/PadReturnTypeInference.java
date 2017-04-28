@@ -14,36 +14,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.expr.fn;
+package org.apache.drill.exec.expr.fn.output;
 
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.types.TypeProtos;
+import org.apache.drill.exec.expr.fn.FunctionAttributes;
+import org.apache.drill.exec.expr.fn.FunctionUtils;
 
 import java.util.List;
 
 /**
- * Function holder for functions with function scope set as
- * {@link org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope#PAD}.
+ * Return type calculation implementation for functions with return type set as
+ * {@link org.apache.drill.exec.expr.annotations.FunctionTemplate.ReturnType#PAD}.
  */
-public class DrillPadFuncHolder extends DrillSimpleFuncHolder {
+public class PadReturnTypeInference implements ReturnTypeInference {
 
-  public DrillPadFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
-    super(functionAttributes, initializer);
-  }
+  public static final PadReturnTypeInference INSTANCE = new PadReturnTypeInference();
 
   /**
    * Defines function return type and sets precision if it pad length parameter is int expression.
    * If pad length is less than zero, return type precision is 0.
    *
    * @param logicalExpressions logical expressions
+   * @param attributes function attributes
    * @return return type
    */
   @Override
-  public TypeProtos.MajorType getReturnType(List<LogicalExpression> logicalExpressions) {
+  public TypeProtos.MajorType getType(List<LogicalExpression> logicalExpressions, FunctionAttributes attributes) {
     TypeProtos.MajorType.Builder builder = TypeProtos.MajorType.newBuilder()
-        .setMinorType(getReturnType().getMinorType())
-        .setMode(getReturnTypeDataMode(logicalExpressions));
+        .setMinorType(attributes.getReturnValue().getType().getMinorType())
+        .setMode(FunctionUtils.getReturnTypeDataMode(logicalExpressions, attributes));
 
     if (logicalExpressions.get(1).iterator().hasNext() &&
         logicalExpressions.get(1).iterator().next() instanceof ValueExpressions.IntExpression) {
@@ -53,5 +54,4 @@ public class DrillPadFuncHolder extends DrillSimpleFuncHolder {
     }
     return builder.build();
   }
-
 }

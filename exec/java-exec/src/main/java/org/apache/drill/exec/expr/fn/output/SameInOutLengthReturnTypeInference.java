@@ -14,43 +14,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.expr.fn;
+package org.apache.drill.exec.expr.fn.output;
 
-import com.google.common.primitives.Ints;
 import org.apache.drill.common.expression.LogicalExpression;
-import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.types.TypeProtos;
+import org.apache.drill.common.types.Types;
+import org.apache.drill.exec.expr.fn.FunctionAttributes;
+import org.apache.drill.exec.expr.fn.FunctionUtils;
 
 import java.util.List;
 
 /**
- * Function holder for functions with function scope set as
- * {@link org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope#STRING_CAST}.
+ * Return type calculation implementation for functions with return type set as
+ * {@link org.apache.drill.exec.expr.annotations.FunctionTemplate.ReturnType#SAME_IN_OUT_LENGTH}.
  */
-public class DrillStringCastFuncHolder extends DrillSimpleFuncHolder {
+public class SameInOutLengthReturnTypeInference implements ReturnTypeInference {
 
-  public DrillStringCastFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
-    super(functionAttributes, initializer);
-  }
+  public static final SameInOutLengthReturnTypeInference INSTANCE = new SameInOutLengthReturnTypeInference();
 
   /**
-   * Defines function return type and sets cast length as type precision
-   * if cast length is simple long expression.
+   * Defines function return type and sets precision and scale if input type has them.
    *
    * @param logicalExpressions logical expressions
+   * @param attributes function attributes
    * @return return type
    */
   @Override
-  public TypeProtos.MajorType getReturnType(List<LogicalExpression> logicalExpressions) {
-    TypeProtos.MajorType.Builder builder = TypeProtos.MajorType.newBuilder()
-        .setMinorType(getReturnType().getMinorType())
-        .setMode(getReturnTypeDataMode(logicalExpressions));
+  public TypeProtos.MajorType getType(List<LogicalExpression> logicalExpressions, FunctionAttributes attributes) {
+    TypeProtos.MajorType majorType = logicalExpressions.get(0).getMajorType();
 
-    LogicalExpression logicalExpression = logicalExpressions.get(1);
-    if (logicalExpressions.get(1) instanceof ValueExpressions.LongExpression) {
-      long precision = ((ValueExpressions.LongExpression) logicalExpression).getLong();
-      builder.setPrecision(Ints.checkedCast(precision)).build();
-    }
+    TypeProtos.MajorType.Builder builder = TypeProtos.MajorType.newBuilder()
+        .setMinorType(attributes.getReturnValue().getType().getMinorType())
+        .setMode(FunctionUtils.getReturnTypeDataMode(logicalExpressions, attributes));
+
+    builder = Types.calculateTypePrecisionAndScale(majorType, majorType, builder);
     return builder.build();
   }
 }

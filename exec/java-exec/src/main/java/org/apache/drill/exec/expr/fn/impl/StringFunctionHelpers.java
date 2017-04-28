@@ -1,4 +1,4 @@
-/*
+/*******************************************************************************
 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -15,7 +15,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ ******************************************************************************/
 package org.apache.drill.exec.expr.fn.impl;
 
 import io.netty.buffer.DrillBuf;
@@ -247,61 +247,6 @@ public class StringFunctionHelpers {
     } catch(IllegalArgumentException ex) {
       return false;
     }
-  }
-
-  /**
-   * Calculates target length after left / right functions are applied.
-   * Target length calculation logic for left and right functions is the same,
-   * they substring string the same way, just from different sides of the string.
-   *
-   * {@link #calculateSubstringLength(int, int, int, boolean)} is used for calculation.
-   * <ul>If given length is positive or equals zero, offset is 1, substring length is given length,
-   * useEnd flag is set to true.</ul>
-   * <ul>If given length is negative, offset is given length + 1, useEnd flag is set to false.</ul>
-   *
-   * @param sourceLength source length
-   * @param length length
-   * @return target length
-   */
-  public static int calculateStringLeftRightLength(int sourceLength, int length) {
-    boolean isNegativeOffset = length < 0;
-
-    int offset = isNegativeOffset ? Math.abs(length) + 1 : 1;
-    int substringLength = isNegativeOffset ? -1 : Math.abs(length);
-
-    return calculateSubstringLength(sourceLength, offset, substringLength, !isNegativeOffset);
-  }
-
-  /**
-   * Calculates target length after substring function will be applied.
-   * useEnd flag is used to distinguish between substring(value, offset) and
-   * substring(source, offset, length). If useEnd flag is set to false,
-   * length to cut is not taken into account during calculation.
-   *
-   * Calculation rules for substring(value, offset):
-   * <ul>If offset is corrupted (less then or equals 0), target length is 0.<ul/>
-   * <ul>If source length after offset is less then or equals 0, target length is 0. <ul/>
-   * <ul>For all other cases, target length is source length after offset. <ul/>
-   *
-   * Calculation rules for substring(value, offset, length):
-   * <ul>If offset or length is corrupted (less then or equals 0), target length is 0.<ul/>
-   * <ul>If source length after offset is less then length to cut, target length is source length after offset.<ul/>
-   * <ul>For all other cases, target length is length to cut.<ul/>
-   *
-   * @param sourceLength source length
-   * @param offset offset
-   * @param length length to cut
-   * @param useEnd if length to cut should be used in calculation
-   * @return target length
-   */
-  public static int calculateSubstringLength(int sourceLength, int offset, int length, boolean useEnd) {
-    if (offset <= 0 || (useEnd && length <= 0)) {
-      return 0;
-    }
-    // Substring offset count starts with 1 (not 0), indicating first character in string.
-    // That's why when we calculate source length after offset, we need to add + 1 to receive correct result.
-    int sourceLengthAfterOffset = Math.max(sourceLength - offset + 1, 0);
-    return useEnd && sourceLengthAfterOffset >= length ? length : sourceLengthAfterOffset;
   }
 
   private static int[] memGetDate(long memoryAddress, int start, int end){

@@ -302,9 +302,6 @@ public class HiveUtilities {
             BaseCharTypeInfo baseCharTypeInfo = (BaseCharTypeInfo) primitiveTypeInfo;
             typeBuilder.setPrecision(baseCharTypeInfo.getLength());
             break;
-          case STRING:
-            typeBuilder.setPrecision(HiveVarchar.MAX_VARCHAR_LENGTH);
-            break;
           case DECIMAL:
             DecimalTypeInfo decimalTypeInfo = (DecimalTypeInfo) primitiveTypeInfo;
             typeBuilder.setPrecision(decimalTypeInfo.getPrecision()).setScale(decimalTypeInfo.getScale());

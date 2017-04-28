@@ -14,23 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.expr.fn;
+package org.apache.drill.exec.expr.fn.output;
 
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.Types;
+import org.apache.drill.exec.expr.fn.FunctionAttributes;
+import org.apache.drill.exec.expr.fn.FunctionUtils;
 
 import java.util.List;
 
 /**
- * Function holder for functions with function scope set as
- * {@link org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope#CONCAT}.
+ * Return type calculation implementation for functions with return type set as
+ * {@link org.apache.drill.exec.expr.annotations.FunctionTemplate.ReturnType#CONCAT}.
  */
-public class DrillConcatFuncHolder extends DrillSimpleFuncHolder {
+public class ConcatReturnTypeInference implements ReturnTypeInference {
 
-  public DrillConcatFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
-    super(functionAttributes, initializer);
-  }
+  public static final ConcatReturnTypeInference INSTANCE = new ConcatReturnTypeInference();
 
   /**
    * Defines function return type and sets precision if it can be calculated.
@@ -40,13 +40,14 @@ public class DrillConcatFuncHolder extends DrillSimpleFuncHolder {
    * it is replaced with {@link Types#MAX_VARCHAR_LENGTH}.
    *
    * @param logicalExpressions logical expressions
+   * @param attributes function attributes
    * @return return type
    */
   @Override
-  public TypeProtos.MajorType getReturnType(List<LogicalExpression> logicalExpressions) {
+  public TypeProtos.MajorType getType(List<LogicalExpression> logicalExpressions, FunctionAttributes attributes) {
     TypeProtos.MajorType.Builder builder = TypeProtos.MajorType.newBuilder()
-        .setMinorType(getReturnType().getMinorType())
-        .setMode(getReturnTypeDataMode(logicalExpressions));
+        .setMinorType(attributes.getReturnValue().getType().getMinorType())
+        .setMode(FunctionUtils.getReturnTypeDataMode(logicalExpressions, attributes));
 
     int totalPrecision = 0;
     for (LogicalExpression expression : logicalExpressions) {

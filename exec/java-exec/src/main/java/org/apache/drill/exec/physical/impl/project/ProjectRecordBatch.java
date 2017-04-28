@@ -516,11 +516,7 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
         final String castFuncName = CastFunctions.getCastFunc(MinorType.VARCHAR);
         final List<LogicalExpression> castArgs = Lists.newArrayList();
         castArgs.add(convertToJson);  //input_expr
-        /*
-         * We are implicitly casting to VARCHAR so we don't have a max length,
-         * using an arbitrary value. We trim down the size of the stored bytes
-         * to the actual size so this size doesn't really matter.
-         */
+        // implicitly casting to varchar, since we don't know actual source length, cast to undefined length, which will preserve source length
         castArgs.add(new ValueExpressions.LongExpression(Types.MAX_VARCHAR_LENGTH, null));
         final FunctionCall castCall = new FunctionCall(castFuncName, castArgs, ExpressionPosition.UNKNOWN);
         exprs.add(new NamedExpression(castCall, new FieldReference(field.getPath())));

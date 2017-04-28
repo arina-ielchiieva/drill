@@ -46,7 +46,6 @@ import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.expr.fn.DrillFuncHolder;
-import org.apache.drill.exec.expr.fn.impl.StringFunctionHelpers;
 import org.apache.drill.exec.resolver.FunctionResolver;
 import org.apache.drill.exec.resolver.FunctionResolverFactory;
 import org.apache.drill.exec.resolver.TypeCastRules;
@@ -141,10 +140,6 @@ public class TypeInferenceUtils {
       .put("FLATTEN", DrillDeferToExecSqlReturnTypeInference.INSTANCE)
       .put("KVGEN", DrillDeferToExecSqlReturnTypeInference.INSTANCE)
       .put("CONVERT_FROM", DrillDeferToExecSqlReturnTypeInference.INSTANCE)
-      .put("SUBSTRING", DrillSubstringSqlReturnTypeInference.INSTANCE)
-      .put("SUBSTR", DrillSubstringSqlReturnTypeInference.INSTANCE)
-      .put("LEFT", DrillStringLeftRightSqlReturnTypeInference.INSTANCE)
-      .put("RIGHT", DrillStringLeftRightSqlReturnTypeInference.INSTANCE)
 
       // Functions that return the same type
       .put("LOWER", DrillSameSqlReturnTypeInference.INSTANCE)
@@ -504,72 +499,19 @@ public class TypeInferenceUtils {
     @Override
     public RelDataType inferReturnType(SqlOperatorBinding opBinding) {
       boolean isNullable = isNullable(opBinding.collectOperandTypes());
-      if (!(opBinding instanceof SqlCallBinding)) {
-        return createCalciteTypeWithNullability(
-            opBinding.getTypeFactory(),
-            SqlTypeName.VARCHAR,
-            isNullable(opBinding.collectOperandTypes()));
+
+      boolean isScalarString = isScalarStringType(opBinding.getOperandType(0).getSqlTypeName());
+      int precision = opBinding.getOperandType(0).getPrecision();
+
+      if (isScalarString && precision != RelDataType.PRECISION_NOT_SPECIFIED) {
+        RelDataType sqlType = opBinding.getTypeFactory().createSqlType(SqlTypeName.VARCHAR, precision);
+        return opBinding.getTypeFactory().createTypeWithNullability(sqlType, isNullable);
       }
 
-      RelDataTypeFactory factory = opBinding.getTypeFactory();
-      int sourceLength = isScalarStringType(opBinding.getOperandType(0).getSqlTypeName()) ?
-          opBinding.getOperandType(0).getPrecision() : Types.MAX_VARCHAR_LENGTH;
-
-      boolean offsetOnly = false;
-
-      if (opBinding.getOperandCount() == 2) {
-        if (((SqlCallBinding) opBinding).operand(1) instanceof SqlNumericLiteral) {
-          // substring(source, offset)
-          offsetOnly = true;
-        } else {
-          // substring(source, regexp)
-          return factory.createTypeWithNullability(
-              factory.createSqlType(SqlTypeName.VARCHAR, sourceLength), isNullable);
-        }
-      }
-
-      if (!offsetOnly && !(((SqlCallBinding) opBinding).operand(1) instanceof SqlNumericLiteral
-              && ((SqlCallBinding) opBinding).operand(2) instanceof SqlNumericLiteral)) {
-        // could not define one of the operands, return source length
-        return factory.createTypeWithNullability(
-            factory.createSqlType(SqlTypeName.VARCHAR, sourceLength), isNullable);
-      }
-
-      int offset = ((SqlNumericLiteral) ((SqlCallBinding) opBinding).operand(1)).intValue(true);
-      int length = offsetOnly ? -1 : ((SqlNumericLiteral)((SqlCallBinding) opBinding).operand(2)).intValue(true);
-
-      int targetLength = StringFunctionHelpers.calculateSubstringLength(sourceLength, offset, length, !offsetOnly);
-      RelDataType sqlType = factory.createSqlType(SqlTypeName.VARCHAR, targetLength);
-      return factory.createTypeWithNullability(sqlType, isNullable);
-    }
-  }
-
-  private static class DrillStringLeftRightSqlReturnTypeInference implements SqlReturnTypeInference {
-    private static final DrillStringLeftRightSqlReturnTypeInference INSTANCE = new DrillStringLeftRightSqlReturnTypeInference();
-
-    @Override
-    public RelDataType inferReturnType(SqlOperatorBinding opBinding) {
-      boolean isNullable = opBinding.getOperandType(0).isNullable();
-      if (!(opBinding instanceof SqlCallBinding)) {
-        return createCalciteTypeWithNullability(
-            opBinding.getTypeFactory(),
-            SqlTypeName.VARCHAR,
-            isNullable(opBinding.collectOperandTypes()));
-      }
-
-      RelDataTypeFactory factory = opBinding.getTypeFactory();
-      int sourceLength = isScalarStringType(opBinding.getOperandType(0).getSqlTypeName()) ?
-          opBinding.getOperandType(0).getPrecision() : Types.MAX_VARCHAR_LENGTH;
-
-      if (!(((SqlCallBinding) opBinding).operand(1) instanceof SqlNumericLiteral)) {
-        RelDataType sqlType = factory.createSqlType(SqlTypeName.VARCHAR, sourceLength);
-        return factory.createTypeWithNullability(sqlType, isNullable);
-      }
-
-      int length = ((SqlNumericLiteral) ((SqlCallBinding) opBinding).operand(1)).intValue(true);
-      int targetLength = StringFunctionHelpers.calculateStringLeftRightLength(sourceLength, length);
-      RelDataType sqlType = factory.createSqlType(SqlTypeName.VARCHAR, targetLength);
-      return factory.createTypeWithNullability(sqlType, isNullable);
+      return createCalciteTypeWithNullability(
+          opBinding.getTypeFactory(),
+          SqlTypeName.VARCHAR,
+          isNullable);
     }
   }
 

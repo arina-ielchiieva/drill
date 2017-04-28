@@ -47,8 +47,9 @@ import io.netty.buffer.DrillBuf;
 
 @SuppressWarnings("unused")
 @FunctionTemplate(name = "cast${type.to?upper_case}",
-    scope = FunctionTemplate.FunctionScope.<#if type.to == 'VarChar'>STRING_CAST<#else>SIMPLE</#if>,
-    nulls=NullHandling.NULL_IF_NULL)
+    scope = FunctionTemplate.FunctionScope.SIMPLE,
+    <#if type.to == 'VarChar'>returnType = FunctionTemplate.ReturnType.STRING_CAST,</#if>
+    nulls = NullHandling.NULL_IF_NULL)
 public class Cast${type.from}${type.to} implements DrillSimpleFunc{
 
   @Param ${type.from}Holder in;

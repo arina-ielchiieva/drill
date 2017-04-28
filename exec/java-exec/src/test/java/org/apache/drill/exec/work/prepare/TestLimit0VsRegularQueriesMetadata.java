@@ -20,7 +20,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.ExecConstants;
-import org.apache.drill.exec.proto.UserProtos;
 import org.junit.Test;
 
 import java.util.List;
@@ -110,104 +109,6 @@ public class TestLimit0VsRegularQueriesMetadata extends PreparedStatementTestBas
     );
 
     verifyResults(query, expectedMetadata);
-  }
-
-  @Test
-  public void substring() throws Exception {
-    String query = "select\n" +
-        "%1$s(sales_city, 5) as col_unk_offset,\n" +
-        "%1$s(sales_city, 1, 2) as col_unk_length,\n" +
-        "%1$s(sales_city, -1) as col_negative_offset,\n" +
-        "%1$s(sales_city, -1, 2) as col_negative_offset_with_length,\n" +
-        "%1$s(sales_city, 1, -2) as col_negative_length,\n" +
-        "%1$s(sales_city, 0) as col_zero_offset,\n" +
-        "%1$s(sales_city, 0, 2) as col_zero_offset_with_length,\n" +
-        "%1$s(sales_city, 1, 0) as col_zero_length,\n" +
-        "%1$s(sales_city, '^N') as col_unk_regexp,\n" +
-        "%1$s(cast(sales_city as varchar(10)), 1, 2) as col_with_cast_1,\n" +
-        "%1$s(cast(sales_city as varchar(1)), 1, 2) as col_with_cast_2,\n" +
-        "%1$s(cast(sales_city as varchar(2)), 1, 2) as col_with_cast_3,\n" +
-        "%1$s(cast(sales_city as varchar(10)), 5, 10) as col_with_cast_4,\n" +
-        "%1$s(cast(sales_city as varchar(10)), 5) as col_with_cast_offset_only_1,\n" +
-        "%1$s(cast(sales_city as varchar(10)), 10) as col_with_cast_offset_only_2,\n" +
-        "%1$s(cast(sales_city as varchar(10)), -1, 2) as col_with_cast_negative_offset,\n" +
-        "%1$s(cast(sales_city as varchar(10)), 1, -2) as col_with_cast_negative_length,\n" +
-        "%1$s(cast(sales_city as varchar(10)), 11, 2) as col_with_cast_excessive_offset_with_length,\n" +
-        "%1$s(cast(sales_city as varchar(10)), 11) as col_with_cast_excessive_offset,\n" +
-        "%1$s(cast(sales_city as varchar(10)), '^N') as col_cast_regexp,\n" +
-        "%1$s(cast(sales_district_id as integer), 1, 10) as col_cast_int,\n" +
-        "%1$s(cast(sales_district_id as integer), 2) as col_cast_int_offset_only,\n" +
-        "%1$s(cast(sales_city as varchar(10)), '1', 2) as col_cast_offset_char,\n" +
-        "%1$s(cast(sales_city as varchar(10)), 1, '2') as col_cast_length_char\n" +
-        "from cp.`region.json`";
-
-    List<ExpectedColumnResult> expectedMetadata = ImmutableList.of(
-        new ExpectedColumnResult("col_unk_offset", "CHARACTER VARYING", true, 65532, 65532, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_unk_length", "CHARACTER VARYING", true, 2, 2, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_negative_offset", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_negative_offset_with_length", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_negative_length", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_zero_offset", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_zero_offset_with_length", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_zero_length", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_unk_regexp", "CHARACTER VARYING", true, Types.MAX_VARCHAR_LENGTH, Types.MAX_VARCHAR_LENGTH, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_with_cast_1", "CHARACTER VARYING", true, 2, 2, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_with_cast_2", "CHARACTER VARYING", true, 1, 1, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_with_cast_3", "CHARACTER VARYING", true, 2, 2, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_with_cast_4", "CHARACTER VARYING", true, 6, 6, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_with_cast_offset_only_1", "CHARACTER VARYING", true, 6, 6, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_with_cast_offset_only_2", "CHARACTER VARYING", true, 1, 1, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_with_cast_negative_offset", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_with_cast_negative_length", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_with_cast_excessive_offset_with_length", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_with_cast_excessive_offset", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_cast_regexp", "CHARACTER VARYING", true, 10, 10, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_cast_int", "CHARACTER VARYING", true, 10, 10, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_cast_int_offset_only", "CHARACTER VARYING", true, 65535, 65535, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_cast_offset_char", "CHARACTER VARYING", true, 10, 10, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_cast_length_char", "CHARACTER VARYING", true, 10, 10, 0, false, String.class.getName())
-    );
-
-    List<String> substringAlias = Lists.newArrayList("substring", "substr");
-    for (String alias : substringAlias) {
-      verifyResults(String.format(query, alias), expectedMetadata);
-    }
-  }
-
-  @Test
-  public void stringLeftRight() throws Exception {
-    String query = "select\n" +
-        "`%1$s`(sales_city, 10) as col_unk_positive,\n" +
-        "`%1$s`(sales_city, -10) as col_unk_negative,\n" +
-        "`%1$s`(sales_city, 0) as col_unk_zero,\n" +
-        "`%1$s`(cast(sales_city as varchar(30)), 10) as col_cast_positive,\n" +
-        "`%1$s`(cast(sales_city as varchar(30)), -10) as col_cast_negative,\n" +
-        "`%1$s`(cast(sales_city as varchar(30)), 0) as col_cast_zero,\n" +
-        "`%1$s`(cast(sales_city as varchar(30)), 30) as col_cast_same_positive_length,\n" +
-        "`%1$s`(cast(sales_city as varchar(30)), -30) as col_cast_same_negative_length,\n" +
-        "`%1$s`(cast(sales_city as varchar(30)), 35) as col_cast_excessive_positive_length,\n" +
-        "`%1$s`(cast(sales_city as varchar(30)), -35) as col_cast_excessive_negative_length,\n" +
-        "`%1$s`(cast(sales_city as varchar(30)), '-10') as col_length_char\n" +
-        "from cp.`region.json`";
-
-    List<ExpectedColumnResult> expectedMetadata = ImmutableList.of(
-        new ExpectedColumnResult("col_unk_positive", "CHARACTER VARYING", true, 10, 10, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_unk_negative", "CHARACTER VARYING", true, 65526, 65526, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_unk_zero", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_cast_positive", "CHARACTER VARYING", true, 10, 10, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_cast_negative", "CHARACTER VARYING", true, 20, 20, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_cast_zero", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_cast_same_positive_length", "CHARACTER VARYING", true, 30, 30, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_cast_same_negative_length", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_cast_excessive_positive_length", "CHARACTER VARYING", true, 30, 30, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_cast_excessive_negative_length", "CHARACTER VARYING", true, 0, 0, 0, false, String.class.getName()),
-        new ExpectedColumnResult("col_length_char", "CHARACTER VARYING", true, 30, 30, 0, false, String.class.getName())
-    );
-
-    List<String> functions = Lists.newArrayList("left", "right");
-    for (String function : functions) {
-      verifyResults(String.format(query, function), expectedMetadata);
-    }
   }
 
   @Test

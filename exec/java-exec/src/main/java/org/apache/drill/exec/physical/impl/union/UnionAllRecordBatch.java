@@ -198,7 +198,7 @@ public class UnionAllRecordBatch extends AbstractRecordBatch<UnionAll> {
       // transfer directly,
       // rename columns or
       // cast data types (Minortype or DataMode)
-      if(hasSameTypeAndMode(outputFields.get(index), vw.getValueVector().getField())) {
+      if (hasSameTypeAndMode(outputFields.get(index), vw.getValueVector().getField())) {
         // Transfer column
 
         MajorType outputFieldType = outputFields.get(index).getType();
