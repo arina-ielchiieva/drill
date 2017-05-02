@@ -20,13 +20,14 @@ package org.apache.drill.exec.expr.fn;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.MajorType;
+import org.apache.drill.exec.expr.fn.output.ReturnTypeInference;
 
 import java.util.List;
 
 public class DrillDecimalMaxScaleFuncHolder extends DrillSimpleFuncHolder {
 
-  public DrillDecimalMaxScaleFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
-    super(functionAttributes, initializer);
+  public DrillDecimalMaxScaleFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer, ReturnTypeInference returnTypeInference) {
+    super(functionAttributes, initializer, returnTypeInference);
   }
 
   @Override

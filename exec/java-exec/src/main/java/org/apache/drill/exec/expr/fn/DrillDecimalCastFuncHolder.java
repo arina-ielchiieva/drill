@@ -24,14 +24,16 @@ import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.MajorType;
+import org.apache.drill.exec.expr.fn.output.ReturnTypeInference;
 
 public class DrillDecimalCastFuncHolder extends DrillSimpleFuncHolder {
 
-  public DrillDecimalCastFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
-    super(functionAttributes, initializer);
+
+  public DrillDecimalCastFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer, ReturnTypeInference returnTypeInference) {
+    super(functionAttributes, initializer, returnTypeInference);
   }
 
-    @Override
+  @Override
     public MajorType getReturnType(List<LogicalExpression> args) {
         TypeProtos.DataMode mode = getReturnTypeDataMode(args);
 

@@ -23,19 +23,21 @@ import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.util.DecimalScalePrecisionAddFunction;
+import org.apache.drill.exec.expr.fn.output.ReturnTypeInference;
 import org.apache.drill.exec.util.DecimalUtility;
 
 public class DrillDecimalAddFuncHolder extends DrillSimpleFuncHolder{
 
-  public DrillDecimalAddFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
-    super(functionAttributes, initializer);
+
+  public DrillDecimalAddFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer, ReturnTypeInference returnTypeInference) {
+    super(functionAttributes, initializer, returnTypeInference);
   }
 
   /*
-   * This function scope is used by add and subtract functions for decimal data type.
-   * DecimalScalePrecisionAddFunction is used to compute the output types'
-   * scale and precision
-   */
+     * This function scope is used by add and subtract functions for decimal data type.
+     * DecimalScalePrecisionAddFunction is used to compute the output types'
+     * scale and precision
+     */
   @Override
   public MajorType getReturnType(List<LogicalExpression> args) {
     TypeProtos.DataMode mode = getReturnTypeDataMode(args);

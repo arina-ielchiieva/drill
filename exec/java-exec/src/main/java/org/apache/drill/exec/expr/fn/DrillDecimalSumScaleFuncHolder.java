@@ -21,6 +21,7 @@ import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.util.DecimalScalePrecisionMulFunction;
+import org.apache.drill.exec.expr.fn.output.ReturnTypeInference;
 import org.apache.drill.exec.util.DecimalUtility;
 
 import java.util.List;
@@ -28,8 +29,8 @@ import java.util.List;
 public class DrillDecimalSumScaleFuncHolder extends DrillSimpleFuncHolder {
 
 
-  public DrillDecimalSumScaleFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
-    super(functionAttributes, initializer);
+  public DrillDecimalSumScaleFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer, ReturnTypeInference returnTypeInference) {
+    super(functionAttributes, initializer, returnTypeInference);
   }
 
   @Override

@@ -21,6 +21,7 @@ import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.expr.fn.impl.StringFunctionHelpers;
+import org.apache.drill.exec.expr.fn.output.ReturnTypeInference;
 
 import java.util.List;
 
@@ -30,8 +31,9 @@ import java.util.List;
  */
 public class DrillSubstringFuncHolder extends DrillSimpleFuncHolder {
 
-  public DrillSubstringFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
-    super(functionAttributes, initializer);
+
+  public DrillSubstringFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer, ReturnTypeInference returnTypeInference) {
+    super(functionAttributes, initializer, returnTypeInference);
   }
 
   /**

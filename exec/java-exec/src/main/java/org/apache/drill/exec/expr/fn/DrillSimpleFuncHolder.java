@@ -35,6 +35,7 @@ import com.sun.codemodel.JExpr;
 import com.sun.codemodel.JExpression;
 import com.sun.codemodel.JMod;
 import com.sun.codemodel.JVar;
+import org.apache.drill.exec.expr.fn.output.ReturnTypeInference;
 
 public class DrillSimpleFuncHolder extends DrillFuncHolder {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillSimpleFuncHolder.class);
@@ -44,8 +45,8 @@ public class DrillSimpleFuncHolder extends DrillFuncHolder {
   // to prevent classpath collisions during loading and unloading jars
   private final ClassLoader classLoader;
 
-  public DrillSimpleFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
-    super(functionAttributes, initializer);
+  public DrillSimpleFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer, ReturnTypeInference returnTypeInference) {
+    super(functionAttributes, initializer, returnTypeInference);
     drillFuncClass = checkNotNull(initializer.getClassName());
     classLoader = checkNotNull(initializer.getClassLoader());
   }

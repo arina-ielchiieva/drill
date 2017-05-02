@@ -21,6 +21,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.drill.BaseTestQuery;
+import org.apache.drill.exec.rpc.user.QueryDataBatch;
 import org.apache.drill.exec.util.Text;
 import org.junit.Test;
 
@@ -29,6 +30,7 @@ import com.google.common.collect.ImmutableList;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
+import java.util.List;
 
 public class TestStringFunctions extends BaseTestQuery {
 

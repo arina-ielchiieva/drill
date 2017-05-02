@@ -36,6 +36,9 @@ import org.apache.drill.exec.expr.annotations.Param;
 import org.apache.drill.exec.expr.annotations.Workspace;
 import org.apache.drill.exec.expr.fn.DrillFuncHolder.ValueReference;
 import org.apache.drill.exec.expr.fn.DrillFuncHolder.WorkspaceReference;
+import org.apache.drill.exec.expr.fn.output.ConcatReturnType;
+import org.apache.drill.exec.expr.fn.output.DefaultReturnType;
+import org.apache.drill.exec.expr.fn.output.ReturnTypeInference;
 import org.apache.drill.exec.expr.holders.ValueHolder;
 import org.apache.drill.exec.ops.UdfUtilities;
 import org.apache.drill.exec.vector.complex.reader.FieldReader;
@@ -186,7 +189,37 @@ public class FunctionConverter {
           template.scope(),
           template.nulls(),
           template.isBinaryCommutative(),
-          isDeteministic, registeredNames, ps, outputField, works, template.costCategory(), template.isNiladic());
+          isDeteministic, registeredNames, ps, outputField, works, template.costCategory(), template.isNiladic(),
+          template.checkPrecisionRange());
+
+      ReturnTypeInference returnType;
+      switch (template.returnType()) {
+        case DEFAULT:
+          returnType = DefaultReturnType.INSTANCE;
+          break;
+        case CONCAT:
+          returnType = ConcatReturnType.INSTANCE;
+          break;
+        default:
+          throw new RuntimeException("Unknown return type");
+      }
+
+      switch (template.scope()){
+        case SIMPLE:
+          if (outputField.isComplexWriter) {
+            return new DrillComplexWriterFuncHolder(functionAttributes, initializer, returnType);
+          } else {
+            return new DrillSimpleFuncHolder(functionAttributes, initializer, returnType);
+          }
+        case POINT_AGGREGATE:
+          return new DrillAggFuncHolder(functionAttributes, initializer, returnType);
+        case HOLISTIC_AGGREGATE:
+        case RANGE_AGGREGATE:
+        default:
+          return failure("Unsupported Function Type.", func);
+      }
+
+/*
       switch (template.scope()) {
         case POINT_AGGREGATE:
           return new DrillAggFuncHolder(functionAttributes, initializer);
@@ -234,7 +267,7 @@ public class FunctionConverter {
         case RANGE_AGGREGATE:
         default:
           return failure("Unsupported Function Type.", func);
-      }
+      }*/
     } catch (Exception | NoSuchFieldError | AbstractMethodError ex) {
       return failure("Failure while creating function holder.", ex, func);
     }

@@ -54,6 +54,10 @@ public @interface FunctionTemplate {
   String[] names() default {};
 
   FunctionScope scope();
+
+  ReturnType returnType() default ReturnType.DEFAULT;
+  boolean checkPrecisionRange() default false;
+
   NullHandling nulls() default NullHandling.INTERNAL;
   boolean isBinaryCommutative() default false;
   boolean isRandom()  default false;
@@ -111,6 +115,16 @@ public @interface FunctionTemplate {
     CONCAT,
     SUBSTRING,
     // for string functions `left` and `right`
+    STRING_LEFT_RIGHT,
+    PAD,
+    SAME_IN_OUT_LENGTH
+  }
+
+  public static enum ReturnType {
+    DEFAULT,
+    STRING_CAST,
+    CONCAT,
+    SUBSTRING,
     STRING_LEFT_RIGHT,
     PAD,
     SAME_IN_OUT_LENGTH

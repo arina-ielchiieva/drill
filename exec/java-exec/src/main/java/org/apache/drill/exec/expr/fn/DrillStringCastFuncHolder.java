@@ -20,6 +20,7 @@ import com.google.common.primitives.Ints;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.types.TypeProtos;
+import org.apache.drill.exec.expr.fn.output.ReturnTypeInference;
 
 import java.util.List;
 
@@ -29,8 +30,8 @@ import java.util.List;
  */
 public class DrillStringCastFuncHolder extends DrillSimpleFuncHolder {
 
-  public DrillStringCastFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
-    super(functionAttributes, initializer);
+  public DrillStringCastFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer, ReturnTypeInference returnTypeInference) {
+    super(functionAttributes, initializer, returnTypeInference);
   }
 
   /**

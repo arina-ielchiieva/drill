@@ -40,6 +40,7 @@ import org.apache.drill.exec.expr.DrillFuncHolderExpr;
 import org.apache.drill.exec.expr.TypeHelper;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.NullHandling;
+import org.apache.drill.exec.expr.fn.output.ReturnTypeInference;
 import org.apache.drill.exec.ops.UdfUtilities;
 import org.apache.drill.exec.vector.complex.reader.FieldReader;
 
@@ -59,6 +60,7 @@ public abstract class DrillFuncHolder extends AbstractFuncHolder {
   protected final FunctionTemplate.NullHandling nullHandling;
   protected final FunctionTemplate.FunctionCostCategory costCategory;
   protected final boolean isNiladic;
+  protected final boolean checkPrecisionRange;
   protected final boolean isBinaryCommutative;
   protected final boolean isDeterministic;
   protected final String[] registeredNames;
@@ -66,6 +68,7 @@ public abstract class DrillFuncHolder extends AbstractFuncHolder {
   protected final ValueReference[] parameters;
   protected final ValueReference returnValue;
   private final FunctionInitializer initializer;
+  private ReturnTypeInference returnTypeInference;
 
   public DrillFuncHolder(
       FunctionAttributes attributes,
@@ -76,6 +79,7 @@ public abstract class DrillFuncHolder extends AbstractFuncHolder {
     this.nullHandling = attributes.getNullHandling();
     this.costCategory = attributes.getCostCategory();
     this.isNiladic = attributes.isNiladic();
+    this.checkPrecisionRange = attributes.checkPrecisionRange();
     this.isBinaryCommutative = attributes.isBinaryCommutative();
     this.isDeterministic = attributes.isDeterministic();
     this.registeredNames = attributes.getRegisteredNames();
@@ -83,6 +87,24 @@ public abstract class DrillFuncHolder extends AbstractFuncHolder {
     this.parameters = attributes.getParameters();
     this.returnValue = attributes.getReturnValue();
     this.initializer = initializer;
+  }
+
+  public DrillFuncHolder(FunctionAttributes attributes, FunctionInitializer initializer, ReturnTypeInference returnTypeInference) {
+    super();
+    this.attributes = attributes;
+    this.scope = attributes.getScope();
+    this.nullHandling = attributes.getNullHandling();
+    this.costCategory = attributes.getCostCategory();
+    this.isNiladic = attributes.isNiladic();
+    this.checkPrecisionRange = attributes.checkPrecisionRange();
+    this.isBinaryCommutative = attributes.isBinaryCommutative();
+    this.isDeterministic = attributes.isDeterministic();
+    this.registeredNames = attributes.getRegisteredNames();
+    this.workspaceVars = attributes.getWorkspaceVars();
+    this.parameters = attributes.getParameters();
+    this.returnValue = attributes.getReturnValue();
+    this.initializer = initializer;
+    this.returnTypeInference = returnTypeInference;
   }
 
   protected String meth(String methodName) {
@@ -296,22 +318,7 @@ public abstract class DrillFuncHolder extends AbstractFuncHolder {
   }
 
   public MajorType getReturnType(final List<LogicalExpression> logicalExpressions) {
-    if (returnValue.type.getMinorType() == MinorType.UNION) {
-      final Set<MinorType> subTypes = Sets.newHashSet();
-      for (final ValueReference ref : parameters) {
-        subTypes.add(ref.getType().getMinorType());
-      }
-
-      final MajorType.Builder builder = MajorType.newBuilder()
-          .setMinorType(MinorType.UNION)
-          .setMode(DataMode.OPTIONAL);
-
-      for (final MinorType subType : subTypes) {
-        builder.addSubType(subType);
-      }
-      return builder.build();
-    }
-    return returnValue.type.toBuilder().setMode(getReturnTypeDataMode(logicalExpressions)).build();
+    return returnTypeInference.getReturnType(logicalExpressions, attributes);
   }
 
   public NullHandling getNullHandling() {
@@ -454,7 +461,7 @@ public abstract class DrillFuncHolder extends AbstractFuncHolder {
   }
 
   public boolean checkPrecisionRange() {
-    return false;
+    return checkPrecisionRange;
   }
 
   public MajorType getReturnType() {

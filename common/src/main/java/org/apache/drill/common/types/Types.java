@@ -361,7 +361,6 @@ public class Types {
         throw new UnsupportedOperationException("Unexpected/unhandled MinorType value " + type.getMinorType());
     }
   }
-  
   public static boolean usesHolderForGet(final MajorType type) {
     if (type.getMode() == REPEATED) {
       return true;

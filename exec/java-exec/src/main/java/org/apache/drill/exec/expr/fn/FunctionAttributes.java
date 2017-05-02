@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -38,10 +38,11 @@ public class FunctionAttributes {
   private final WorkspaceReference[] workspaceVars;
   private final FunctionCostCategory costCategory;
   private final boolean isNiladic;
+  private final boolean checkPrecisionRange;
 
   public FunctionAttributes(FunctionScope scope, NullHandling nullHandling, boolean isBinaryCommutative,
       boolean isDeteministic, String[] registeredNames, ValueReference[] parameters, ValueReference returnValue,
-      WorkspaceReference[] workspaceVars, FunctionCostCategory costCategory, boolean isNiladic) {
+      WorkspaceReference[] workspaceVars, FunctionCostCategory costCategory, boolean isNiladic, boolean checkPrecisionRange) {
     super();
     this.scope = scope;
     this.nullHandling = nullHandling;
@@ -53,6 +54,7 @@ public class FunctionAttributes {
     this.workspaceVars = workspaceVars;
     this.costCategory = costCategory;
     this.isNiladic = isNiladic;
+    this.checkPrecisionRange = checkPrecisionRange;
   }
 
   public FunctionScope getScope() {
@@ -98,5 +100,9 @@ public class FunctionAttributes {
 
   public boolean isNiladic() {
     return isNiladic;
+  }
+
+  public boolean checkPrecisionRange() {
+    return checkPrecisionRange;
   }
 }

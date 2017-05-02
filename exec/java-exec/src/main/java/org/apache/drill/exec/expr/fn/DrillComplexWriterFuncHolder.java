@@ -21,6 +21,7 @@ package org.apache.drill.exec.expr.fn;
 import org.apache.drill.common.expression.FieldReference;
 import org.apache.drill.exec.expr.ClassGenerator;
 import org.apache.drill.exec.expr.ClassGenerator.HoldingContainer;
+import org.apache.drill.exec.expr.fn.output.ReturnTypeInference;
 import org.apache.drill.exec.physical.impl.project.ProjectRecordBatch;
 import org.apache.drill.exec.record.VectorAccessibleComplexWriter;
 import org.apache.drill.exec.vector.complex.writer.BaseWriter.ComplexWriter;
@@ -36,8 +37,8 @@ public class DrillComplexWriterFuncHolder extends DrillSimpleFuncHolder{
 
   private FieldReference ref;
 
-  public DrillComplexWriterFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer) {
-    super(functionAttributes, initializer);
+  public DrillComplexWriterFuncHolder(FunctionAttributes functionAttributes, FunctionInitializer initializer, ReturnTypeInference returnTypeInference) {
+    super(functionAttributes, initializer, returnTypeInference);
   }
 
   public void setReference(FieldReference ref) {

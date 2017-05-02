@@ -33,6 +33,7 @@ import org.apache.drill.exec.expr.ClassGenerator.HoldingContainer;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionCostCategory;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.NullHandling;
+import org.apache.drill.exec.expr.fn.output.ReturnTypeInference;
 import org.apache.drill.exec.record.TypedFieldId;
 
 import com.google.common.base.Preconditions;
@@ -68,8 +69,9 @@ class DrillAggFuncHolder extends DrillFuncHolder {
 
   public DrillAggFuncHolder(
       FunctionAttributes attributes,
-      FunctionInitializer initializer) {
-    super(attributes, initializer);
+      FunctionInitializer initializer,
+      ReturnTypeInference returnTypeInference) {
+    super(attributes, initializer, returnTypeInference);
     checkArgument(attributes.getNullHandling() == NullHandling.INTERNAL, "An aggregation function is required to do its own null handling.");
   }
 
