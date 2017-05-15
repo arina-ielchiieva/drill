@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -39,6 +39,7 @@ import org.apache.drill.exec.ops.OperatorStats;
 import org.apache.drill.exec.physical.impl.OutputMutator;
 import org.apache.drill.exec.record.MaterializedField;
 import org.apache.drill.exec.store.AbstractRecordReader;
+import org.apache.drill.exec.vector.BaseValueVector;
 import org.apache.drill.exec.vector.NullableVarBinaryVector;
 import org.apache.drill.exec.vector.ValueVector;
 import org.apache.drill.exec.vector.VarBinaryVector;
@@ -59,7 +60,8 @@ import com.google.common.collect.Sets;
 public class HBaseRecordReader extends AbstractRecordReader implements DrillHBaseConstants {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(HBaseRecordReader.class);
 
-  private static final int TARGET_RECORD_COUNT = 4000;
+  // batch should not exceed this value to avoid OOM on a busy system
+  private static final int MAX_ALLOCATED_MEMORY_PER_BATCH = 64 * 1024 * 1024; // 64 mb in bytes
 
   private OutputMutator outputMutator;
 
@@ -85,7 +87,7 @@ public class HBaseRecordReader extends AbstractRecordReader implements DrillHBas
     hbaseScan = new Scan(subScanSpec.getStartRow(), subScanSpec.getStopRow());
     hbaseScan
         .setFilter(subScanSpec.getScanFilter())
-        .setCaching(TARGET_RECORD_COUNT);
+        .setCaching(BaseValueVector.INITIAL_VALUE_ALLOCATION);
 
     setColumns(projectedColumns);
   }
@@ -134,7 +136,7 @@ public class HBaseRecordReader extends AbstractRecordReader implements DrillHBas
   public void setup(OperatorContext context, OutputMutator output) throws ExecutionSetupException {
     this.operatorContext = context;
     this.outputMutator = output;
-    familyVectorMap = new HashMap<String, MapVector>();
+    familyVectorMap = new HashMap<>();
 
     try {
       hTable = connection.getTable(hbaseTableName);
@@ -187,8 +189,7 @@ public class HBaseRecordReader extends AbstractRecordReader implements DrillHBas
     }
 
     int rowCount = 0;
-    done:
-    for (; rowCount < TARGET_RECORD_COUNT; rowCount++) {
+    for (; operatorContext.getAllocator().getAllocatedMemory() < MAX_ALLOCATED_MEMORY_PER_BATCH; rowCount++) {
       Result result = null;
       final OperatorStats operatorStats = operatorContext == null ? null : operatorContext.getStats();
       try {
@@ -206,7 +207,7 @@ public class HBaseRecordReader extends AbstractRecordReader implements DrillHBas
         throw new DrillRuntimeException(e);
       }
       if (result == null) {
-        break done;
+        break;
       }
 
       // parse the result and populate the value vectors
