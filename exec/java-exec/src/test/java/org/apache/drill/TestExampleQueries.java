@@ -1266,10 +1266,25 @@ public class TestExampleQueries extends BaseTestQuery {
     test("create table t as select * from dfs.`F:\\drill\\files\\all_types\\alltypes_optional.parquet`");
     setColumnWidths(new int[] {40});
 
-    String sql = "insert into t (col_int, col_chr, col_vrchr, col_dt, col_tim, col_tmstmp, col_flt, col_intrvl_yr, col_intrvl_day, col_bln) " +
+    String sql = "insert into t (col_int, col_int, col_vrchr, col_dt, col_tim, col_tmstmp, col_flt, col_intrvl_yr, col_intrvl_day, col_bln) " +
         "select *, suffix " +
         "from dfs.`F:\\drill\\files\\all_types\\alltypes_optional.parquet`";
     List<QueryDataBatch> res = testSqlWithResults(sql);
+    printResult(res);
+  }
+
+  @Test
+  public void testImplicitColumnsInInsert() throws Exception {
+    test("use dfs_test.tmp");
+    test("create table t1 as select col_vrchr as c1, col_vrchr as c2 from dfs.`F:\\drill\\files\\all_types\\alltypes_optional.parquet`");
+    test("create table t3 as select col_vrchr as c1, col_vrchr as c2 from dfs.`F:\\drill\\files\\all_types\\alltypes_optional.parquet`");
+    test("create table t2 as select c1, c2, c1 as c3 from t1");
+    setColumnWidths(new int[] {40});
+
+    //String sql = "insert into t2 (c1, c2, c3) select tt1.*, tt3.c1 from t1 tt1 inner join t3 tt3 on tt1.c1 = tt3.c1";
+    String sql = "insert into t2 (c1, c2, c3) select *, c1 from t1";
+    test(sql);
+    List<QueryDataBatch> res = testSqlWithResults("select * from t2");
     printResult(res);
   }
 

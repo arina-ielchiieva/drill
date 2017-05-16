@@ -20,6 +20,9 @@ import com.google.common.collect.Lists;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.type.RelDataType;
+import org.apache.calcite.rel.type.RelDataTypeField;
+import org.apache.calcite.rex.RexInputRef;
+import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.schema.Schema;
 import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.schema.Table;
@@ -38,12 +41,16 @@ import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.physical.PhysicalPlan;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
+import org.apache.drill.exec.planner.logical.DrillProjectRel;
 import org.apache.drill.exec.planner.logical.DrillRel;
 import org.apache.drill.exec.planner.logical.DrillScanRel;
 import org.apache.drill.exec.planner.logical.DrillScreenRel;
 import org.apache.drill.exec.planner.logical.DrillValidatorRel;
 import org.apache.drill.exec.planner.logical.DrillWriterRel;
 import org.apache.drill.exec.planner.physical.Prel;
+import org.apache.drill.exec.planner.physical.ProjectAllowDupPrel;
+import org.apache.drill.exec.planner.physical.ProjectPrel;
+import org.apache.drill.exec.planner.physical.visitor.BasePrelVisitor;
 import org.apache.drill.exec.planner.sql.SchemaUtilites;
 import org.apache.drill.exec.rpc.user.UserSession;
 import org.apache.drill.exec.store.AbstractSchema;
@@ -130,6 +137,7 @@ public class InsertHandler extends DefaultSqlHandler {
     }
 
     // construct and convert target table select all limit 0 query
+    //todo are we sure limit 0 data types will match to source if early limit 0 optimization is enabled
     SqlSelect targetSelectAll = new SqlSelect(SqlParserPos.ZERO, null,
         new SqlNodeList(Lists.<SqlNode>newArrayList(new SqlIdentifier("*", SqlParserPos.ZERO)), SqlParserPos.ZERO), //todo replace star to constant
         new SqlIdentifier(Lists.newArrayList(resolvedTargetSchema.getFullSchemaName(), resolvedTargetTableName), SqlParserPos.ZERO),
@@ -140,6 +148,11 @@ public class InsertHandler extends DefaultSqlHandler {
 
     ConvertedRelNode convertedTarget = validateAndConvert(targetLimitZero);
     RelNode convertedTargetNode = convertedTarget.getConvertedNode();
+
+
+    // to build paln we need convert to drel -> prel -> pop -> plan
+
+    // START - CONVERT TO DREL PART
     DrillRel targetRel = convertToDrel(convertedTargetNode);
 
     //todo can we allow insert in any store type but it would be on customer
@@ -200,21 +213,46 @@ public class InsertHandler extends DefaultSqlHandler {
     // convert to Drel
     // add validator, writer and screen rels
     RelTraitSet traitSet = sourceRel.getCluster().traitSet().plus(DrillRel.DRILL_LOGICAL);
-    //todo add validator
-    //todo may be validator rel can prepare itself select * from target
+    //todo if source rel contains star, can we add project on top to resolve problems with implicit columns?
+/*
+not sure it working, may be problem in expressions, failure during project validation in calcite
+      if (!checkColumnsCount) {
+      if (sourceRel instanceof DrillScanRel) {
+        DrillScanRel scanRel = (DrillScanRel) sourceRel;
+        //todo fill in expressions
+        DrillProjectRel drillProjectRel = DrillProjectRel.create(sourceRel.getCluster(), traitSet,
+            scanRel, sourceRel.getChildExps(), sourceRel.getRowType());
+        validatorRel = new DrillValidatorRel(drillProjectRel.getCluster(), traitSet, targetRel, drillProjectRel, targetColumnList);
+      }
+    }
+*/
+
+    //todo may be validator rel can prepare itself "select * from target"
     DrillValidatorRel validatorRel = new DrillValidatorRel(sourceRel.getCluster(), traitSet, targetRel, sourceRel, targetColumnList);
+
 
     DrillWriterRel writerRel = new DrillWriterRel(validatorRel.getCluster(), traitSet, validatorRel,
         //todo createTableEntry is not logically correct (add new entry or rename existent -> can break anything?)
         resolvedTargetSchema.createNewTable(resolvedTargetTableName, Collections.<String>emptyList(), storageStrategy));
     DrillScreenRel screenRel = new DrillScreenRel(writerRel.getCluster(), writerRel.getTraitSet(), writerRel);
+    // FINISH - CONVERT TO DREL PART
 
-    // convert to plan
+    // convert to plan without drel
     Prel prel = convertToPrel(screenRel);
+
+    //todo try to add visitor with project
+    // apparently bad idea since will visit all scans in query, which is not desired
+    //prel = prel.accept(new ProjectForSourceVisitor(), null);
+
+
     logAndSetTextPlan("Drill Physical", prel, logger);
     PhysicalOperator pop = convertToPop(prel);
     PhysicalPlan plan = convertToPlan(pop);
     log("Drill Plan", plan, logger);
     return plan;
   }
+
+/*  private class ProjectForSourceVisitor extends BasePrelVisitor<Prel, Void, RuntimeException> {
+
+  }*/
 }

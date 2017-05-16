@@ -370,6 +370,8 @@ public class ValidatorRecordBatch extends AbstractRecordBatch<Validator> {
 
             // if counts between source and target do not match
             // exclude implicit columns from source and check again
+            //todo problem with implicit columns usage (how to define if they are present or not)
+            //todo check the same column several times
             if (outputFields.size() != rightSchema.getFieldCount()) {
 
             }
