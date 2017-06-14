@@ -21,12 +21,14 @@ import static org.apache.drill.TestBuilder.listOf;
 import static org.junit.Assert.assertEquals;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.util.FileUtils;
 import org.apache.drill.common.util.TestTools;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.compile.ClassTransformer;
+import org.apache.drill.exec.rpc.user.QueryDataBatch;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -1194,5 +1196,97 @@ public class TestExampleQueries extends BaseTestQuery {
         .build()
         .run();
   }
+
+/*
+  @Test
+  public void test() throws Exception {
+    test("use dfs_test.tmp");
+    //test("create table t as select * from sys.version");
+    //test("create table tt as select * from t");
+
+    final String baseQuery =
+        " select n_nationkey, n_name, n_regionkey, n_comment, " +
+            "   sum(n_nationkey) over (partition by n_regionkey) as sumwin " +
+            " from cp.`tpch/nation.parquet`";
+
+    final String query =
+        " select * , sum(n_nationkey) over (partition by n_regionkey) as sumwin " +
+            " from cp.`tpch/nation.parquet`";
+    //String sql = "create table tt as select version as v, commit_id as vv from sys.version";
+    //String sql = "select version as v, commit_id as v from t";
+    //String sql = "select version as v from sys.version";
+    //String sql = "select version as v, commit_id as cid, commit_message as cmes, commit_time as ctim, build_email as bem, build_time as btim from sys.version";
+    setColumnWidths(new int[] {40});
+    List<QueryDataBatch> res = testSqlWithResults(query);
+    printResult(res);
+
+    String p = "explain plan for " + query;
+    String plan = PlanTestBase.getPlanInString(p, "text");
+    System.out.println(plan);
+  }
+
+  @Test
+  public void testCTAS() throws Exception {
+    test("use dfs_test.tmp");
+    test("create table t as select version as v from sys.version");
+    test("create table tt as select lower(v) as vv from t");
+    String sql = "select * from tt";
+
+    setColumnWidths(new int[] {40});
+    List<QueryDataBatch> res = testSqlWithResults(sql);
+    printResult(res);
+
+*/
+/*
+    String p = "explain plan for select v as vv from t";
+    String plan = PlanTestBase.getPlanInString(p, "text");
+    System.out.println(plan);
+*//*
+
+  }
+
+  @Test
+  public void testPlan() throws Exception {
+    test("use dfs_test.tmp");
+    test("create table t as select * from sys.version");
+    // String query = "select version as v from t";
+    //String query = "select version as v from sys.version";
+    String query = "select version as v, commit_id as cid, commit_message as cmes, commit_time as ctim, build_email as bem, build_time as btim from sys.version";
+    String sql = "EXPLAIN PLAN for " +  query;
+    // can return one of two columns: text or json
+    String plan = PlanTestBase.getPlanInString(sql, "text");
+    System.out.println(plan);
+  }
+
+  @Test
+  public void testSum() throws Exception {
+    String query = "select version, sum(1) as s from sys.version group by version";
+    String sql = "EXPLAIN PLAN for " +  query;
+    // can return one of two columns: text or json
+    String plan = PlanTestBase.getPlanInString(sql, "text");
+    System.out.println(plan);
+  }
+
+
+  @Test
+  public void testSumWithAnyRowType() throws Exception {
+    test("use dfs_test.tmp");
+    test("create table t as select * from sys.version");
+    //String query = "select version, sum(1) as s from t group by version";
+    String query = "select version, sum(1) as s from sys.version group by version";
+    String sql = "EXPLAIN PLAN for " +  query;
+    // can return one of two columns: text or json
+    String plan = PlanTestBase.getPlanInString(sql, "text");
+    System.out.println(plan);
+  }
+
+  @Test
+  public void testUnionWithValues() throws Exception {
+    String sql = "values(3) union all values(4)";
+    setColumnWidths(new int[] {40});
+    List<QueryDataBatch> res = testSqlWithResults(sql);
+    printResult(res);
+  }
+*/
 
 }

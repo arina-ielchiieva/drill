@@ -1030,8 +1030,8 @@ public class TestUnionAll extends BaseTestQuery{
         "Union All SELECT o_custkey FROM dfs_test.`%s`", l, r);
 
     // Validate the plan
-    final String[] expectedPlan = {"UnionExchange.*\n",
-        ".*Project.*\n" +
+    final String[] expectedPlan = {"Project.*\n",
+        ".*UnionExchange.*\n" +
         ".*UnionAll"};
     final String[] excludedPlan = {};
 
