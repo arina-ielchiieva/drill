@@ -58,7 +58,7 @@ public class ExplainHandler extends DefaultSqlHandler {
     final RelNode queryRelNode = convertedRelNode.getConvertedNode();
 
     log("Calcite", queryRelNode, logger, null);
-    DrillRel drel = convertToDrel(queryRelNode);
+    DrillRel drel = convertToDrel(queryRelNode, validatedRowType);
 
     if (mode == ResultMode.LOGICAL) {
       LogicalExplain logicalResult = new LogicalExplain(drel, level, context);

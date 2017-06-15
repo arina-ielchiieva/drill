@@ -166,7 +166,7 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
     final RelDataType validatedRowType = convertedRelNode.getValidatedRowType();
     final RelNode queryRelNode = convertedRelNode.getConvertedNode();
 
-    final DrillRel drel = convertToDrel(queryRelNode);
+    final DrillRel drel = convertToDrel(queryRelNode, validatedRowType);
     final Prel prel = convertToPrel(drel, validatedRowType);
     logAndSetTextPlan("Drill Physical", prel, logger);
     final PhysicalOperator pop = convertToPop(prel);
@@ -288,11 +288,13 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
    * @throws RelConversionException
    * @throws SqlUnsupportedException
    */
-  protected DrillRel convertToDrel(RelNode relNode) throws RelConversionException, SqlUnsupportedException {
+  protected DrillRel convertToDrel(RelNode relNode, RelDataType validatedRowType) throws RelConversionException, SqlUnsupportedException {
     final DrillRel convertedRelNode = convertToRawDrel(relNode);
 
-    return new DrillScreenRel(convertedRelNode.getCluster(), convertedRelNode.getTraitSet(),
-        convertedRelNode);
+    // Put a non-trivial topProject to ensure the final output field name is preserved, when necessary.
+    DrillRel topPreservedNameProj = addRenamedProject(convertedRelNode, validatedRowType);
+    return new DrillScreenRel(topPreservedNameProj.getCluster(), topPreservedNameProj.getTraitSet(),
+        topPreservedNameProj);
   }
 
   /**
