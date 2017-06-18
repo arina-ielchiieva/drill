@@ -21,12 +21,19 @@ import static org.apache.drill.TestBuilder.listOf;
 import static org.junit.Assert.assertEquals;
 
 import java.math.BigDecimal;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.Map;
 
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.util.FileUtils;
 import org.apache.drill.common.util.TestTools;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.compile.ClassTransformer;
+import org.apache.drill.exec.coord.store.TransientStore;
+import org.apache.drill.exec.coord.store.TransientStoreConfig;
+import org.apache.drill.exec.proto.SchemaUserBitShared;
+import org.apache.drill.exec.proto.UserBitShared;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -1193,6 +1200,42 @@ public class TestExampleQueries extends BaseTestQuery {
         .baselineValues("1930-01-08")
         .build()
         .run();
+  }
+
+  @Test
+  public void i() throws Exception {
+    test("use dfs");
+    while (true) {
+      // queries statuses
+
+      /*
+      final PersistentStore<UserBitShared.QueryProfile> completed =
+       getDrillbitContext().getStoreProvider().getOrCreateStore(QueryManager.QUERY_PROFILE);
+       */
+
+      /*
+          runningProfiles = coordinator.getOrCreateTransientStore(TransientStoreConfig
+        .newProtoBuilder(SchemaUserBitShared.QueryInfo.WRITE, SchemaUserBitShared.QueryInfo.MERGE)
+        .name(RUNNING)
+        .build());
+       */
+
+      Thread.sleep(10*1000);
+
+      System.out.println(new Date());
+      final TransientStore<UserBitShared.QueryInfo> running = getDrillbitContext().getClusterCoordinator().getOrCreateTransientStore(TransientStoreConfig.newProtoBuilder(SchemaUserBitShared.QueryInfo.WRITE, SchemaUserBitShared.QueryInfo.MERGE).name("running").build());
+
+      final Iterator<Map.Entry<String, UserBitShared.QueryInfo>> runningEntries = running.entries();
+      while (runningEntries.hasNext()) {
+        try {
+          final Map.Entry<String, UserBitShared.QueryInfo> runningEntry = runningEntries.next();
+          final UserBitShared.QueryInfo profile = runningEntry.getValue();
+          System.out.println(runningEntry.getKey() + " - " + profile.getState().name());
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
+      }
+    }
   }
 
 }

@@ -115,6 +115,8 @@ class RequestIdMap {
       if (!future.isSuccess()) {
         removeFromMap(coordinationId);
         if (future.channel().isActive()) {
+          System.out.println("ARINA: we got here");
+          System.out.println(future.cause().getMessage());
           throw new RpcException("Future failed");
         } else {
           setException(new ChannelClosedException());
@@ -147,11 +149,13 @@ class RequestIdMap {
   }
 
   private RpcOutcome<?> removeFromMap(int coordinationId) {
+    //System.out.println("Removing coordination id - " + coordinationId);
     final RpcOutcome<?> rpc;
     synchronized (map) {
       rpc = map.remove(coordinationId);
     }
     if (rpc == null) {
+      System.out.println("Coordination ID - " + coordinationId);
       throw new IllegalStateException(
           "Attempting to retrieve an rpc that wasn't first stored in the rpc coordination queue.  This would most likely happen if you're opposite endpoint sent multiple messages on the same coordination id.");
     }

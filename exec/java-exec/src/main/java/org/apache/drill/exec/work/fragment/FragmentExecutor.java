@@ -322,6 +322,7 @@ public class FragmentExecutor implements Runnable {
   }
 
   private void warnStateChange(final FragmentState current, final FragmentState target) {
+    System.out.println(fragmentName + ": Ignoring unexpected state transition " + current.name() + " -> " +  target.name());
     logger.warn(fragmentName + ": Ignoring unexpected state transition {} --> {}", current.name(), target.name());
   }
 

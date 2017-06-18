@@ -170,7 +170,9 @@ public class UserServer extends BasicServer<RpcType, BitToUserConnection> {
     @Override
     public void sendData(final RpcOutcomeListener<Ack> listener, final QueryWritableBatch result) {
       logger.trace("Sending data to client with {}", result);
+      System.out.println("Sending data to client " + Thread.currentThread().getName());
       send(listener, this, RpcType.QUERY_DATA, result.getHeader(), Ack.class, false, result.getBuffers());
+      System.out.println("Finished sending data to the client " + Thread.currentThread().getName());
     }
 
     @Override

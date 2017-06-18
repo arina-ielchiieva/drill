@@ -41,10 +41,10 @@
     <appender-ref ref="SOCKET" />
   </logger>
 
-<!--   <logger name="io.netty" additivity="false"> -->
-<!--     <level value="debug" /> -->
-<!--     <appender-ref ref="SOCKET" /> -->
-<!--   </logger> -->
+<!--   <logger name="io.netty" additivity="false">
+     <level value="debug" />
+     <appender-ref ref="STDOUT" />
+   </logger>-->
 
   <root>
     <level value="error" />
