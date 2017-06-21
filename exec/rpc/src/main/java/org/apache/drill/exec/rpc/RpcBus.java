@@ -291,6 +291,9 @@ public abstract class RpcBus<T extends EnumLite, C extends RemoteConnection> imp
                 defaultResponse.getClass());
             final Parser<?> parser = defaultResponse.getParserForType();
             final Object value = parser.parseFrom(new ByteBufInputStream(msg.pBody, msg.pBody.readableBytes()));
+            if (1 == 1) {
+              throw new RuntimeException("Hello from Arina");
+            }
             rpcFuture.set(value, msg.dBody);
             if (RpcConstants.EXTRA_DEBUGGING) {
               logger.debug("Updated rpc future {} with value {}", rpcFuture, value);
