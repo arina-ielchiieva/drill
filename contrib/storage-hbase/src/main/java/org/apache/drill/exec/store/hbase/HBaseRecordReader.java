@@ -33,7 +33,6 @@ import org.apache.drill.common.expression.PathSegment;
 import org.apache.drill.common.expression.PathSegment.NameSegment;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.exception.SchemaChangeException;
-import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.ops.OperatorContext;
 import org.apache.drill.exec.ops.OperatorStats;
 import org.apache.drill.exec.physical.impl.OutputMutator;
@@ -62,9 +61,6 @@ public class HBaseRecordReader extends AbstractRecordReader implements DrillHBas
   // batch should not exceed this value to avoid OOM on a busy system
   private static final int MAX_ALLOCATED_MEMORY_PER_BATCH = 64 * 1024 * 1024; // 64 mb in bytes
 
-  // batch size should not exceed max allowed record count
-  private static final int TARGET_RECORD_COUNT = 4000;
-
   private OutputMutator outputMutator;
 
   private Map<String, MapVector> familyVectorMap;
@@ -80,16 +76,20 @@ public class HBaseRecordReader extends AbstractRecordReader implements DrillHBas
   private boolean rowKeyOnly;
 
   private final Connection connection;
+  // batch size should not exceed max allowed record count
+  private final int batchSize;
 
   public HBaseRecordReader(Connection connection, HBaseSubScan.HBaseSubScanSpec subScanSpec,
-      List<SchemaPath> projectedColumns, FragmentContext context) {
+      List<SchemaPath> projectedColumns, HBaseRecordReaderConfig config) {
     this.connection = connection;
+    this.batchSize = config.getBatchSize();
+
     hbaseTableName = TableName.valueOf(
         Preconditions.checkNotNull(subScanSpec, "HBase reader needs a sub-scan spec").getTableName());
     hbaseScan = new Scan(subScanSpec.getStartRow(), subScanSpec.getStopRow());
     hbaseScan
         .setFilter(subScanSpec.getScanFilter())
-        .setCaching(TARGET_RECORD_COUNT);
+        .setCaching(batchSize);
 
     setColumns(projectedColumns);
   }
@@ -311,7 +311,7 @@ public class HBaseRecordReader extends AbstractRecordReader implements DrillHBas
    * @return true if new row can be added in batch, false otherwise
    */
   private boolean canAddNewRow(int rowCount) {
-    return rowCount < TARGET_RECORD_COUNT &&
+    return rowCount < batchSize &&
         operatorContext.getAllocator().getAllocatedMemory() < MAX_ALLOCATED_MEMORY_PER_BATCH;
   }
 }

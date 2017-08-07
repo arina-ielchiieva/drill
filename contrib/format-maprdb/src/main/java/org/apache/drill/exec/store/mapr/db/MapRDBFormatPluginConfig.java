@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -21,10 +21,11 @@ import org.apache.drill.exec.store.mapr.TableFormatPluginConfig;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import org.apache.drill.exec.vector.BaseValueVector;
 
-@JsonTypeName("maprdb")  @JsonInclude(Include.NON_DEFAULT)
+@JsonTypeName("maprdb")
+@JsonInclude(Include.NON_DEFAULT)
 public class MapRDBFormatPluginConfig extends TableFormatPluginConfig {
 
   public boolean allTextMode = false;
@@ -32,24 +33,33 @@ public class MapRDBFormatPluginConfig extends TableFormatPluginConfig {
   public boolean ignoreSchemaChange = false;
   public boolean readAllNumbersAsDouble = false;
   public boolean disableCountOptimization = false;
+  public int batchSize = BaseValueVector.INITIAL_VALUE_ALLOCATION;
 
   @Override
   public int hashCode() {
-    return 53;
+    int result = (allTextMode ? 1 : 0);
+    result = 31 * result + (enablePushdown ? 1 : 0);
+    result = 31 * result + (ignoreSchemaChange ? 1 : 0);
+    result = 31 * result + (readAllNumbersAsDouble ? 1 : 0);
+    result = 31 * result + (disableCountOptimization ? 1 : 0);
+    result = 31 * result + batchSize;
+    return result;
   }
 
   @Override
   protected boolean impEquals(Object obj) {
-    MapRDBFormatPluginConfig other = (MapRDBFormatPluginConfig)obj;
+    MapRDBFormatPluginConfig other = (MapRDBFormatPluginConfig) obj;
     if (readAllNumbersAsDouble != other.readAllNumbersAsDouble) {
       return false;
     } else if (allTextMode != other.allTextMode) {
       return false;
-    } else if (isIgnoreSchemaChange() != other.isIgnoreSchemaChange()) {
+    } else if (ignoreSchemaChange != other.ignoreSchemaChange) {
       return false;
     } else if (enablePushdown != other.enablePushdown) {
       return false;
     } else if (disableCountOptimization != other.disableCountOptimization) {
+      return false;
+    } else if (batchSize != other.batchSize) {
       return false;
     }
     return true;
@@ -63,40 +73,20 @@ public class MapRDBFormatPluginConfig extends TableFormatPluginConfig {
     return allTextMode;
   }
 
-  @JsonProperty("allTextMode")
-  public void setAllTextMode(boolean mode) {
-    allTextMode = mode;
-  }
-
-  @JsonProperty("disableCountOptimization")
-  public void setDisableCountOptimization(boolean mode) {
-    disableCountOptimization = mode;
-  }
-
-  public boolean shouldDisableCountOptimization() {
+  public boolean disableCountOptimization() {
     return disableCountOptimization;
-  }
-
-  @JsonProperty("readAllNumbersAsDouble")
-  public void setReadAllNumbersAsDouble(boolean read) {
-    readAllNumbersAsDouble = read;
   }
 
   public boolean isEnablePushdown() {
     return enablePushdown;
   }
 
-  @JsonProperty("enablePushdown")
-  public void setEnablePushdown(boolean enablePushdown) {
-    this.enablePushdown = enablePushdown;
-  }
-
   public boolean isIgnoreSchemaChange() {
     return ignoreSchemaChange;
   }
 
-  public void setIgnoreSchemaChange(boolean ignoreSchemaChange) {
-    this.ignoreSchemaChange = ignoreSchemaChange;
+  public int getBatchSize() {
+    return batchSize;
   }
 
 }
