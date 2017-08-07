@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -39,15 +39,17 @@ public class HBaseScanBatchCreator implements BatchCreator<HBaseSubScan>{
       throws ExecutionSetupException {
     Preconditions.checkArgument(children.isEmpty());
     List<RecordReader> readers = Lists.newArrayList();
-    List<SchemaPath> columns = null;
+    // use default configuration
+    HBaseRecordReaderConfig config = HBaseRecordReaderConfig.Builder.newBuilder().build();
+    List<SchemaPath> columns;
     for(HBaseSubScan.HBaseSubScanSpec scanSpec : subScan.getRegionScanSpecList()){
       try {
-        if ((columns = subScan.getColumns())==null) {
+        if ((columns = subScan.getColumns()) == null) {
           columns = GroupScan.ALL_COLUMNS;
         }
-        readers.add(new HBaseRecordReader(subScan.getStorageEngine().getConnection(), scanSpec, columns, context));
-      } catch (Exception e1) {
-        throw new ExecutionSetupException(e1);
+        readers.add(new HBaseRecordReader(subScan.getStorageEngine().getConnection(), scanSpec, columns, config));
+      } catch (Exception e) {
+        throw new ExecutionSetupException(e);
       }
     }
     return new ScanBatch(subScan, context, readers.iterator());
