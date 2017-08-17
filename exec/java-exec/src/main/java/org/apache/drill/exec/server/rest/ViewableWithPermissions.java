@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -32,9 +32,10 @@ public class ViewableWithPermissions extends Viewable {
 
   /**
    * Create the web page using the given template and {@link SecurityContext} after authentication is done.
-   * @param templateName
-   * @param sc
-   * @return
+   *
+   * @param templateName template name
+   * @param sc security context
+   * @return viewable
    */
   public static Viewable create(final boolean authEnabled, final String templateName, final SecurityContext sc) {
     return new ViewableWithPermissions(authEnabled, templateName, sc, true, null);
@@ -42,10 +43,11 @@ public class ViewableWithPermissions extends Viewable {
 
   /**
    * Create a web page using the given template, {@link SecurityContext} and model data.
-   * @param templateName
-   * @param sc
-   * @param model
-   * @return
+   *
+   * @param templateName template name
+   * @param sc security context
+   * @param model model
+   * @return viewable
    */
   public static Viewable create(final boolean authEnabled, final String templateName, final SecurityContext sc,
       final Object model) {
@@ -54,11 +56,12 @@ public class ViewableWithPermissions extends Viewable {
 
   /**
    * Create a login page.
-   * @param errorMsg Optional error messages to be shown in case when the page is requested after login attempt failure.
-   * @return
+   *
+   * @param properties login page properties
+   * @return login viewable
    */
-  public static Viewable createLoginPage(final String errorMsg) {
-    return new ViewableWithPermissions(true, "/rest/login.ftl", null, false, errorMsg);
+  public static Viewable createLoginPage(final LogInLogOutResources.LogInProperties properties) {
+    return new ViewableWithPermissions(true, "/rest/login.ftl", null, false, properties);
   }
 
   private ViewableWithPermissions(final boolean authEnabled, final String templateName, final SecurityContext sc,

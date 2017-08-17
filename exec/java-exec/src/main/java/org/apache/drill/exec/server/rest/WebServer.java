@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -20,7 +20,6 @@ package org.apache.drill.exec.server.rest;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.servlets.MetricsServlet;
 import com.codahale.metrics.servlets.ThreadDumpServlet;
-import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -180,7 +179,7 @@ public class WebServer implements AutoCloseable {
     staticHolder.setInitParameter("pathInfoOnly", "true");
     servletContextHandler.addServlet(staticHolder, "/static/*");
 
-    if (authEnabled) {
+    if (authEnabled || config.getBoolean(ExecConstants.IMPERSONATION_ENABLED)) {
       servletContextHandler.setSecurityHandler(createSecurityHandler());
       servletContextHandler.setSessionHandler(createSessionHandler(servletContextHandler.getSecurityHandler()));
     }

@@ -17,6 +17,7 @@
  */
 package org.apache.drill.exec.server.rest.auth;
 
+import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.rpc.security.AuthenticatorFactory;
 import org.apache.drill.exec.rpc.security.plain.PlainFactory;
@@ -68,23 +69,30 @@ public class DrillRestLoginService implements LoginService {
     }
 
     try {
-      // Authenticate WebUser locally using UserAuthenticator. If WebServer is started that guarantees the PLAIN
-      // mechanism is configured and authenticator is also available
-      final AuthenticatorFactory plainFactory = drillbitContext.getAuthProvider()
-          .getAuthenticatorFactory(PlainFactory.SIMPLE_NAME);
-      final UserAuthenticator userAuthenticator = ((PlainFactory) plainFactory).getAuthenticator();
+      final DrillConfig config = drillbitContext.getConfig();
 
-      // Authenticate the user with configured Authenticator
-      userAuthenticator.authenticate(username, credentials.toString());
+      final boolean isAdmin;
+      if (!config.getBoolean(ExecConstants.USER_AUTHENTICATION_ENABLED) && config.getBoolean(ExecConstants.IMPERSONATION_ENABLED)) {
+        // if only impersonation is enabled, do not authenticate, just use user name and proceed, permission - admin
+        isAdmin = true;
+      } else {
+        // Authenticate WebUser locally using UserAuthenticator. If WebServer is started that guarantees the PLAIN
+        // mechanism is configured and authenticator is also available
+        final AuthenticatorFactory plainFactory = drillbitContext.getAuthProvider()
+            .getAuthenticatorFactory(PlainFactory.SIMPLE_NAME);
+        final UserAuthenticator userAuthenticator = ((PlainFactory) plainFactory).getAuthenticator();
 
-      logger.debug("WebUser {} is successfully authenticated", username);
+        // Authenticate the user with configured Authenticator
+        userAuthenticator.authenticate(username, credentials.toString());
 
-      final SystemOptionManager sysOptions = drillbitContext.getOptionManager();
+        logger.debug("WebUser {} is successfully authenticated", username);
 
-      final boolean isAdmin = ImpersonationUtil.hasAdminPrivileges(username,
-          sysOptions.getOption(ExecConstants.ADMIN_USERS_KEY).string_val,
-          sysOptions.getOption(ExecConstants.ADMIN_USER_GROUPS_KEY).string_val);
+        final SystemOptionManager sysOptions = drillbitContext.getOptionManager();
 
+        isAdmin = ImpersonationUtil.hasAdminPrivileges(username,
+            sysOptions.getOption(ExecConstants.ADMIN_USERS_KEY).string_val,
+            sysOptions.getOption(ExecConstants.ADMIN_USER_GROUPS_KEY).string_val);
+      }
       // Create the UserPrincipal corresponding to logged in user.
       final Principal userPrincipal = new DrillUserPrincipal(username, isAdmin);
 
