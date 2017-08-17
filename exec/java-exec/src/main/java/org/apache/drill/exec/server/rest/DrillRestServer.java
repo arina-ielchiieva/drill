@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -70,10 +70,10 @@ public class DrillRestServer extends ResourceConfig {
     register(MultiPartFeature.class);
     property(ServerProperties.METAINF_SERVICES_LOOKUP_DISABLE, true);
 
-    final boolean isAuthEnabled =
-        workManager.getContext().getConfig().getBoolean(ExecConstants.USER_AUTHENTICATION_ENABLED);
+    final DrillConfig config = workManager.getContext().getConfig();
+    final boolean authEnabled = config.getBoolean(ExecConstants.USER_AUTHENTICATION_ENABLED) || config.getBoolean(ExecConstants.IMPERSONATION_ENABLED);
 
-    if (isAuthEnabled) {
+    if (authEnabled) {
       register(LogInLogOutResources.class);
       register(AuthDynamicFeature.class);
       register(RolesAllowedDynamicFeature.class);
@@ -99,8 +99,8 @@ public class DrillRestServer extends ResourceConfig {
         bind(workManager.getContext().getLpPersistence().getMapper()).to(ObjectMapper.class);
         bind(workManager.getContext().getStoreProvider()).to(PersistentStoreProvider.class);
         bind(workManager.getContext().getStorage()).to(StoragePluginRegistry.class);
-        bind(new UserAuthEnabled(isAuthEnabled)).to(UserAuthEnabled.class);
-        if (isAuthEnabled) {
+        bind(new UserAuthEnabled(authEnabled)).to(UserAuthEnabled.class);
+        if (authEnabled) {
           bindFactory(DrillUserPrincipalProvider.class).to(DrillUserPrincipal.class);
           bindFactory(AuthWebUserConnectionProvider.class).to(WebUserConnection.class);
         } else {
@@ -188,7 +188,6 @@ public class DrillRestServer extends ResourceConfig {
 
     @Override
     public WebUserConnection provide() {
-      final HttpSession session = request.getSession();
       final DrillbitContext drillbitContext = workManager.getContext();
       final DrillConfig config = drillbitContext.getConfig();
 

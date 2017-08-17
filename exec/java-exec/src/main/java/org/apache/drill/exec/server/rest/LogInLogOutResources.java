@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,6 +18,7 @@
 package org.apache.drill.exec.server.rest;
 
 import javax.annotation.security.PermitAll;
+import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
@@ -33,7 +34,9 @@ import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.server.rest.auth.AuthDynamicFeature;
+import org.apache.drill.exec.work.WorkManager;
 import org.eclipse.jetty.security.authentication.FormAuthenticator;
 import org.glassfish.jersey.server.mvc.Viewable;
 
@@ -45,6 +48,8 @@ import java.net.URLDecoder;
 public class LogInLogOutResources {
   public static final String REDIRECT_QUERY_PARM = "redirect";
   public static final String LOGIN_RESOURCE = "login";
+
+  @Inject WorkManager work;
 
   @GET
   @Path("/login")
@@ -66,7 +71,8 @@ public class LogInLogOutResources {
       session.setAttribute(FormAuthenticator.__J_URI, destURI.toString());
     }
 
-    return ViewableWithPermissions.createLoginPage(null);
+    return ViewableWithPermissions.createLoginPage
+        (new LogInProperties(work.getContext().getConfig().getBoolean(ExecConstants.USER_AUTHENTICATION_ENABLED), null));
   }
 
   // Request type is POST because POST request which contains the login credentials are invalid and the request is
@@ -75,7 +81,9 @@ public class LogInLogOutResources {
   @Path("/login")
   @Produces(MediaType.TEXT_HTML)
   public Viewable getLoginPageAfterValidationError() {
-    return ViewableWithPermissions.createLoginPage("Invalid username/password credentials.");
+    String errorMessage = "Invalid username/password credentials.";
+    return ViewableWithPermissions.createLoginPage(
+        new LogInProperties(work.getContext().getConfig().getBoolean(ExecConstants.USER_AUTHENTICATION_ENABLED), errorMessage));
   }
 
   @GET
@@ -87,5 +95,29 @@ public class LogInLogOutResources {
     }
 
     req.getRequestDispatcher("/").forward(req, resp);
+  }
+
+  /**
+   * Log in properties which is used during login page creation.
+   * Contains flag indicating is user should be asked for password, if not, password will be set as empty string,
+   * optional error message to be shown in case when the page is requested after login attempt failure.
+   */
+  public static class LogInProperties {
+
+    private final boolean askForPassword;
+    private final String errorMessage;
+
+    public LogInProperties(boolean askForPassword, String errorMessage) {
+      this.askForPassword = askForPassword;
+      this.errorMessage = errorMessage;
+    }
+
+    public boolean isAskForPassword() {
+      return askForPassword;
+    }
+
+    public String getErrorMessage() {
+      return errorMessage;
+    }
   }
 }

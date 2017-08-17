@@ -21,12 +21,17 @@
             <fieldset>
                 <div class="form-group">
                     <img src="/static/img/apache-drill-logo.png" alt="Apache Drill Logo">
-                    <#if model??>
-                    <p style="color:red">${model}</p></br>
+                    <#if (model.getErrorMessage())??>
+                    <p style="color:red">${model.getErrorMessage()}</p></br>
                     </#if>
                     <h4>Log In to Drill Web Console</h4></br>
                     <p><input type="text" size="30" name="j_username" placeholder="Username"></p>
-                    <p><input type="password" size="30" name="j_password" placeholder="Password"></p>
+                    <#if (model.isAskForPassword())>
+                        <p><input type="password" size="30" name="j_password" placeholder="Password"></p>
+                    <#else>
+                        <input type="hidden" name="j_password" value="">
+                    </#if>
+
                     <p><button type="submit" class="btn btn-default">Log In</button> </p>
                 </div>
 
