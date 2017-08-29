@@ -119,7 +119,7 @@ public class ClusterFixture extends BaseFixture implements AutoCloseable {
       // mode.
 
       put(ZookeeperPersistentStoreProvider.DRILL_EXEC_SYS_STORE_PROVIDER_ZK_BLOBROOT, "/tmp/drill/log");
-      put(ExecConstants.SYS_STORE_PROVIDER_LOCAL_PATH, "file:/tmp/drill");
+      put(ExecConstants.SYS_STORE_PROVIDER_LOCAL_PATH, "file:/tmp/drill/log");
     }
   };
 
