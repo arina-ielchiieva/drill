@@ -19,6 +19,7 @@ package org.apache.drill.test;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -60,7 +61,6 @@ import org.apache.drill.exec.util.TestUtilities;
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.io.Resources;
-import org.apache.hadoop.fs.Path;
 
 /**
  * Test fixture to start a Drillbit with provide options, create a client, and
@@ -119,8 +119,8 @@ public class ClusterFixture extends BaseFixture implements AutoCloseable {
       // storage. Profiles will go here when running in distributed
       // mode.
 
-      put(ZookeeperPersistentStoreProvider.DRILL_EXEC_SYS_STORE_PROVIDER_ZK_BLOBROOT, "/tmp/drill/log");
-      put(ExecConstants.SYS_STORE_PROVIDER_LOCAL_PATH, "file:/tmp/drill/log");
+      put(ZookeeperPersistentStoreProvider.DRILL_EXEC_SYS_STORE_PROVIDER_ZK_BLOBROOT, "/tmp/drill/tests");
+      put(ExecConstants.SYS_STORE_PROVIDER_LOCAL_PATH, "file:/tmp/drill/tests");
     }
   };
 
@@ -731,7 +731,7 @@ public class ClusterFixture extends BaseFixture implements AutoCloseable {
   }
 
   public File getDrillTempDir() {
-    return new File(new Path(config.getString(ExecConstants.SYS_STORE_PROVIDER_LOCAL_PATH)).toUri().getPath());
+    return new File(URI.create(config.getString(ExecConstants.SYS_STORE_PROVIDER_LOCAL_PATH)).getPath());
   }
 
   public boolean usesZK() {
