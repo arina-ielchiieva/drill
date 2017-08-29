@@ -206,6 +206,7 @@ public class ClusterFixture extends BaseFixture implements AutoCloseable {
       // Forced to disable this, because currently we leak memory which is a known issue for query cancellations.
       // Setting this causes unit tests to fail.
       builder.configProperty(ExecConstants.RETURN_ERROR_FOR_FAILURE_IN_CANCELLED_FRAGMENTS, true);
+      builder.configProperty(ExecConstants.SYS_STORE_PROVIDER_LOCAL_PATH, "file:/tmp/drill");
     }
   }
 
