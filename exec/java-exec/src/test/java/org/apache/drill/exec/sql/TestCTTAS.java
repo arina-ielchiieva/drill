@@ -457,7 +457,7 @@ public class TestCTTAS extends BaseTestQuery {
 
     RemoteIterator<LocatedFileStatus> pathList = fs.listLocatedStatus(sessionTempLocation);
     List<Path> matchingPath = Lists.newArrayList();
-    while(pathList.hasNext()) {
+    while (pathList.hasNext()) {
       LocatedFileStatus path = pathList.next();
       if (path.isDirectory() && path.getPath().getName().equals(tableUUID)) {
         matchingPath.add(path.getPath());
