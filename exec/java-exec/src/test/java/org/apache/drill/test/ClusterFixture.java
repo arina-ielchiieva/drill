@@ -752,6 +752,6 @@ public class ClusterFixture extends BaseFixture implements AutoCloseable {
     } else {
       baseDir = getDrillTempDir();
     }
-    return new File(baseDir, "profiles");
+    return new File(baseDir.toURI().getPath(), "profiles");
   }
 }
