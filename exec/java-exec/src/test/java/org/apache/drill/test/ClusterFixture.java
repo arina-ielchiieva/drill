@@ -60,6 +60,7 @@ import org.apache.drill.exec.util.TestUtilities;
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.io.Resources;
+import org.apache.hadoop.fs.Path;
 
 /**
  * Test fixture to start a Drillbit with provide options, create a client, and
@@ -730,7 +731,7 @@ public class ClusterFixture extends BaseFixture implements AutoCloseable {
   }
 
   public File getDrillTempDir() {
-    return new File(config.getString(ExecConstants.SYS_STORE_PROVIDER_LOCAL_PATH));
+    return new File(new Path(config.getString(ExecConstants.SYS_STORE_PROVIDER_LOCAL_PATH)).toUri().getPath());
   }
 
   public boolean usesZK() {
@@ -752,6 +753,6 @@ public class ClusterFixture extends BaseFixture implements AutoCloseable {
     } else {
       baseDir = getDrillTempDir();
     }
-    return new File(baseDir.toURI().getPath(), "profiles");
+    return new File(baseDir, "profiles");
   }
 }
