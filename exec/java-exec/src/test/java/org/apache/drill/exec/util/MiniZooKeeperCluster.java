@@ -33,7 +33,9 @@ import java.util.Random;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FileUtil;
+import org.apache.zookeeper.Environment;
 import org.apache.zookeeper.server.NIOServerCnxnFactory;
+import org.apache.zookeeper.server.ZooKeeperSaslServer;
 import org.apache.zookeeper.server.ZooKeeperServer;
 import org.apache.zookeeper.server.persistence.FileTxnLog;
 
@@ -111,6 +113,8 @@ public class MiniZooKeeperCluster {
     // resulting in test failure (client timeout on first session).
     // set env and directly in order to handle static init/gc issues
     System.setProperty("zookeeper.preAllocSize", "100");
+    System.clearProperty(ZooKeeperSaslServer.LOGIN_CONTEXT_NAME_KEY);
+    System.clearProperty(Environment.JAAS_CONF_KEY);
     FileTxnLog.setPreallocSize(100 * 1024);
   }
 
