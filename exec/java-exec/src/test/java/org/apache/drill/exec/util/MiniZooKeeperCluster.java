@@ -113,8 +113,8 @@ public class MiniZooKeeperCluster {
     // resulting in test failure (client timeout on first session).
     // set env and directly in order to handle static init/gc issues
     System.setProperty("zookeeper.preAllocSize", "100");
-    System.clearProperty(ZooKeeperSaslServer.LOGIN_CONTEXT_NAME_KEY);
-    System.clearProperty(Environment.JAAS_CONF_KEY);
+    //System.clearProperty(ZooKeeperSaslServer.LOGIN_CONTEXT_NAME_KEY);
+    //System.clearProperty(Environment.JAAS_CONF_KEY);
     System.setProperty(ZooKeeperSaslServer.LOGIN_CONTEXT_NAME_KEY, "MiniZooKeeperCluster");
     FileTxnLog.setPreallocSize(100 * 1024);
   }
