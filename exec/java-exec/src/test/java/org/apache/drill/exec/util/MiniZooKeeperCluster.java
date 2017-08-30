@@ -115,6 +115,7 @@ public class MiniZooKeeperCluster {
     System.setProperty("zookeeper.preAllocSize", "100");
     System.clearProperty(ZooKeeperSaslServer.LOGIN_CONTEXT_NAME_KEY);
     System.clearProperty(Environment.JAAS_CONF_KEY);
+    System.setProperty(ZooKeeperSaslServer.LOGIN_CONTEXT_NAME_KEY, "MiniZooKeeperCluster");
     FileTxnLog.setPreallocSize(100 * 1024);
   }
 
