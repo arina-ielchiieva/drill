@@ -33,6 +33,7 @@ import java.util.Random;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FileUtil;
+import org.apache.zookeeper.Environment;
 import org.apache.zookeeper.server.NIOServerCnxnFactory;
 import org.apache.zookeeper.server.ZooKeeperSaslServer;
 import org.apache.zookeeper.server.ZooKeeperServer;
@@ -114,6 +115,8 @@ public class MiniZooKeeperCluster {
     System.setProperty("zookeeper.preAllocSize", "100");
     // during the test run use non-existent context name key to ensure we won't try to bring up secure zk cluster
     System.setProperty(ZooKeeperSaslServer.LOGIN_CONTEXT_NAME_KEY, "DrillZookeeperTestServer");
+    System.clearProperty(Environment.JAAS_CONF_KEY);
+
     FileTxnLog.setPreallocSize(100 * 1024);
   }
 
