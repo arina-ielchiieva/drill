@@ -162,6 +162,8 @@ public class WorkspaceSchemaFactory {
       logger.trace("The filesystem for this workspace does not support this operation.", e);
     } catch (final FileNotFoundException | AccessControlException e) {
       return false;
+    } catch (IOException e) {
+      e.printStackTrace();
     }
 
     return true;
