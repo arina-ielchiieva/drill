@@ -19,6 +19,8 @@ package org.apache.drill.exec.coord.zk;
 
 import java.io.IOException;
 
+import mockit.Mocked;
+import mockit.NonStrictExpectations;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -58,10 +60,28 @@ public class TestEphemeralStore {
     }
   }
 
+  @Mocked({"getProperty"})
+  private System system;
+
 
   @Before
   public void setUp() throws Exception {
+    new NonStrictExpectations(system)
+    {
+      {
+        //zookeeper.sasl.serverconfig
+        invoke(System.class, "getProperty", "zookeeper.sasl.serverconfig");
+        returns("DrillZookeeperTestServer");
+        invoke(System.class, "getProperty", "java.security.auth.login.config");
+        returns(null);
+      }
+    };
+
+    System.out.println("ARINA: setUp - zookeeper.sasl.serverconfig - " + System.getProperty("zookeeper.sasl.serverconfig"));
+    System.out.println("ARINA: setUp - java.security.auth.login.config - " + System.getProperty("java.security.auth.login.config"));
     server = new TestingServer();
+    System.out.println("ARINA: setUp - zookeeper.sasl.serverconfig - " + System.getProperty("zookeeper.sasl.serverconfig"));
+    System.out.println("ARINA: setUp - java.security.auth.login.config - " + System.getProperty("java.security.auth.login.config"));
     final RetryPolicy policy = new RetryNTimes(2, 1000);
     curator = CuratorFrameworkFactory.newClient(server.getConnectString(), policy);
 
@@ -95,6 +115,8 @@ public class TestEphemeralStore {
     server.start();
     curator.start();
     store.start();
+    System.out.println("ARINA: setUp - zookeeper.sasl.serverconfig - " + System.getProperty("zookeeper.sasl.serverconfig"));
+    System.out.println("ARINA: setUp - java.security.auth.login.config - " + System.getProperty("java.security.auth.login.config"));
   }
 
   /**
@@ -129,6 +151,8 @@ public class TestEphemeralStore {
 
   @After
   public void tearDown() throws Exception {
+    System.out.println("ARINA: tear down - zookeeper.sasl.serverconfig - " + System.getProperty("zookeeper.sasl.serverconfig"));
+    System.out.println("ARINA: tear down - java.security.auth.login.config - " + System.getProperty("java.security.auth.login.config"));
     store.close();
     curator.close();
     server.close();

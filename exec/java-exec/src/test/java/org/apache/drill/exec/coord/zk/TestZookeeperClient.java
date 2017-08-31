@@ -96,7 +96,11 @@ public class TestZookeeperClient {
         returns(null);
       }
     };
+    System.out.println("ARINA: setUp - zookeeper.sasl.serverconfig - " + System.getProperty("zookeeper.sasl.serverconfig"));
+    System.out.println("ARINA: setUp - java.security.auth.login.config - " + System.getProperty("java.security.auth.login.config"));
     server = new TestingServer();
+    System.out.println("ARINA: setUp - zookeeper.sasl.serverconfig - " + System.getProperty("zookeeper.sasl.serverconfig"));
+    System.out.println("ARINA: setUp - java.security.auth.login.config - " + System.getProperty("java.security.auth.login.config"));
     final RetryPolicy policy = new RetryNTimes(1, 1000);
     curator = CuratorFrameworkFactory.newClient(server.getConnectString(), policy);
     client = new ClientWithMockCache(curator, root, mode);
@@ -104,10 +108,14 @@ public class TestZookeeperClient {
     server.start();
     curator.start();
     client.start();
+    System.out.println("ARINA: setUp - zookeeper.sasl.serverconfig - " + System.getProperty("zookeeper.sasl.serverconfig"));
+    System.out.println("ARINA: setUp - java.security.auth.login.config - " + System.getProperty("java.security.auth.login.config"));
   }
 
   @After
   public void tearDown() throws Exception {
+    System.out.println("ARINA: tear down - zookeeper.sasl.serverconfig - " + System.getProperty("zookeeper.sasl.serverconfig"));
+    System.out.println("ARINA: tear down - java.security.auth.login.config - " + System.getProperty("java.security.auth.login.config"));
     client.close();
     curator.close();
     server.close();
