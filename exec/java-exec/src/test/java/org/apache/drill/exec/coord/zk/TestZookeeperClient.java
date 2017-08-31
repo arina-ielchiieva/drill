@@ -89,9 +89,10 @@ public class TestZookeeperClient {
     new NonStrictExpectations(system)
     {
       {
-        invoke(System.class, "getProperty", ZooKeeperSaslServer.LOGIN_CONTEXT_NAME_KEY);
+        //zookeeper.sasl.serverconfig
+        invoke(System.class, "getProperty", "zookeeper.sasl.serverconfig");
         returns("DrillZookeeperTestServer");
-        invoke(System.class, "getProperty", Environment.JAAS_CONF_KEY);
+        invoke(System.class, "getProperty", "java.security.auth.login.config");
         returns(null);
       }
     };
