@@ -89,10 +89,10 @@ public class BaseTestImpersonation extends PlanTestBase {
   protected static void startMiniDfsCluster(
       final String testClass, final boolean isImpersonationEnabled) throws Exception {
     Preconditions.checkArgument(!Strings.isNullOrEmpty(testClass), "Expected a non-null and non-empty test class name");
-    dfsConf = new Configuration();
+    dfsConf = new Configuration(false);
     //dfsConf.set(FileSystem.FS_DEFAULT_NAME_KEY, "hdfs:///");
-    dfsConf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
-    dfsConf.set("fs.defaultFS", "hdfs:///");
+    //dfsConf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
+    //dfsConf.set("fs.defaultFS", "hdfs:///");
     //dfsConf.set("fs.default.name", "hdfs:///");
 
     // Set the MiniDfs base dir to be the temp directory of the test, so that all files created within the MiniDfs
