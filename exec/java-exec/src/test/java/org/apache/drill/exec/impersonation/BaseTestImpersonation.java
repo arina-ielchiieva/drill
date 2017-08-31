@@ -92,8 +92,8 @@ public class BaseTestImpersonation extends PlanTestBase {
     dfsConf = new Configuration();
     //dfsConf.set(FileSystem.FS_DEFAULT_NAME_KEY, "hdfs:///");
     dfsConf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
-    //dfsConf.set("fs.defaultFS", "file:///");
-    //dfsConf.set("fs.default.name", "file:///");
+    dfsConf.set("fs.defaultFS", "hdfs:///");
+    //dfsConf.set("fs.default.name", "hdfs:///");
 
     // Set the MiniDfs base dir to be the temp directory of the test, so that all files created within the MiniDfs
     // are properly cleanup when test exits.
