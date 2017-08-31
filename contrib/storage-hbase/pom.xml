@@ -93,9 +93,10 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
-          <includes>
+ <!--         <includes>
             <include>${hbase.TestSuite}</include>
-          </includes>
+          </includes>-->
+          <skipTests>true</skipTests>
           <systemProperties>
             <property>
               <name>hbase.test.root</name>
