@@ -51,6 +51,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
+import javax.security.auth.login.Configuration;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -98,9 +100,13 @@ public class TestZookeeperClient {
     };
     System.out.println("ARINA: setUp - zookeeper.sasl.serverconfig - " + System.getProperty("zookeeper.sasl.serverconfig"));
     System.out.println("ARINA: setUp - java.security.auth.login.config - " + System.getProperty("java.security.auth.login.config"));
+    System.out.println("ARINA: setup - getAppConfigurationEntry - " + Configuration.getConfiguration().getAppConfigurationEntry(System.getProperty("zookeeper.sasl.serverconfig")));
+
     server = new TestingServer();
     System.out.println("ARINA: setUp - zookeeper.sasl.serverconfig - " + System.getProperty("zookeeper.sasl.serverconfig"));
     System.out.println("ARINA: setUp - java.security.auth.login.config - " + System.getProperty("java.security.auth.login.config"));
+    System.out.println("ARINA: setup - getAppConfigurationEntry - " + Configuration.getConfiguration().getAppConfigurationEntry(System.getProperty("zookeeper.sasl.serverconfig")));
+
     final RetryPolicy policy = new RetryNTimes(1, 1000);
     curator = CuratorFrameworkFactory.newClient(server.getConnectString(), policy);
     client = new ClientWithMockCache(curator, root, mode);
@@ -110,10 +116,14 @@ public class TestZookeeperClient {
     client.start();
     System.out.println("ARINA: setUp - zookeeper.sasl.serverconfig - " + System.getProperty("zookeeper.sasl.serverconfig"));
     System.out.println("ARINA: setUp - java.security.auth.login.config - " + System.getProperty("java.security.auth.login.config"));
+    System.out.println("ARINA: setup - getAppConfigurationEntry - " + Configuration.getConfiguration().getAppConfigurationEntry(System.getProperty("zookeeper.sasl.serverconfig")));
+
   }
 
   @After
   public void tearDown() throws Exception {
+    System.out.println("ARINA: tear down - getAppConfigurationEntry - " + Configuration.getConfiguration().getAppConfigurationEntry(System.getProperty("zookeeper.sasl" +
+        ".serverconfig")));
     System.out.println("ARINA: tear down - zookeeper.sasl.serverconfig - " + System.getProperty("zookeeper.sasl.serverconfig"));
     System.out.println("ARINA: tear down - java.security.auth.login.config - " + System.getProperty("java.security.auth.login.config"));
     client.close();
