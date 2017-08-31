@@ -133,7 +133,8 @@ public class BaseTestImpersonation extends PlanTestBase {
     final FileSystemConfig lfsPluginConfig = (FileSystemConfig) pluginRegistry.getPlugin("dfs_test").getConfig();
 
     final FileSystemConfig miniDfsPluginConfig = new FileSystemConfig();
-    miniDfsPluginConfig.connection = dfsConf.get(FileSystem.FS_DEFAULT_NAME_KEY);
+    //miniDfsPluginConfig.connection = dfsConf.get(FileSystem.FS_DEFAULT_NAME_KEY);
+    miniDfsPluginConfig.connection = "file:///";
 
     createAndAddWorkspace("tmp", "/tmp", (short)0777, processUser, processUser, workspaces);
 
