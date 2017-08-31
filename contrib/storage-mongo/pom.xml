@@ -75,14 +75,16 @@
   </dependencies>
 
   <build>
+
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
-	  <includes>
+<!--	  <includes>
 	    <include>${mongo.TestSuite}</include>
-	  </includes>
+	  </includes>-->
+          <skipTests>true</skipTests>
           <systemProperties>
             <property>
               <name>logback.log.dir</name>
