@@ -20,8 +20,15 @@ package org.apache.drill.exec.coord.zk;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import com.google.common.collect.Lists;
+import mockit.Expectations;
+import mockit.Mock;
+import mockit.MockUp;
+import mockit.Mocked;
+import mockit.NonStrictExpectations;
+import mockit.integration.junit4.JMockit;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -34,10 +41,14 @@ import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.exec.exception.VersionMismatchException;
 import org.apache.drill.exec.store.sys.store.DataChangeVersion;
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.Environment;
+import org.apache.zookeeper.server.ZooKeeperSaslServer;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
 import static org.junit.Assert.assertEquals;
@@ -45,6 +56,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+@RunWith(JMockit.class)
 public class TestZookeeperClient {
   private final static String root = "/test";
   private final static String path = "test-key";
@@ -69,8 +81,20 @@ public class TestZookeeperClient {
     }
   }
 
+  @Mocked({"getProperty"})
+  private System system;
+
   @Before
   public void setUp() throws Exception {
+    new NonStrictExpectations(system)
+    {
+      {
+        invoke(System.class, "getProperty", ZooKeeperSaslServer.LOGIN_CONTEXT_NAME_KEY);
+        returns("DrillZookeeperTestServer");
+        invoke(System.class, "getProperty", Environment.JAAS_CONF_KEY);
+        returns(null);
+      }
+    };
     server = new TestingServer();
     final RetryPolicy policy = new RetryNTimes(1, 1000);
     curator = CuratorFrameworkFactory.newClient(server.getConnectString(), policy);

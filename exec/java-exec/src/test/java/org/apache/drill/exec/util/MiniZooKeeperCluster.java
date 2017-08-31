@@ -114,8 +114,8 @@ public class MiniZooKeeperCluster {
     // set env and directly in order to handle static init/gc issues
     System.setProperty("zookeeper.preAllocSize", "100");
     // during the test run use non-existent context name key to ensure we won't try to bring up secure zk cluster
-    System.setProperty(ZooKeeperSaslServer.LOGIN_CONTEXT_NAME_KEY, "DrillZookeeperTestServer");
-    System.clearProperty(Environment.JAAS_CONF_KEY);
+    //System.setProperty(ZooKeeperSaslServer.LOGIN_CONTEXT_NAME_KEY, "DrillZookeeperTestServer");
+    //System.clearProperty(Environment.JAAS_CONF_KEY);
 
     FileTxnLog.setPreallocSize(100 * 1024);
   }
