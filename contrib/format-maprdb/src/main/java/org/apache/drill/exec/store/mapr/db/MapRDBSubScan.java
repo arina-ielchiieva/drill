@@ -114,7 +114,12 @@ public class MapRDBSubScan extends AbstractBase implements SubScan {
     return formatPlugin;
   }
 
-  @JsonIgnore
+  @JsonProperty("storageConfig")
+  public StoragePluginConfig getStorageConfig(){
+    return formatPlugin.getStorageConfig();
+  }
+
+  @JsonProperty("formatPluginConfig")
   public MapRDBFormatPluginConfig getFormatPluginConfig() {
     return (MapRDBFormatPluginConfig) formatPlugin.getConfig();
   }
