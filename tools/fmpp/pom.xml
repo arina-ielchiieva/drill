@@ -48,6 +48,12 @@
       <groupId>net.sourceforge.fmpp</groupId>
       <artifactId>fmpp</artifactId>
       <version>${fmpp.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.freemarker</groupId>
+          <artifactId>freemarker</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.freemarker</groupId>
