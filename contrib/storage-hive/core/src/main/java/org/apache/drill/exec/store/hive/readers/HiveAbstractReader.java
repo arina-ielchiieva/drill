@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -15,15 +15,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.store.hive;
+package org.apache.drill.exec.store.hive.readers;
 
+import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterators;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.netty.buffer.DrillBuf;
+import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.types.TypeProtos.MajorType;
@@ -35,6 +40,10 @@ import org.apache.drill.exec.physical.impl.OutputMutator;
 import org.apache.drill.exec.record.MaterializedField;
 import org.apache.drill.exec.server.options.OptionManager;
 import org.apache.drill.exec.store.AbstractRecordReader;
+import org.apache.drill.exec.store.hive.HiveFieldConverter;
+import org.apache.drill.exec.store.hive.HivePartition;
+import org.apache.drill.exec.store.hive.HiveTableWithColumnCache;
+import org.apache.drill.exec.store.hive.HiveUtilities;
 import org.apache.drill.exec.vector.AllocationHelper;
 import org.apache.drill.exec.vector.ValueVector;
 import org.apache.hadoop.hive.conf.HiveConf;
@@ -66,7 +75,7 @@ public abstract class HiveAbstractReader extends AbstractRecordReader {
 
   protected HiveTableWithColumnCache table;
   protected HivePartition partition;
-  protected InputSplit inputSplit;
+  protected Iterator<InputSplit> inputSplitsIterator;
   protected List<String> selectedColumnNames;
   protected List<StructField> selectedStructFieldRefs = Lists.newArrayList();
   protected List<TypeInfo> selectedColumnTypes = Lists.newArrayList();
@@ -91,6 +100,7 @@ public abstract class HiveAbstractReader extends AbstractRecordReader {
   protected Converter partTblObjectInspectorConverter;
 
   protected Object key;
+  //todo rename to currentReader since we support multipleInputs at a time or consider other options
   protected RecordReader<Object, Object> reader;
   protected List<ValueVector> vectors = Lists.newArrayList();
   protected List<ValueVector> pVectors = Lists.newArrayList();
@@ -99,17 +109,24 @@ public abstract class HiveAbstractReader extends AbstractRecordReader {
   protected FragmentContext fragmentContext;
   protected String defaultPartitionValue;
   protected final UserGroupInformation proxyUgi;
+  protected JobConf job;
 
 
-  protected static final int TARGET_RECORD_COUNT = 4000;
+  public static final int TARGET_RECORD_COUNT = 4000;
 
   public HiveAbstractReader(HiveTableWithColumnCache table, HivePartition partition, InputSplit inputSplit, List<SchemaPath> projectedColumns,
                             FragmentContext context, final HiveConf hiveConf,
                             UserGroupInformation proxyUgi) throws ExecutionSetupException {
+    this (table, partition, inputSplit == null ? ImmutableList.<InputSplit>of() : ImmutableList.of(inputSplit), projectedColumns, context, hiveConf, proxyUgi);
+  }
+
+  public HiveAbstractReader(HiveTableWithColumnCache table, HivePartition partition, List<InputSplit> inputSplits, List<SchemaPath> projectedColumns,
+                            FragmentContext context, final HiveConf hiveConf,
+                            UserGroupInformation proxyUgi) throws ExecutionSetupException {
     this.table = table;
     this.partition = partition;
-    this.inputSplit = inputSplit;
-    this.empty = (inputSplit == null && partition == null);
+    this.inputSplitsIterator = inputSplits == null ? Iterators.<InputSplit>emptyIterator() : inputSplits.iterator();
+    this.empty = ((inputSplits == null || inputSplits.isEmpty()) && partition == null); //todo should we set empty table if inputSplits are null?
     this.hiveConf = hiveConf;
     this.fragmentContext = context;
     this.proxyUgi = proxyUgi;
@@ -120,7 +137,7 @@ public abstract class HiveAbstractReader extends AbstractRecordReader {
   public abstract void internalInit(Properties tableProperties, RecordReader<Object, Object> reader);
 
   private void init() throws ExecutionSetupException {
-    final JobConf job = new JobConf(hiveConf);
+    job = new JobConf(hiveConf);
 
     // Get the configured default val
     defaultPartitionValue = hiveConf.get(ConfVars.DEFAULTPARTITIONNAME.varname);
@@ -229,16 +246,26 @@ public abstract class HiveAbstractReader extends AbstractRecordReader {
       throw new ExecutionSetupException("Failure while initializing Hive Reader " + this.getClass().getName(), e);
     }
 
-    if (!empty) {
+    if (!empty && initNextReader(job)) {
+      internalInit(tableProperties, reader);
+    }
+  }
+
+  protected boolean initNextReader(JobConf job) throws ExecutionSetupException {
+    if (inputSplitsIterator.hasNext()) {
+      if (reader != null) {
+        closeReader();
+      }
+      InputSplit inputSplit = inputSplitsIterator.next();
       try {
         reader = (org.apache.hadoop.mapred.RecordReader<Object, Object>) job.getInputFormat().getRecordReader(inputSplit, job, Reporter.NULL);
         logger.trace("hive reader created: {} for inputSplit {}", reader.getClass().getName(), inputSplit.toString());
       } catch (Exception e) {
         throw new ExecutionSetupException("Failed to get o.a.hadoop.mapred.RecordReader from Hive InputFormat", e);
       }
-
-      internalInit(tableProperties, reader);
+      return true;
     }
+    return false;
   }
 
   /**
@@ -328,8 +355,22 @@ public abstract class HiveAbstractReader extends AbstractRecordReader {
     }
   }
 
+  protected void readHiveRecordAndInsertIntoRecordBatch(Object deSerializedValue, int outputRecordIndex) {
+    for (int i = 0; i < selectedStructFieldRefs.size(); i++) {
+      Object hiveValue = finalOI.getStructFieldData(deSerializedValue, selectedStructFieldRefs.get(i));
+      if (hiveValue != null) {
+        selectedColumnFieldConverters.get(i).setSafeValue(selectedColumnObjInspectors.get(i), hiveValue,
+            vectors.get(i), outputRecordIndex);
+      }
+    }
+  }
+
   @Override
   public void close() {
+    closeReader();
+  }
+
+  private void closeReader() {
     try {
       if (reader != null) {
         reader.close();
@@ -352,6 +393,25 @@ public abstract class HiveAbstractReader extends AbstractRecordReader {
       }
 
       vector.getMutator().setValueCount(recordCount);
+    }
+  }
+
+  protected boolean hasNextValue(Object value) {
+    while (true) {
+      try {
+        if (reader.next(key, value)) {
+          return true;
+        }
+
+        if (initNextReader(job)) {
+          continue;
+        }
+
+        return false;
+
+      } catch (IOException | ExecutionSetupException e) {
+        throw new DrillRuntimeException(e);
+      }
     }
   }
 
