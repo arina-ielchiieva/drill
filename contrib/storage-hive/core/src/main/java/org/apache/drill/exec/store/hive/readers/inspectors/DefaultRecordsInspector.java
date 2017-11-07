@@ -14,8 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.store.hive.readers;
+package org.apache.drill.exec.store.hive.readers.inspectors;
 
+import org.apache.hadoop.mapred.RecordReader;
+
+/**
+ * Default records inspector that uses the same value holder for each record.
+ * Each value once written is immediately processed thus value holder can be re-used.
+ */
 public class DefaultRecordsInspector extends AbstractRecordsInspector {
 
   private final Object value;
@@ -25,7 +31,7 @@ public class DefaultRecordsInspector extends AbstractRecordsInspector {
   }
 
   @Override
-  public Object getValueHolder() {
+  public Object getValueHolder(RecordReader reader) {
     return value;
   }
 

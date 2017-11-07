@@ -15,17 +15,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.store.hive.readers;
+package org.apache.drill.exec.store.hive.readers.initilializers;
 
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.store.hive.HiveSubScan;
 import org.apache.drill.exec.store.hive.HiveUtilities;
-import org.apache.drill.exec.store.hive.readers.HiveAvroReader;
-import org.apache.drill.exec.store.hive.readers.HiveDefaultReader;
-import org.apache.drill.exec.store.hive.readers.HiveOrcReader;
-import org.apache.drill.exec.store.hive.readers.HiveParquetReader;
-import org.apache.drill.exec.store.hive.readers.HiveRCFileReader;
-import org.apache.drill.exec.store.hive.readers.HiveTextReader;
+import org.apache.drill.exec.store.hive.readers.HiveAbstractReader;
+import org.apache.drill.exec.store.hive.readers.initilializers.AbstractReadersInitializer;
+import org.apache.drill.exec.store.hive.readers.initilializers.DefaultInputSplitReadersInitializer;
+import org.apache.drill.exec.store.hive.readers.initilializers.EmptyReadersInitializer;
+import org.apache.drill.exec.store.hive.readers.initilializers.InputSplitGroupReadersInitializer;
 import org.apache.hadoop.hive.ql.io.RCFileInputFormat;
 import org.apache.hadoop.hive.ql.io.avro.AvroContainerInputFormat;
 import org.apache.hadoop.hive.ql.io.orc.OrcInputFormat;
@@ -38,9 +37,8 @@ import java.util.Map;
 public class ReadersInitializer {
 
   /**
-   * Use different classes for different Hive native formats:
+   * List of all available readers classes for a different Hive nativ formats:
    * ORC, AVRO, RCFFile, Text and Parquet.
-   * If input format is none of them falls to default reader.
    */
   public static final Map<String, Class<? extends HiveAbstractReader>> READER_MAP = new HashMap<>();
 
@@ -52,6 +50,14 @@ public class ReadersInitializer {
     READER_MAP.put(TextInputFormat.class.getCanonicalName(), HiveTextReader.class);
   }
 
+  /**
+   * Determines which reader initializer should be used got given table configuration.
+   * Decision is made based on table content and skip header / footer logic usage.
+   *
+   * @param context fragment context
+   * @param config Hive table config
+   * @return reader initializer
+   */
   public static AbstractReadersInitializer getInitializer(FragmentContext context, HiveSubScan config) {
     Class<? extends HiveAbstractReader> readerClass = getReaderClass(config);
     if (config.getInputSplits().isEmpty()) {
@@ -63,6 +69,13 @@ public class ReadersInitializer {
     }
   }
 
+  /**
+   * Will try to find reader class based on Hive table input format.
+   * If reader class was not find, will use default reader class.
+   *
+   * @param config Hive table config
+   * @return reader class
+   */
   private static Class<? extends HiveAbstractReader> getReaderClass(HiveSubScan config) {
     final String formatName = config.getTable().getSd().getInputFormat();
     Class<? extends HiveAbstractReader> readerClass = HiveDefaultReader.class;
@@ -72,6 +85,14 @@ public class ReadersInitializer {
     return readerClass;
   }
 
+  /**
+   * Checks if given table requires input splits groups usage.
+   * Input split group usage is required for text tables that has headers and / or footers.
+   *
+   * @param readerClass reader class
+   * @param config Hive table config
+   * @return true if table
+   */
   private static boolean hasInputGroups(Class<? extends HiveAbstractReader> readerClass, HiveSubScan config) {
     return readerClass == HiveTextReader.class && HiveUtilities.hasHeaderOrFooter(config.getTable());
   }

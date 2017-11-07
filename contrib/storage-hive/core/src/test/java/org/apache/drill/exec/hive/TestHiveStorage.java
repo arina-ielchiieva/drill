@@ -496,6 +496,12 @@ public class TestHiveStorage extends HiveTestBase {
     }
   }
 
+  //todo unit tests logic if possible
+  //todo create test for file with several input splits
+  //todo create test for two files each having several input splits
+  //todo create test that will drain table with header / footer / header + footer
+
+  //todo remove these test they don't make any sense!
   @Test // DRILL-3688
   public void testIgnoreSkipHeaderFooterForRcfile() throws Exception {
     testBuilder()

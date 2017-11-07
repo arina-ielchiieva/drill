@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.store.hive.readers;
+package org.apache.drill.exec.store.hive.readers.initilializers;
 
 import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.exec.ops.FragmentContext;
@@ -23,6 +23,7 @@ import org.apache.drill.exec.store.RecordReader;
 import org.apache.drill.exec.store.hive.HivePartition;
 import org.apache.drill.exec.store.hive.HiveSubScan;
 import org.apache.drill.exec.store.hive.HiveTableWithColumnCache;
+import org.apache.drill.exec.store.hive.readers.HiveAbstractReader;
 import org.apache.drill.exec.util.ImpersonationUtil;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.api.Partition;
@@ -31,6 +32,11 @@ import org.apache.hadoop.security.UserGroupInformation;
 import java.lang.reflect.Constructor;
 import java.util.List;
 
+/**
+ * Parent class for reader initializers which create reader based on reader class.
+ * Holds common logic how to create reader constructor and reader instance.
+ * Is responsible to ensure each child class implements logic for initializing record reader.
+ */
 public abstract class AbstractReadersInitializer {
 
   protected final Class<? extends HiveAbstractReader> readerClass;
@@ -64,9 +70,18 @@ public abstract class AbstractReadersInitializer {
     }
   }
 
+  /**
+   * Checks if given list of partitions is not null or empty.
+   *
+   * @param partitions list of partitions
+   * @return true if partitions are present, false otherwise
+   */
   protected boolean hasPartitions(List<HivePartition> partitions) {
     return partitions != null && !partitions.isEmpty();
   }
 
+  /**
+   * @return list of initialized records readers
+   */
   public abstract List<RecordReader> init();
 }

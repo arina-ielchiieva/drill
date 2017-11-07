@@ -100,7 +100,6 @@ public abstract class HiveAbstractReader extends AbstractRecordReader {
   protected Converter partTblObjectInspectorConverter;
 
   protected Object key;
-  //todo rename to currentReader since we support multipleInputs at a time or consider other options
   protected RecordReader<Object, Object> reader;
   protected List<ValueVector> vectors = Lists.newArrayList();
   protected List<ValueVector> pVectors = Lists.newArrayList();
@@ -125,8 +124,8 @@ public abstract class HiveAbstractReader extends AbstractRecordReader {
                             UserGroupInformation proxyUgi) throws ExecutionSetupException {
     this.table = table;
     this.partition = partition;
-    this.inputSplitsIterator = inputSplits == null ? Iterators.<InputSplit>emptyIterator() : inputSplits.iterator();
-    this.empty = ((inputSplits == null || inputSplits.isEmpty()) && partition == null); //todo should we set empty table if inputSplits are null?
+    this.empty = (inputSplits == null || inputSplits.isEmpty());
+    this.inputSplitsIterator = empty ? Iterators.<InputSplit>emptyIterator() : inputSplits.iterator();
     this.hiveConf = hiveConf;
     this.fragmentContext = context;
     this.proxyUgi = proxyUgi;
@@ -251,6 +250,13 @@ public abstract class HiveAbstractReader extends AbstractRecordReader {
     }
   }
 
+  /**
+   * Initializes next reader if available, will close previous reader if any.
+   *
+   * @param job map / reduce job configuration.
+   * @return true if new reader was initialized, false is no more readers are available
+   * @throws ExecutionSetupException if could not init record reader
+   */
   protected boolean initNextReader(JobConf job) throws ExecutionSetupException {
     if (inputSplitsIterator.hasNext()) {
       if (reader != null) {
@@ -330,20 +336,8 @@ public abstract class HiveAbstractReader extends AbstractRecordReader {
     }
   }
 
-  /**
-   * To take into account Hive "skip.header.lines.count" property first N values from file are skipped.
-   * Since file can be read in batches (depends on TARGET_RECORD_COUNT), additional checks are made
-   * to determine if it's new file or continuance.
-   *
-   * To take into account Hive "skip.footer.lines.count" property values are buffered in queue
-   * until queue size exceeds number of footer lines to skip, then first value in queue is retrieved.
-   * Buffer of value objects is used to re-use value objects in order to reduce number of created value objects.
-   * For each new file queue is cleared to drop footer lines from previous file.
-   */
   @Override
   public abstract int next();
-
-
 
   protected void setValueCountAndPopulatePartitionVectors(int recordCount) {
     for (ValueVector v : vectors) {
@@ -370,6 +364,9 @@ public abstract class HiveAbstractReader extends AbstractRecordReader {
     closeReader();
   }
 
+  /**
+   * Will close record reader if any. Any exception will be logged as warning.
+   */
   private void closeReader() {
     try {
       if (reader != null) {
@@ -396,6 +393,14 @@ public abstract class HiveAbstractReader extends AbstractRecordReader {
     }
   }
 
+  /**
+   * Writes value in the given value holder if next value available.
+   * If value is not, checks if there are any other available readers
+   * that may hold next value and tried to obtain value from them.
+   *
+   * @param value value holder
+   * @return true if value was written, false otherwise
+   */
   protected boolean hasNextValue(Object value) {
     while (true) {
       try {

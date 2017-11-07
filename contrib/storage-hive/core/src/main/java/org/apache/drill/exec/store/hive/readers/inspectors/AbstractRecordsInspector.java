@@ -14,34 +14,61 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.store.hive.readers;
+package org.apache.drill.exec.store.hive.readers.inspectors;
 
+import org.apache.drill.exec.store.hive.readers.HiveAbstractReader;
+import org.apache.hadoop.mapred.RecordReader;
+
+/**
+ * Parent class for records inspectors which responsible for counting of processed records
+ * and managing free and used value holders.
+ */
 public abstract class AbstractRecordsInspector {
 
   private int recordCount;
 
-  protected AbstractRecordsInspector() {
-    this.recordCount = 0;
-  }
-
+  /**
+   * Checks if current number of processed records does not exceed max batch size.
+   *
+   * @return true if reached max number of records in batch
+   */
   public boolean isBatchFull() {
     return recordCount >= HiveAbstractReader.TARGET_RECORD_COUNT;
   }
 
+  /**
+   * @return number of processed records
+   */
   public int getRecordCount() {
     return recordCount;
   }
 
+  /**
+   * Increments current number of processed records.
+   */
   public void incrementRecordCount() {
     recordCount++;
   }
 
+  /**
+   * When batch of data was sent, number of processed records should be reset.
+   */
   public void reset() {
     recordCount = 0;
   }
 
-  public abstract Object getValueHolder();
+  /**
+   * Returns value holder where next value will be written.
+   * This value holder can be taken from cache or initialized using given record reader.
+   *
+   * @param reader record reader
+   * @return value holder
+   */
+  public abstract Object getValueHolder(RecordReader reader);
 
+  /**
+   * @return value holder with written value
+   */
   public abstract Object getNextValue();
 
 }

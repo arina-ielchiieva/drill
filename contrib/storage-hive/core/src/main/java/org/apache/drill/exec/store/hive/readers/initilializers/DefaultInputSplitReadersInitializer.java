@@ -15,18 +15,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.store.hive.readers;
+package org.apache.drill.exec.store.hive.readers.initilializers;
 
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.store.RecordReader;
 import org.apache.drill.exec.store.hive.HivePartition;
 import org.apache.drill.exec.store.hive.HiveSubScan;
+import org.apache.drill.exec.store.hive.readers.HiveAbstractReader;
+import org.apache.drill.exec.store.hive.readers.initilializers.AbstractReadersInitializer;
 import org.apache.hadoop.mapred.InputSplit;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Creates separate record reader for each given input split.
+ */
 public class DefaultInputSplitReadersInitializer extends AbstractReadersInitializer {
 
   public DefaultInputSplitReadersInitializer(FragmentContext context, HiveSubScan config, Class<? extends HiveAbstractReader> readerClass) {

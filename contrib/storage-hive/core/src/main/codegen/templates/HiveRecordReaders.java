@@ -86,12 +86,11 @@ public class Hive${entry.hiveReader}Reader extends HiveAbstractReader {
     key = reader.createKey();
 <#if entry.hasHeaderFooter == true>
     int skipHeaderCount = HiveUtilities.retrieveIntProperty(tableProperties, serdeConstants.HEADER_COUNT, -1);
-    Object value = reader.createValue();
 
-    // skip first N records
+    // skip first N records to apply skip header policy
     for (int i = 0; i < skipHeaderCount; i++) {
-      if (!hasNextValue(value)) {
-        // we drained the table
+      if (!hasNextValue(reader.createValue())) {
+        // no more records to skip, we drained the table
         empty = true;
         break;
       }
@@ -99,8 +98,9 @@ public class Hive${entry.hiveReader}Reader extends HiveAbstractReader {
 
     int skipFooterCount = HiveUtilities.retrieveIntProperty(tableProperties, serdeConstants.FOOTER_COUNT, -1);
 
+    // if we need to skip N last records, use records inspector which will buffer records while reading
     if (skipFooterCount > 0) {
-      recordsInspector = new SkipFooterRecordsInspector(reader, skipFooterCount);
+      recordsInspector = new SkipFooterRecordsInspector(skipFooterCount);
     } else {
       recordsInspector = new DefaultRecordsInspector(reader.createValue());
     }
@@ -124,9 +124,11 @@ public class Hive${entry.hiveReader}Reader extends HiveAbstractReader {
     }
 
     try {
+      // starting new batch, reset processed records count
       recordsInspector.reset();
 
-      while (!recordsInspector.isBatchFull() && hasNextValue(recordsInspector.getValueHolder())) {
+      // process records till batch is full or all records were processed
+      while (!recordsInspector.isBatchFull() && hasNextValue(recordsInspector.getValueHolder(reader))) {
         Object value = recordsInspector.getNextValue();
         if (value != null) {
           Object deSerializedValue = partitionSerDe.deserialize((Writable) value);

@@ -15,17 +15,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.store.hive.readers;
+package org.apache.drill.exec.store.hive.readers.initilializers;
 
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.store.RecordReader;
 import org.apache.drill.exec.store.hive.HiveSubScan;
+import org.apache.drill.exec.store.hive.readers.HiveAbstractReader;
+import org.apache.drill.exec.store.hive.readers.initilializers.AbstractReadersInitializer;
 import org.apache.hadoop.mapred.InputSplit;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * If table is empty creates an empty record reader to output the schema.
+ */
 public class EmptyReadersInitializer extends AbstractReadersInitializer {
 
   public EmptyReadersInitializer(FragmentContext context, HiveSubScan config, Class<? extends HiveAbstractReader> readerClass) {
@@ -34,8 +39,6 @@ public class EmptyReadersInitializer extends AbstractReadersInitializer {
 
   @Override
   public List<RecordReader> init() {
-    // If there are no readers created (which is possible when the table is empty),
-    // create an empty RecordReader to output the schema
     List<RecordReader> readers = new ArrayList<>(1);
     Constructor<? extends HiveAbstractReader> readerConstructor = createReaderConstructor(InputSplit.class);
     readers.add(createReader(readerConstructor, null, null));
