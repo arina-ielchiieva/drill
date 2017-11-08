@@ -62,7 +62,7 @@ public class InputSplitGroupReadersInitializer extends AbstractReadersInitialize
   }
 
   /**
-   * Transforms input splits into multi map by file path.
+   * Transforms input splits into groups by file path.
    * Key is file path and value is list of inputs splits that belong to the same file.
    *
    * @param inputSplitsList list of input splits
@@ -71,7 +71,7 @@ public class InputSplitGroupReadersInitializer extends AbstractReadersInitialize
   private Multimap<Path, InputSplit> transformInputSplits(List<InputSplit> inputSplitsList) {
     Multimap<Path, InputSplit> inputSplitGroups = ArrayListMultimap.create();
     for (InputSplit inputSplit : inputSplitsList) {
-      inputSplitGroups.put(((FileSplit)inputSplit).getPath(), inputSplit);
+      inputSplitGroups.put(((FileSplit) inputSplit).getPath(), inputSplit);
     }
     return inputSplitGroups;
   }

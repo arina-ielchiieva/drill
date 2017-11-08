@@ -32,8 +32,9 @@ public class SkipFooterRecordsInspector extends AbstractRecordsInspector {
   private final int footerCount;
   private Queue<Object> footerBuffer;
   private final List<Object> valueHolders;
+  private long readRecordsCount;
 
-  public SkipFooterRecordsInspector(RecordReader reader, int footerCount) {
+  public SkipFooterRecordsInspector(RecordReader<Object, Object> reader, int footerCount) {
     this.footerCount = footerCount;
     this.footerBuffer = new LinkedList<>();
     this.valueHolders = initializeValueHolders(reader, footerCount);
@@ -41,15 +42,14 @@ public class SkipFooterRecordsInspector extends AbstractRecordsInspector {
 
   /**
    * Returns next available value holder where value should be written from the cached value holders.
-   * Current available holder is determined by getting mod for actually read records:
-   * processed record count plus number of queued records.
+   * Current available holder is determined by getting mod for actually read records.
    *
    * @return value holder
    */
   @Override
   public Object getValueHolder() {
-    int holderIndex = (getProcessedRecordCount() + footerBuffer.size()) % valueHolders.size();
-    return valueHolders.get(holderIndex);
+    int availableHolderIndex = (int) readRecordsCount % valueHolders.size();
+    return valueHolders.get(availableHolderIndex);
   }
 
   /**
@@ -61,6 +61,7 @@ public class SkipFooterRecordsInspector extends AbstractRecordsInspector {
   @Override
   public Object getNextValue() {
     footerBuffer.add(getValueHolder());
+    readRecordsCount++;
     if (footerBuffer.size() <= footerCount) {
       return null;
     }
@@ -75,7 +76,7 @@ public class SkipFooterRecordsInspector extends AbstractRecordsInspector {
    * @param footerCount number of lines to skip at the end of the file
    * @return list of value holders
    */
-  private List<Object> initializeValueHolders(RecordReader reader, int footerCount) {
+  private List<Object> initializeValueHolders(RecordReader<Object, Object> reader, int footerCount) {
     List<Object> valueHolder = new ArrayList<>(footerCount + 1);
     for (int i = 0; i <= footerCount; i++) {
       valueHolder.add(reader.createValue());
