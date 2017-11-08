@@ -55,7 +55,7 @@ public class InputSplitGroupReadersInitializer extends AbstractReadersInitialize
     Constructor<? extends HiveAbstractReader> readerConstructor = createReaderConstructor(Collection.class);
     for (Map.Entry<Path, Collection<InputSplit>> entry : inputSplitGroups.asMap().entrySet()) {
       Collection<InputSplit> value = entry.getValue();
-      HivePartition partition = partitions.get(entry.getKey().getName()); //todo correct get
+      HivePartition partition = partitions.get(entry.getKey().getParent().toUri().toString());
       readers.add(createReader(readerConstructor, partition, value));
     }
     return readers;
