@@ -19,6 +19,7 @@ package org.apache.drill.exec.store.hive.readers;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
@@ -26,7 +27,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterators;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.netty.buffer.DrillBuf;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
@@ -126,7 +126,7 @@ public abstract class HiveAbstractReader extends AbstractRecordReader {
     this.table = table;
     this.partition = partition;
     this.empty = (inputSplits == null || inputSplits.isEmpty());
-    this.inputSplitsIterator = empty ? Iterators.<InputSplit>emptyIterator() : inputSplits.iterator();
+    this.inputSplitsIterator = empty ? Collections.<InputSplit>emptyIterator() : inputSplits.iterator();
     this.hiveConf = hiveConf;
     this.fragmentContext = context;
     this.proxyUgi = proxyUgi;
