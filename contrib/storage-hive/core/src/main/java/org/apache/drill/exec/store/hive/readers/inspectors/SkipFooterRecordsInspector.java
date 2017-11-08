@@ -32,31 +32,24 @@ public class SkipFooterRecordsInspector extends AbstractRecordsInspector {
   private final int footerCount;
   private Queue<Object> footerBuffer;
   private final List<Object> valueHolders;
-  private int holderIndex;
-  private int tempRecordCount;
 
-  public SkipFooterRecordsInspector(int footerCount) {
+  public SkipFooterRecordsInspector(RecordReader reader, int footerCount) {
     this.footerCount = footerCount;
     this.footerBuffer = new LinkedList<>();
-    this.valueHolders = new ArrayList<>(footerCount + 1);
-    this.holderIndex = -1;
-    this.tempRecordCount = 0;
+    this.valueHolders = initializeValueHolders(reader, footerCount);
   }
 
   /**
-   * Returns next available value holder where value should be written.
-   * If value holder was not initialized, creates it and stores to future re-use.
+   * Returns next available value holder where value should be written from the cached value holders.
+   * Current available holder is determined by getting mod for actually read records:
+   * processed record count plus number of queued records.
    *
    * @return value holder
    */
   @Override
-  public Object getValueHolder(RecordReader reader) {
-    Object valueHolder = getCurrentValueHolder();
-    if (valueHolder == null) {
-      valueHolder = reader.createValue();
-      valueHolders.set(holderIndex, valueHolder);
-    }
-    return valueHolder;
+  public Object getValueHolder() {
+    int holderIndex = (getProcessedRecordCount() + footerBuffer.size()) % valueHolders.size();
+    return valueHolders.get(holderIndex);
   }
 
   /**
@@ -67,8 +60,7 @@ public class SkipFooterRecordsInspector extends AbstractRecordsInspector {
    */
   @Override
   public Object getNextValue() {
-    footerBuffer.add(getCurrentValueHolder());
-    tempRecordCount++;
+    footerBuffer.add(getValueHolder());
     if (footerBuffer.size() <= footerCount) {
       return null;
     }
@@ -76,35 +68,19 @@ public class SkipFooterRecordsInspector extends AbstractRecordsInspector {
   }
 
   /**
-   * resets number of temporary
-   */
-  @Override
-  public void reset() {
-    super.reset();
-    tempRecordCount = holderIndex + 1;
-  }
-
-  /**
-   * Returns current value holder. Position is determined based on
+   * Creates buffer of value holders, so these holders can be re-used.
+   * Holders quantity depends on number of lines to skip in the end of the file plus one.
    *
-   * @return value holder
+   * @param reader record reader
+   * @param footerCount number of lines to skip at the end of the file
+   * @return list of value holders
    */
-  private Object getCurrentValueHolder() {
-    holderIndex = tempRecordCount % valueHolders.size();
-    return valueHolders.get(holderIndex);
+  private List<Object> initializeValueHolders(RecordReader reader, int footerCount) {
+    List<Object> valueHolder = new ArrayList<>(footerCount + 1);
+    for (int i = 0; i <= footerCount; i++) {
+      valueHolder.add(reader.createValue());
+    }
+    return valueHolder;
   }
 
 }
-
-/*  LEGACY
-
-   * To take into account Hive "skip.header.lines.count" property first N values from file are skipped.
-   * Since file can be read in batches (depends on TARGET_RECORD_COUNT), additional checks are made
-   * to determine if it's new file or continuance.
-   *
-   * To take into account Hive "skip.footer.lines.count" property values are buffered in queue
-   * until queue size exceeds number of footer lines to skip, then first value in queue is retrieved.
-   * Buffer of value objects is used to re-use value objects in order to reduce number of created value objects.
-   * For each new file queue is cleared to drop footer lines from previous file.
-
- */

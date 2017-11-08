@@ -16,8 +16,6 @@
  */
 package org.apache.drill.exec.store.hive.readers.inspectors;
 
-import org.apache.hadoop.mapred.RecordReader;
-
 /**
  * Default records inspector that uses the same value holder for each record.
  * Each value once written is immediately processed thus value holder can be re-used.
@@ -31,7 +29,7 @@ public class DefaultRecordsInspector extends AbstractRecordsInspector {
   }
 
   @Override
-  public Object getValueHolder(RecordReader reader) {
+  public Object getValueHolder() {
     return value;
   }
 

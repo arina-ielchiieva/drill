@@ -35,6 +35,7 @@
 package org.apache.drill.exec.store.hive.readers;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.List;
 import java.util.Properties;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
@@ -55,8 +56,11 @@ import org.apache.hadoop.hive.serde2.SerDeException;
 import org.apache.hadoop.mapred.RecordReader;
 
 <#if entry.hasHeaderFooter == true>
-import org.apache.hadoop.hive.serde.serdeConstants;
+import org.apache.drill.exec.store.hive.readers.inspectors.AbstractRecordsInspector;
+import org.apache.drill.exec.store.hive.readers.inspectors.DefaultRecordsInspector;
+import org.apache.drill.exec.store.hive.readers.inspectors.SkipFooterRecordsInspector;
 import org.apache.drill.exec.store.hive.HiveUtilities;
+import org.apache.hadoop.hive.serde.serdeConstants;
 </#if>
 
 public class Hive${entry.hiveReader}Reader extends HiveAbstractReader {
@@ -68,7 +72,7 @@ public class Hive${entry.hiveReader}Reader extends HiveAbstractReader {
 </#if>
 
 <#if entry.hasHeaderFooter == true>
-  public Hive${entry.hiveReader}Reader(HiveTableWithColumnCache table, HivePartition partition, List<InputSplit> inputSplit, List<SchemaPath> projectedColumns,
+  public Hive${entry.hiveReader}Reader(HiveTableWithColumnCache table, HivePartition partition, Collection<InputSplit> inputSplit, List<SchemaPath> projectedColumns,
                       FragmentContext context, final HiveConf hiveConf,
                       UserGroupInformation proxyUgi) throws ExecutionSetupException {
     super(table, partition, inputSplit, projectedColumns, context, hiveConf, proxyUgi);
@@ -96,13 +100,16 @@ public class Hive${entry.hiveReader}Reader extends HiveAbstractReader {
       }
     }
 
-    int skipFooterCount = HiveUtilities.retrieveIntProperty(tableProperties, serdeConstants.FOOTER_COUNT, -1);
+    // if table was drained while skipping first N records, there is no need to check for skip footer logic
+    if (!empty) {
+      int skipFooterCount = HiveUtilities.retrieveIntProperty(tableProperties, serdeConstants.FOOTER_COUNT, -1);
 
-    // if we need to skip N last records, use records inspector which will buffer records while reading
-    if (skipFooterCount > 0) {
-      recordsInspector = new SkipFooterRecordsInspector(skipFooterCount);
-    } else {
-      recordsInspector = new DefaultRecordsInspector(reader.createValue());
+      // if we need to skip N last records, use records inspector which will buffer records while reading
+      if (skipFooterCount > 0) {
+        recordsInspector = new SkipFooterRecordsInspector(reader, skipFooterCount);
+      } else {
+        recordsInspector = new DefaultRecordsInspector(reader.createValue());
+      }
     }
 <#else>
     value = reader.createValue();
@@ -128,19 +135,19 @@ public class Hive${entry.hiveReader}Reader extends HiveAbstractReader {
       recordsInspector.reset();
 
       // process records till batch is full or all records were processed
-      while (!recordsInspector.isBatchFull() && hasNextValue(recordsInspector.getValueHolder(reader))) {
+      while (!recordsInspector.isBatchFull() && hasNextValue(recordsInspector.getValueHolder())) {
         Object value = recordsInspector.getNextValue();
         if (value != null) {
           Object deSerializedValue = partitionSerDe.deserialize((Writable) value);
           if (partTblObjectInspectorConverter != null) {
             deSerializedValue = partTblObjectInspectorConverter.convert(deSerializedValue);
           }
-          readHiveRecordAndInsertIntoRecordBatch(deSerializedValue, recordsInspector.getRecordCount());
-          recordsInspector.incrementRecordCount();
+          readHiveRecordAndInsertIntoRecordBatch(deSerializedValue, recordsInspector.getProcessedRecordCount());
+          recordsInspector.incrementProcessedRecordCount();
         }
       }
-      setValueCountAndPopulatePartitionVectors(recordsInspector.getRecordCount());
-      return recordsInspector.getRecordCount();
+      setValueCountAndPopulatePartitionVectors(recordsInspector.getProcessedRecordCount());
+      return recordsInspector.getProcessedRecordCount();
     } catch (SerDeException e) {
       throw new DrillRuntimeException(e);
     }

@@ -71,16 +71,6 @@ public abstract class AbstractReadersInitializer {
   }
 
   /**
-   * Checks if given list of partitions is not null or empty.
-   *
-   * @param partitions list of partitions
-   * @return true if partitions are present, false otherwise
-   */
-  protected boolean hasPartitions(List<HivePartition> partitions) {
-    return partitions != null && !partitions.isEmpty();
-  }
-
-  /**
    * @return list of initialized records readers
    */
   public abstract List<RecordReader> init();

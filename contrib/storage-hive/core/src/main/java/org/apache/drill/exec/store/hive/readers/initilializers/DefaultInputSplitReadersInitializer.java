@@ -42,7 +42,7 @@ public class DefaultInputSplitReadersInitializer extends AbstractReadersInitiali
   public List<RecordReader> init() {
     List<InputSplit> inputSplits = config.getInputSplits();
     List<HivePartition> partitions = config.getPartitions();
-    boolean hasPartitions = hasPartitions(partitions);
+    boolean hasPartitions = partitions != null && !partitions.isEmpty();
 
     List<RecordReader> readers = new ArrayList<>(inputSplits.size());
     Constructor<? extends HiveAbstractReader> readerConstructor = createReaderConstructor(InputSplit.class);

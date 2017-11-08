@@ -17,6 +17,8 @@
  */
 package org.apache.drill.exec.store.hive.readers.initilializers;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.store.RecordReader;
 import org.apache.drill.exec.store.hive.HivePartition;
@@ -28,12 +30,15 @@ import org.apache.hadoop.mapred.InputSplit;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Create readers for each input split group. Input split group is determined by unique file.
  * When reading from distributed file system, one file can be split into several input splits.
- * For correct skip header / footer logic application these input splits should be processed in one reader.
+ * For correct skip header / footer logic application these input splits should be processed by one reader.
  */
 public class InputSplitGroupReadersInitializer extends AbstractReadersInitializer {
 
@@ -43,39 +48,52 @@ public class InputSplitGroupReadersInitializer extends AbstractReadersInitialize
 
   @Override
   public List<RecordReader> init() {
+    Multimap<Path, InputSplit> inputSplitGroups = transformInputSplits(config.getInputSplits());
+    Map<String, HivePartition> partitions = transformPartitions(config.getPartitions());
+
     List<RecordReader> readers = new ArrayList<>();
-    List<InputSplit> inputSplits = config.getInputSplits();
-    List<HivePartition> partitions = config.getPartitions();
     Constructor<? extends HiveAbstractReader> readerConstructor = createReaderConstructor(List.class);
-
-    boolean hasPartitions = hasPartitions(partitions);
-
-    // prepare input splits groups by file name
-    List<InputSplit> inputSplitGroup = new ArrayList<>();
-    Path previousPath = null;
-    for (int i = 0 ; i < inputSplits.size(); i++) {
-      FileSplit fileSplit = (FileSplit) inputSplits.get(i);
-      Path currentPath = fileSplit.getPath();
-      if (previousPath == null) {
-        previousPath = currentPath;
-      }
-
-      if (!previousPath.equals(currentPath)) {
-        // path is not equal, create reader for current input split group
-        readers.add(createReader(readerConstructor, hasPartitions ? partitions.get(i - 1) : null, inputSplitGroup));
-        // update the path, start new input split group
-        previousPath = currentPath;
-        inputSplitGroup = new ArrayList<>();
-      }
-
-      inputSplitGroup.add(fileSplit);
+    for (Map.Entry<Path, Collection<InputSplit>> entry : inputSplitGroups.asMap().entrySet()) {
+      Collection<InputSplit> value = entry.getValue();
+      HivePartition partition = partitions.get(entry.getKey().getName()); //todo correct get
+      readers.add(createReader(readerConstructor, partition, value));
     }
-
-    // add leftovers if any
-    if (!inputSplitGroup.isEmpty()) {
-      readers.add(createReader(readerConstructor, hasPartitions ? partitions.get(partitions.size() - 1) : null, inputSplitGroup));
-    }
-
     return readers;
   }
+
+  /**
+   * Transforms input splits into multi map by file path.
+   * Key is file path and value is list of inputs splits that belong to the same file.
+   *
+   * @param inputSplitsList list of input splits
+   * @return map with transformed input splits
+   */
+  private Multimap<Path, InputSplit> transformInputSplits(List<InputSplit> inputSplitsList) {
+    Multimap<Path, InputSplit> inputSplitGroups = ArrayListMultimap.create();
+    for (InputSplit inputSplit : inputSplitsList) {
+      inputSplitGroups.put(((FileSplit)inputSplit).getPath(), inputSplit);
+    }
+    return inputSplitGroups;
+  }
+
+  /**
+   * Transforms partitions into map by partition location.
+   * Key is partition location and value is corresponding partition.
+   * If partition location already exists will override it
+   * since the same partition can be used for all the files in that particular location.
+   * If no partitions are present, returns empty map.
+   *
+   * @param partitionsList list of partitions
+   * @return map with transformed partitions
+   */
+  private Map<String, HivePartition> transformPartitions(List<HivePartition> partitionsList) {
+    Map<String, HivePartition> partitions = new HashMap<>();
+    if (partitionsList != null) {
+      for (HivePartition partition : partitionsList) {
+        partitions.put(partition.getSd().getLocation(), partition);
+      }
+    }
+    return partitions;
+  }
+
 }

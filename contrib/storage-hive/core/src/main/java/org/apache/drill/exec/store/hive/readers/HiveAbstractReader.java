@@ -18,6 +18,7 @@
 package org.apache.drill.exec.store.hive.readers;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
@@ -119,7 +120,7 @@ public abstract class HiveAbstractReader extends AbstractRecordReader {
     this (table, partition, inputSplit == null ? ImmutableList.<InputSplit>of() : ImmutableList.of(inputSplit), projectedColumns, context, hiveConf, proxyUgi);
   }
 
-  public HiveAbstractReader(HiveTableWithColumnCache table, HivePartition partition, List<InputSplit> inputSplits, List<SchemaPath> projectedColumns,
+  public HiveAbstractReader(HiveTableWithColumnCache table, HivePartition partition, Collection<InputSplit> inputSplits, List<SchemaPath> projectedColumns,
                             FragmentContext context, final HiveConf hiveConf,
                             UserGroupInformation proxyUgi) throws ExecutionSetupException {
     this.table = table;
