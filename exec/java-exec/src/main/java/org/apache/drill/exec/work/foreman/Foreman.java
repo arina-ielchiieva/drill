@@ -424,9 +424,7 @@ public class Foreman implements Runnable {
     work.applyPlan(drillbitContext.getPlanReader());
     logWorkUnit(work);
 
-    fragmentsRunner.setPlanFragments(work.getFragments());
-    fragmentsRunner.setRootPlanFragment(work.getRootFragment());
-    fragmentsRunner.setRootOperator(work.getRootOperator());
+    fragmentsRunner.setFragmentsInfo(work.getFragments(), work.getRootFragment(), work.getRootOperator());
 
     admit();
   }
@@ -476,9 +474,7 @@ public class Foreman implements Runnable {
     }
     queryRM.setCost(rootOperator.getCost());
 
-    fragmentsRunner.setPlanFragments(planFragments);
-    fragmentsRunner.setRootPlanFragment(rootFragment);
-    fragmentsRunner.setRootOperator(rootOperator);
+    fragmentsRunner.setFragmentsInfo(planFragments, rootFragment, rootOperator);
 
     admit();
   }
@@ -533,7 +529,7 @@ public class Foreman implements Runnable {
       return;
     }
     logger.trace(String.format("PlanFragments for query %s \n%s",
-        queryId, queryWorkUnit.convertFragmentToJson()));
+        queryId, queryWorkUnit.stringifyFragments()));
   }
 
   /**
