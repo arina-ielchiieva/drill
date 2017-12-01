@@ -95,36 +95,23 @@ public class FragmentsRunner {
    * Submits root and non-root fragments fragments for running.
    * In case of success move query to the running state.
    */
-  public void submit() {
-    try {
-      assert planFragments != null;
-      assert rootPlanFragment != null;
-      assert rootOperator != null;
+  public void submit() throws ExecutionSetupException {
+    assert planFragments != null;
+    assert rootPlanFragment != null;
+    assert rootOperator != null;
 
-      QueryId queryId = foreman.getQueryId();
-      assert queryId == rootPlanFragment.getHandle().getQueryId();
+    QueryId queryId = foreman.getQueryId();
+    assert queryId == rootPlanFragment.getHandle().getQueryId();
 
-      QueryManager queryManager = foreman.getQueryManager();
+    QueryManager queryManager = foreman.getQueryManager();
+    drillbitContext.getWorkBus().addFragmentStatusListener(queryId, queryManager.getFragmentStatusListener());
+    drillbitContext.getClusterCoordinator().addDrillbitStatusListener(queryManager.getDrillbitStatusListener());
 
-      try {
-        drillbitContext.getWorkBus().addFragmentStatusListener(queryId, queryManager.getFragmentStatusListener());
-        drillbitContext.getClusterCoordinator().addDrillbitStatusListener(queryManager.getDrillbitStatusListener());
-
-        logger.debug("Submitting fragments to run.");
-        // set up the root fragment first so we'll have incoming buffers available.
-        setupRootFragment(rootPlanFragment, rootOperator);
-        setupNonRootFragments(planFragments);
-        foreman.moveToState(QueryState.RUNNING, null);
-        logger.debug("Fragments running.");
-
-      } catch (ExecutionSetupException e) {
-        foreman.moveToState(QueryState.FAILED, e);
-      }
-
-    } finally {
-      foreman.startProcessingEvents();
-    }
-
+    logger.debug("Submitting fragments to run.");
+    // set up the root fragment first so we'll have incoming buffers available.
+    setupRootFragment(rootPlanFragment, rootOperator);
+    setupNonRootFragments(planFragments);
+    logger.debug("Fragments running.");
   }
 
   /**
@@ -135,7 +122,6 @@ public class FragmentsRunner {
    * @throws ExecutionSetupException
    */
   private void setupRootFragment(final PlanFragment rootFragment, final FragmentRoot rootOperator) throws ExecutionSetupException {
-
     QueryManager queryManager = foreman.getQueryManager();
     final FragmentContext rootContext = new FragmentContext(drillbitContext, rootFragment, foreman.getQueryContext(),
         initiatingClient, drillbitContext.getFunctionImplementationRegistry());
@@ -161,9 +147,8 @@ public class FragmentsRunner {
    * Messages are sent immediately, so they may start returning data even before we complete this.
    *
    * @param fragments the fragments
-   * @throws ForemanException
    */
-  private void setupNonRootFragments(final Collection<PlanFragment> fragments) throws ForemanException {
+  private void setupNonRootFragments(final Collection<PlanFragment> fragments) throws ExecutionSetupException {
     if (fragments.isEmpty()) {
       // nothing to do here
       return;
@@ -333,31 +318,21 @@ public class FragmentsRunner {
    * Start the locally assigned leaf or intermediate fragment
    *
    * @param fragment fragment
-   * @throws ForemanException
    */
-  private void startLocalFragment(final PlanFragment fragment) throws ForemanException {
-
+  private void startLocalFragment(final PlanFragment fragment) throws ExecutionSetupException {
     logger.debug("Received local fragment start instruction", fragment);
 
-    try {
-      final FragmentContext fragmentContext = new FragmentContext(drillbitContext, fragment,
-          drillbitContext.getFunctionImplementationRegistry());
-      final FragmentStatusReporter statusReporter = new FragmentStatusReporter(fragmentContext);
-      final FragmentExecutor fragmentExecutor = new FragmentExecutor(fragmentContext, fragment, statusReporter);
+    final FragmentContext fragmentContext = new FragmentContext(drillbitContext, fragment, drillbitContext.getFunctionImplementationRegistry());
+    final FragmentStatusReporter statusReporter = new FragmentStatusReporter(fragmentContext);
+    final FragmentExecutor fragmentExecutor = new FragmentExecutor(fragmentContext, fragment, statusReporter);
 
-      // we either need to start the fragment if it is a leaf fragment, or set up a fragment manager if it is non leaf.
-      if (fragment.getLeafFragment()) {
-        bee.addFragmentRunner(fragmentExecutor);
-      } else {
-        // isIntermediate, store for incoming data.
-        final NonRootFragmentManager manager = new NonRootFragmentManager(fragment, fragmentExecutor, statusReporter);
-        drillbitContext.getWorkBus().addFragmentManager(manager);
-      }
-
-    } catch (final ExecutionSetupException ex) {
-      throw new ForemanException("Failed to create fragment context", ex);
-    } catch (final Exception ex) {
-      throw new ForemanException("Failed while trying to start local fragment", ex);
+    // we either need to start the fragment if it is a leaf fragment, or set up a fragment manager if it is non leaf.
+    if (fragment.getLeafFragment()) {
+      bee.addFragmentRunner(fragmentExecutor);
+    } else {
+      // isIntermediate, store for incoming data.
+      final NonRootFragmentManager manager = new NonRootFragmentManager(fragment, fragmentExecutor, statusReporter);
+      drillbitContext.getWorkBus().addFragmentManager(manager);
     }
   }
 
