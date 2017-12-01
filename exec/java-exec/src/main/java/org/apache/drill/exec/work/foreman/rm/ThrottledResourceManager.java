@@ -22,7 +22,13 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.drill.exec.ops.QueryContext;
 import org.apache.drill.exec.physical.PhysicalPlan;
@@ -275,6 +281,7 @@ public class ThrottledResourceManager extends AbstractResourceManager {
 
     private final Foreman foreman;
     private QueueLease lease;
+    private QueueAcquirer queueAcquirer;
 
     public QueuedQueryResourceManager(final ThrottledResourceManager rm,
         final Foreman foreman) {
@@ -288,8 +295,21 @@ public class ThrottledResourceManager extends AbstractResourceManager {
     }
 
     @Override
-    public void admit() throws QueueTimeoutException, QueryQueueException {
-      lease = rm.queue().enqueue(foreman.getQueryId(), queryCost);
+    public void setQueueLease(QueueLease lease) {
+      this.lease = lease;
+    }
+
+    @Override
+    public void cancel() {
+      if (queueAcquirer != null) {
+        rm.queue().cancel(queueAcquirer);
+      }
+    }
+
+    @Override
+    public void admit(QueueAdmissionListener listener) {
+      queueAcquirer = new QueueAcquirer(foreman.getQueryId(), queryCost, listener);
+      rm.queue().enqueue(queueAcquirer);
     }
 
     @Override

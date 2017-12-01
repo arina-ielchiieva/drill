@@ -134,9 +134,12 @@ public class QueryStateProcessor implements AutoCloseable {
       case CANCELLATION_REQUESTED:
         assert exception == null;
         recordNewState(newState);
+        //todo do not cancel until we stored the listener ... to avoid possible race condition
         foremanResult.stopQueueing();
+
+        //todo do not close foreman ... until we get back confirmation that cancel was performed
         foremanResult.setCompleted(QueryState.CANCELED);
-        foremanResult.close();
+        /// foremanResult.close();
         return;
     }
     checkCommonStates(newState, exception);
@@ -209,6 +212,7 @@ public class QueryStateProcessor implements AutoCloseable {
         return;
     }
 
+    //todo what we do when next step came but we in cancellation requested state? should we fail?
     throw new IllegalStateException(String.format("Failure trying to change states: %s --> %s", state.name(), newState.name()));
   }
 

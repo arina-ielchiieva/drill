@@ -136,7 +136,7 @@ public class DynamicResourceManager implements ResourceManager {
     if (ex == null) {
       return;
     } else if (ex instanceof UserException) {
-      throw (UserException) ex;
+      throw ex;
     } else {
       throw UserException.systemError(ex)
         .addContext("Failure closing resource managers.")

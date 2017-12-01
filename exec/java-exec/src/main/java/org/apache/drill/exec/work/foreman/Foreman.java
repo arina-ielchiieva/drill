@@ -61,7 +61,9 @@ import org.apache.drill.exec.testing.ControlsInjectorFactory;
 import org.apache.drill.exec.util.Pointer;
 import org.apache.drill.exec.work.QueryWorkUnit;
 import org.apache.drill.exec.work.WorkManager.WorkerBee;
+import org.apache.drill.exec.work.foreman.rm.QueryQueue;
 import org.apache.drill.exec.work.foreman.rm.QueryResourceManager;
+import org.apache.drill.exec.work.foreman.rm.QueueAdmissionListener;
 import org.codehaus.jackson.map.ObjectMapper;
 
 import java.io.IOException;
@@ -116,7 +118,6 @@ public class Foreman implements Runnable {
   private final QueryStateProcessor queryStateProcessor;
 
   private String queryText;
-  private static Thread queueAcquirerThread;
 
   /**
    * Constructor. Sets up the Foreman, but does not initiate any execution.
@@ -408,11 +409,14 @@ public class Foreman implements Runnable {
 
   private void admit() throws ForemanSetupException {
     queryStateProcessor.moveToState(QueryState.ENQUEUED, null);
-    QueueAdmissionListener listener = new QueueAdmissionListener() {
+    final QueueAdmissionListener listener = new QueueAdmissionListener() {
 
       @Override
-      public void admitted() {
+      public void admitted(QueryQueue.QueueLease lease) {
+        queryRM.setQueueLease(lease);
+        queryManager.setQueueName(queryRM.queueName());
         queryStateProcessor.moveToState(QueryState.STARTING, null);
+
         try {
           fragmentsRunner.submit();
         } catch (Exception e) {
@@ -446,12 +450,13 @@ public class Foreman implements Runnable {
 
       @Override
       public void failed(Exception exception) {
+        String queueName = queryRM.queueName();
+        queryManager.setQueueName(queueName == null ? "Unknown" : queueName);
         queryStateProcessor.moveToState(QueryState.FAILED, exception);
       }
     };
 
-    queueAcquirerThread = new Thread(new QueueAcquirer(listener));
-    queueAcquirerThread.start();
+    queryRM.admit(listener);
   }
 
   /**
@@ -655,9 +660,7 @@ public class Foreman implements Runnable {
     }
 
     public void stopQueueing() {
-      if (queueAcquirerThread != null) {
-        queueAcquirerThread.interrupt();
-      }
+      queryRM.cancel();
     }
 
     /**
@@ -833,59 +836,6 @@ public class Foreman implements Runnable {
     public void interrupted(final InterruptedException e) {
       logger.warn("Interrupted while waiting for RPC outcome of sending final query result to initiating client.");
     }
-  }
-
-  /**
-   * Is used to start query enqueue process in separate thread.
-   * Since //todo
-   * Changes query state depending on the result.
-   */
-  private class QueueAcquirer implements Runnable {
-
-    private final QueueAdmissionListener listener;
-
-    QueueAcquirer(QueueAdmissionListener listener) {
-      this.listener = listener;
-    }
-
-    @Override
-    public void run() {
-      try {
-        queryRM.admit();
-        listener.admitted();
-      } catch (Exception e) {
-        if (queryStateProcessor.getState() == QueryState.CANCELLATION_REQUESTED) {
-          listener.cancelled();
-        }
-        listener.failed(e);
-      } finally {
-        String queueName = queryRM.queueName();
-        queryManager.setQueueName(queueName == null ? "Unknown" : queueName);
-      }
-    }
-  }
-
-  /**
-   * Listener responsible to report back queue admission status.
-   */
-  public interface QueueAdmissionListener {
-
-    /**
-     * Is called when query was successfully admitted into queue.
-     */
-    void admitted();
-
-    /**
-     * Is called when query admission was cancelled.
-     */
-    void cancelled();
-
-    /**
-     * Is called when query admission has failed.
-     *
-     * @param exception exception
-     */
-    void failed(Exception exception);
   }
 
 }

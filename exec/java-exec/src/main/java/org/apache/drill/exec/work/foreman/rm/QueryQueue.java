@@ -29,7 +29,7 @@ import org.apache.drill.exec.proto.UserBitShared.QueryId;
  * lease must be released at the completion of execution.
  */
 
-public interface QueryQueue {
+public interface QueryQueue extends Runnable {
 
   /**
    * The opaque lease returned once a query is admitted
@@ -49,7 +49,7 @@ public interface QueryQueue {
     void release();
 
     String queueName();
-  };
+  }
 
   /**
    * Exception thrown if a query exceeds the configured wait time
@@ -134,7 +134,9 @@ public interface QueryQueue {
    * @throws QueryQueueException for any other error condition.
    */
 
-  QueueLease enqueue(QueryId queryId, double cost) throws QueueTimeoutException, QueryQueueException;
+  void enqueue(QueueAcquirer queueAcquirer);
+
+  void cancel(QueueAcquirer queueAcquirer);
 
   void close();
 }

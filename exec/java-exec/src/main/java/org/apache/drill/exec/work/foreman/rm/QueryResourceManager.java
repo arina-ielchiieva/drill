@@ -17,6 +17,7 @@
  */
 package org.apache.drill.exec.work.foreman.rm;
 
+import org.apache.drill.exec.work.foreman.Foreman;
 import org.apache.drill.exec.work.foreman.rm.QueryQueue.QueryQueueException;
 import org.apache.drill.exec.work.foreman.rm.QueryQueue.QueueTimeoutException;
 
@@ -43,6 +44,10 @@ public interface QueryResourceManager extends QueryResourceAllocator {
 
   void setCost(double cost);
 
+  void setQueueLease(QueryQueue.QueueLease lease);
+
+  void cancel();
+
   /**
    * Admit the query into the cluster. Blocks until the query
    * can run. (Later revisions may use a more thread-friendly
@@ -53,7 +58,7 @@ public interface QueryResourceManager extends QueryResourceAllocator {
    * be admitted.
    */
 
-  void admit() throws QueueTimeoutException, QueryQueueException;
+  void admit(QueueAdmissionListener listener);
 
   /**
    * Returns the name of the queue (if any) on which the query was

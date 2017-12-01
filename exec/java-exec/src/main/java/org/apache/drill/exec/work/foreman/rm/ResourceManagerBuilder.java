@@ -61,6 +61,7 @@ public class ResourceManagerBuilder {
 
   @SuppressWarnings("resource")
   public ResourceManager build() {
+    //todo start here using thread executor?
     ClusterCoordinator coord = context.getClusterCoordinator();
     DrillConfig config = context.getConfig();
     if (coord instanceof LocalClusterCoordinator) {

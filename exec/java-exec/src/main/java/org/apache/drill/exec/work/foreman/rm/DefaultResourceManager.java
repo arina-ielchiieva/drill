@@ -20,7 +20,6 @@ package org.apache.drill.exec.work.foreman.rm;
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.exec.ops.QueryContext;
 import org.apache.drill.exec.physical.PhysicalPlan;
-import org.apache.drill.exec.server.BootStrapContext;
 import org.apache.drill.exec.util.MemoryAllocationUtilities;
 import org.apache.drill.exec.work.QueryWorkUnit;
 import org.apache.drill.exec.work.foreman.Foreman;
@@ -60,6 +59,8 @@ public class DefaultResourceManager implements ResourceManager {
     @SuppressWarnings("unused")
     private final DefaultResourceManager rm;
 
+    private QueueAdmissionListener listener;
+
     public DefaultQueryResourceManager(final DefaultResourceManager rm, final Foreman foreman) {
       super(foreman.getQueryContext());
       this.rm = rm;
@@ -71,8 +72,21 @@ public class DefaultResourceManager implements ResourceManager {
     }
 
     @Override
-    public void admit() {
+    public void setQueueLease(QueryQueue.QueueLease lease) {
       // No queueing by default
+    }
+
+    @Override
+    public void cancel() {
+      if (listener != null) {
+        listener.cancelled();
+      }
+    }
+
+    @Override
+    public void admit(QueueAdmissionListener listener) {
+      this.listener = listener;
+      listener.admitted(null);
     }
 
     @Override

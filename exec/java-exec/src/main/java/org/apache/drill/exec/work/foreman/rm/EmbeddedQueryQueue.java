@@ -48,12 +48,68 @@ import com.google.common.annotations.VisibleForTesting;
  * </dl>
  */
 
-public class EmbeddedQueryQueue implements QueryQueue {
+public class EmbeddedQueryQueue extends AbstractQueryQueue {
 
   public static String EMBEDDED_QUEUE = "drill.exec.queue.embedded";
   public static String ENABLED = EMBEDDED_QUEUE + ".enable";
   public static String QUEUE_SIZE = EMBEDDED_QUEUE + ".size";
   public static String TIMEOUT_MS = EMBEDDED_QUEUE + ".timeout_ms";
+
+  private final int queueTimeoutMs;
+  private final int queueSize;
+  private final Semaphore semaphore;
+  private long memoryPerQuery;
+  private final long minimumOperatorMemory;
+
+  public EmbeddedQueryQueue(DrillbitContext context) {
+    DrillConfig config = context.getConfig();
+    queueTimeoutMs = config.getInt(TIMEOUT_MS);
+    queueSize = config.getInt(QUEUE_SIZE);
+    semaphore = new Semaphore(queueSize, true);
+    minimumOperatorMemory = context.getOptionManager().getOption(ExecConstants.MIN_MEMORY_PER_BUFFERED_OP);
+  }
+
+  @Override
+  public boolean enabled() { return true; }
+
+  @Override
+  public void setMemoryPerNode(long memoryPerNode) {
+    memoryPerQuery = memoryPerNode / queueSize;
+  }
+
+  @Override
+  public long defaultQueryMemoryPerNode(double cost) {
+    return memoryPerQuery;
+  }
+
+  private void release(EmbeddedQueueLease lease) {
+    assert ! lease.released;
+    internalRelease(lease);
+  }
+
+  @Override
+  protected void internalClose() {
+    assert semaphore.availablePermits() == queueSize;
+  }
+
+  @Override
+  public long minimumOperatorMemory() {
+    return minimumOperatorMemory;
+  }
+
+  @Override
+  protected QueueLease getLease(QueryId queryId, double cost) throws Exception {
+    boolean result = semaphore.tryAcquire(queueTimeoutMs, TimeUnit.MILLISECONDS);
+    if (result) {
+      return new EmbeddedQueueLease(queryId, memoryPerQuery);
+    }
+    throw new QueueTimeoutException(queryId, "embedded", queueTimeoutMs);
+  }
+
+  @Override
+  protected void internalRelease(QueueLease lease) {
+    semaphore.release();
+  }
 
   public class EmbeddedQueueLease implements QueueLease {
 
@@ -91,61 +147,5 @@ public class EmbeddedQueryQueue implements QueryQueue {
 
     @Override
     public String queueName() { return "local-queue"; }
-  }
-
-  private final int queueTimeoutMs;
-  private final int queueSize;
-  private final Semaphore semaphore;
-  private long memoryPerQuery;
-  private final long minimumOperatorMemory;
-
-  public EmbeddedQueryQueue(DrillbitContext context) {
-    DrillConfig config = context.getConfig();
-    queueTimeoutMs = config.getInt(TIMEOUT_MS);
-    queueSize = config.getInt(QUEUE_SIZE);
-    semaphore = new Semaphore(queueSize, true);
-    minimumOperatorMemory = context.getOptionManager()
-        .getOption(ExecConstants.MIN_MEMORY_PER_BUFFERED_OP);
-  }
-
-  @Override
-  public boolean enabled() { return true; }
-
-  @Override
-  public void setMemoryPerNode(long memoryPerNode) {
-    memoryPerQuery = memoryPerNode / queueSize;
-  }
-
-  @Override
-  public long defaultQueryMemoryPerNode(double cost) {
-    return memoryPerQuery;
-  }
-
-  @Override
-  public QueueLease enqueue(QueryId queryId, double cost)
-      throws QueueTimeoutException, QueryQueueException {
-    try {
-      if (! semaphore.tryAcquire(queueTimeoutMs, TimeUnit.MILLISECONDS) ) {
-        throw new QueueTimeoutException(queryId, "embedded", queueTimeoutMs);
-      }
-    } catch (InterruptedException e) {
-      throw new QueryQueueException("Interrupted", e);
-    }
-    return new EmbeddedQueueLease(queryId, memoryPerQuery);
-  }
-
-  private void release(EmbeddedQueueLease lease) {
-    assert ! lease.released;
-    semaphore.release();
-  }
-
-  @Override
-  public void close() {
-    assert semaphore.availablePermits() == queueSize;
-  }
-
-  @Override
-  public long minimumOperatorMemory() {
-    return minimumOperatorMemory;
   }
 }

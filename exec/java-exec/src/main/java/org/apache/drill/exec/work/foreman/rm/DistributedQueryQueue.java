@@ -25,6 +25,7 @@ import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.coord.ClusterCoordinator;
 import org.apache.drill.exec.coord.DistributedSemaphore;
 import org.apache.drill.exec.coord.DistributedSemaphore.DistributedLease;
+import org.apache.drill.exec.proto.UserBitShared;
 import org.apache.drill.exec.proto.UserBitShared.QueryId;
 import org.apache.drill.exec.proto.helper.QueryIdHelper;
 import org.apache.drill.exec.server.DrillbitContext;
@@ -63,8 +64,73 @@ import org.apache.drill.exec.server.options.SystemOptionManager;
  * a bit in systems with very high query arrival rates.
  */
 
-public class DistributedQueryQueue implements QueryQueue {
+public class DistributedQueryQueue extends AbstractQueryQueue {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DistributedQueryQueue.class);
+
+  /**
+   * This limits the number of "small" and "large" queries that a Drill cluster will run
+   * simultaneously, if queuing is enabled. If the query is unable to run, this will block
+   * until it can. Beware that this is called under run(), and so will consume a thread
+   * while it waits for the required distributed semaphore.
+   *
+   * @param queryId query identifier
+   * @param cost the query plan
+   * @throws QueueTimeoutException if the query waits too long in the queue
+   */
+  @Override
+  protected QueueLease getLease(QueryId queryId, double cost) throws Exception {
+    final String queueName;
+    DistributedLease lease;
+    long queryMemory;
+    final DistributedSemaphore distributedSemaphore;
+
+    // Only the refresh and queue computation is synchronized.
+
+    synchronized (this) {
+      refreshConfig();
+
+      // get the appropriate semaphore
+      if (cost >= configSet.queueThreshold) {
+        distributedSemaphore = clusterCoordinator.getSemaphore("query.large", configSet.largeQueueSize);
+        queueName = "large";
+        queryMemory = memoryPerLargeQuery;
+      } else {
+        distributedSemaphore = clusterCoordinator.getSemaphore("query.small", configSet.smallQueueSize);
+        queueName = "small";
+        queryMemory = memoryPerSmallQuery;
+      }
+    }
+    logger.debug("Query {} with cost {} placed into the {} queue.", QueryIdHelper.getQueryId(queryId), cost, queueName);
+
+    lease = distributedSemaphore.acquire(configSet.queueTimeout, TimeUnit.MILLISECONDS);
+
+    if (lease == null) {
+      int timeoutSecs = (int) Math.round(configSet.queueTimeout / 1000.0);
+      logger.warn("Queue timeout: {} after {} ms. ({} seconds)", queueName, String.format("%,d", configSet.queueTimeout), timeoutSecs);
+      throw new QueueTimeoutException(queryId, queueName, configSet.queueTimeout);
+    }
+    return new DistributedQueueLease(queryId, queueName, lease, queryMemory);
+  }
+
+  @Override
+  protected void internalRelease(QueueLease lease) {
+    DistributedQueueLease theLease = (DistributedQueueLease) lease;
+    for (;;) {
+      try {
+        theLease.lease.close();
+        theLease.lease = null;
+        break;
+      } catch (final InterruptedException e) {
+        // if we end up here, the loop will try again
+      } catch (final Exception e) {
+        logger.warn("Failure while releasing lease.", e);
+        break;
+      }
+      if (inShutdown()) {
+        logger.warn("In shutdown mode: abandoning attempt to release lease");
+      }
+    }
+  }
 
   private class DistributedQueueLease implements QueueLease {
     private final QueryId queryId;
@@ -98,7 +164,7 @@ public class DistributedQueryQueue implements QueryQueue {
 
     @Override
     public void release() {
-      DistributedQueryQueue.this.release(this);
+      DistributedQueryQueue.this.internalRelease(this);
     }
 
     @Override
@@ -227,63 +293,6 @@ public class DistributedQueryQueue implements QueryQueue {
   @Override
   public long minimumOperatorMemory() { return configSet.minimumOperatorMemory; }
 
-  /**
-   * This limits the number of "small" and "large" queries that a Drill cluster will run
-   * simultaneously, if queuing is enabled. If the query is unable to run, this will block
-   * until it can. Beware that this is called under run(), and so will consume a thread
-   * while it waits for the required distributed semaphore.
-   *
-   * @param queryId query identifier
-   * @param cost the query plan
-   * @throws QueryQueueException if the underlying ZK queuing mechanism fails
-   * @throws QueueTimeoutException if the query waits too long in the
-   * queue
-   */
-
-  @SuppressWarnings("resource")
-  @Override
-  public QueueLease enqueue(QueryId queryId, double cost) throws QueryQueueException, QueueTimeoutException {
-    final String queueName;
-    DistributedLease lease = null;
-    long queryMemory;
-    final DistributedSemaphore distributedSemaphore;
-    try {
-
-      // Only the refresh and queue computation is synchronized.
-
-      synchronized(this) {
-        refreshConfig();
-
-        // get the appropriate semaphore
-        if (cost >= configSet.queueThreshold) {
-          distributedSemaphore = clusterCoordinator.getSemaphore("query.large", configSet.largeQueueSize);
-          queueName = "large";
-          queryMemory = memoryPerLargeQuery;
-        } else {
-          distributedSemaphore = clusterCoordinator.getSemaphore("query.small", configSet.smallQueueSize);
-          queueName = "small";
-          queryMemory = memoryPerSmallQuery;
-        }
-      }
-      logger.debug("Query {} with cost {} placed into the {} queue.",
-                   QueryIdHelper.getQueryId(queryId), cost, queueName);
-
-      lease = distributedSemaphore.acquire(configSet.queueTimeout, TimeUnit.MILLISECONDS);
-    } catch (final Exception e) {
-      logger.error("Unable to acquire slot for query " +
-                   QueryIdHelper.getQueryId(queryId), e);
-      throw new QueryQueueException("Unable to acquire slot for query.", e);
-    }
-
-    if (lease == null) {
-      int timeoutSecs = (int) Math.round(configSet.queueTimeout/1000.0);
-      logger.warn("Queue timeout: {} after {} ms. ({} seconds)", queueName,
-        String.format("%,d", configSet.queueTimeout), timeoutSecs);
-      throw new QueueTimeoutException(queryId, queueName, configSet.queueTimeout);
-    }
-    return new DistributedQueueLease(queryId, queueName, lease, queryMemory);
-  }
-
   private synchronized void refreshConfig() {
     long now = System.currentTimeMillis();
     if (now < nextRefreshTime) {
@@ -334,25 +343,6 @@ public class DistributedQueryQueue implements QueryQueue {
     return new ZKQueueInfo(this);
   }
 
-  private void release(QueueLease lease) {
-    DistributedQueueLease theLease = (DistributedQueueLease) lease;
-    for (;;) {
-      try {
-        theLease.lease.close();
-        theLease.lease = null;
-        break;
-      } catch (final InterruptedException e) {
-        // if we end up here, the loop will try again
-      } catch (final Exception e) {
-        logger.warn("Failure while releasing lease.", e);
-        break;
-      }
-      if (inShutdown()) {
-        logger.warn("In shutdown mode: abandoning attempt to release lease");
-      }
-    }
-  }
-
   private boolean inShutdown() {
     if (statusAdapter == null) {
       return false;
@@ -361,7 +351,7 @@ public class DistributedQueryQueue implements QueryQueue {
   }
 
   @Override
-  public void close() {
+  protected void internalClose() {
     // Nothing to do.
   }
 }
