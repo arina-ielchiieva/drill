@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -45,7 +45,7 @@ import org.apache.drill.common.expression.ValueExpressions.QuotedString;
 import org.apache.drill.common.expression.ValueExpressions.TimeExpression;
 import org.apache.drill.common.expression.ValueExpressions.TimeStampExpression;
 
-public final class AggregateChecker implements ExprVisitor<Boolean, ErrorCollector, RuntimeException>{
+public final class AggregateChecker extends AbstractExprVisitor<Boolean,ErrorCollector,RuntimeException> {
 
   public static final AggregateChecker INSTANCE = new AggregateChecker();
 

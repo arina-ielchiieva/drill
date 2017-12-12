@@ -45,7 +45,7 @@ import org.apache.drill.common.expression.ValueExpressions.QuotedString;
 import org.apache.drill.common.expression.ValueExpressions.TimeExpression;
 import org.apache.drill.common.expression.ValueExpressions.TimeStampExpression;
 
-final class ConstantChecker implements ExprVisitor<Boolean, ErrorCollector, RuntimeException> {
+final class ConstantChecker extends AbstractExprVisitor<Boolean,ErrorCollector,RuntimeException> {
 
 
   private final static ConstantChecker INSTANCE = new ConstantChecker();

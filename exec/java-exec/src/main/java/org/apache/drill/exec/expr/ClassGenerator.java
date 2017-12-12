@@ -225,7 +225,7 @@ public class ClassGenerator<T>{
   }
 
   public JLabel getEvalBlockLabel (String prefix) {
-    return getEvalBlock().label(prefix + labelIndex ++);
+    return getEvalBlock().label(prefix + labelIndex++);
   }
 
   /**
@@ -543,12 +543,16 @@ public class ClassGenerator<T>{
   }
 
   public HoldingContainer declare(MajorType t, boolean includeNewInstance) {
+    return declare(t, "out", includeNewInstance);
+  }
+
+  public HoldingContainer declare(MajorType t, String name, boolean includeNewInstance) {
     JType holderType = getHolderType(t);
     JVar var;
     if (includeNewInstance) {
-      var = getEvalBlock().decl(holderType, "out" + index, JExpr._new(holderType));
+      var = getEvalBlock().decl(holderType, name + index, JExpr._new(holderType));
     } else {
-      var = getEvalBlock().decl(holderType, "out" + index);
+      var = getEvalBlock().decl(holderType, name + index);
     }
     JFieldRef outputSet = null;
     if (t.getMode() == DataMode.OPTIONAL) {
