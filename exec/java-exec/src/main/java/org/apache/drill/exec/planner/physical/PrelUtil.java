@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,8 +18,11 @@
 package org.apache.drill.exec.planner.physical;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.apache.calcite.plan.RelOptCluster;
@@ -39,6 +42,8 @@ import org.apache.calcite.rex.RexLocalRef;
 import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.rex.RexShuttle;
 import org.apache.calcite.rex.RexVisitorImpl;
+import org.apache.calcite.sql.fun.SqlStdOperatorTable;
+import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.drill.common.expression.ExpressionPosition;
 import org.apache.drill.common.expression.FieldReference;
 import org.apache.drill.common.expression.PathSegment;
@@ -48,7 +53,6 @@ import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.data.Order.Ordering;
 import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 
-import com.carrotsearch.hppc.IntIntHashMap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -123,90 +127,108 @@ public class PrelUtil {
 
   }
 
-  public static class DesiredField {
-    public final int origIndex;
-    public final String name;
-    public final RelDataTypeField field;
+  private static class DesiredField {
+    private final int originalIndex;
+    private final String name;
+    private final RelDataType type;
 
-    public DesiredField(int origIndex, String name, RelDataTypeField field) {
-      super();
-      this.origIndex = origIndex;
+    DesiredField(int origIndex, String name, RelDataType type) {
+      this.originalIndex = origIndex;
       this.name = name;
-      this.field = field;
+      this.type = type;
+    }
+
+    DesiredField(String name, RelDataType type) {
+      this.originalIndex = -1;
+      this.name = name;
+      this.type = type;
+    }
+
+    boolean hasOriginalIndex() {
+      return originalIndex != -1;
+    }
+
+    int getOriginalIndex() {
+      return originalIndex;
+    }
+
+    String getName() {
+      return name;
+    }
+
+    RelDataType getType() {
+      return type;
     }
 
     @Override
     public int hashCode() {
-      final int prime = 31;
-      int result = 1;
-      result = prime * result + ((field == null) ? 0 : field.hashCode());
-      result = prime * result + ((name == null) ? 0 : name.hashCode());
-      result = prime * result + origIndex;
-      return result;
+      return Objects.hash(originalIndex, name, type);
     }
 
     @Override
-    public boolean equals(Object obj) {
-      if (this == obj) {
+    public boolean equals(Object o) {
+      if (this == o) {
         return true;
       }
-      if (obj == null) {
+      if (o == null || getClass() != o.getClass()) {
         return false;
       }
-      if (getClass() != obj.getClass()) {
-        return false;
-      }
-      DesiredField other = (DesiredField) obj;
-      if (field == null) {
-        if (other.field != null) {
-          return false;
+      DesiredField field = (DesiredField) o;
+      return originalIndex == field.originalIndex && Objects.equals(name, field.name) && Objects.equals(type, field.type);
+    }
+  }
+
+  private static class FieldMapper {
+
+    private final Map<String, Integer> mapByName = new HashMap<>();
+    private final Map<Integer, Integer> mapByIndex = new HashMap<>();
+
+    FieldMapper(List<DesiredField> fields) {
+      int index = 0;
+      for (DesiredField field : fields) {
+        if (field.hasOriginalIndex()) {
+          mapByIndex.put(field.getOriginalIndex(), index);
+        } else {
+          mapByName.put(field.getName(), index);
         }
-      } else if (!field.equals(other.field)) {
-        return false;
+        index++;
       }
-      if (name == null) {
-        if (other.name != null) {
-          return false;
-        }
-      } else if (!name.equals(other.name)) {
-        return false;
-      }
-      if (origIndex != other.origIndex) {
-        return false;
-      }
-      return true;
     }
 
+    Integer getNewId(String name) {
+      return mapByName.get(name);
+    }
+
+    Integer getNewId(int originalIndex) {
+      return mapByIndex.get(originalIndex);
+    }
   }
 
   public static class ProjectPushInfo {
-    public final List<SchemaPath> columns;
-    public final List<DesiredField> desiredFields;
-    public final InputRewriter rewriter;
+    private final List<SchemaPath> columns;
+    private final InputReWriter reWriter;
     private final List<String> fieldNames;
     private final List<RelDataType> types;
 
     public ProjectPushInfo(List<SchemaPath> columns, ImmutableList<DesiredField> desiredFields) {
-      super();
       this.columns = columns;
-      this.desiredFields = desiredFields;
-
       this.fieldNames = Lists.newArrayListWithCapacity(desiredFields.size());
       this.types = Lists.newArrayListWithCapacity(desiredFields.size());
-      IntIntHashMap oldToNewIds = new IntIntHashMap();
 
-      int i =0;
       for (DesiredField f : desiredFields) {
-        fieldNames.add(f.name);
-        types.add(f.field.getType());
-        oldToNewIds.put(f.origIndex, i);
-        i++;
+        fieldNames.add(f.getName());
+        types.add(f.getType());
       }
-      this.rewriter = new InputRewriter(oldToNewIds);
+
+      this.reWriter = new InputReWriter(new FieldMapper(desiredFields));
     }
 
-    public InputRewriter getInputRewriter() {
-      return rewriter;
+    public List<SchemaPath> getColumns() {
+      return columns;
+    }
+
+    public InputReWriter getInputReWriter() {
+      return reWriter;
     }
 
     public boolean isStarQuery() {
@@ -253,24 +275,24 @@ public class PrelUtil {
 
   /** Visitor that finds the set of inputs that are used. */
   private static class RefFieldsVisitor extends RexVisitorImpl<PathSegment> {
-    final Set<SchemaPath> columns = Sets.newLinkedHashSet();
-    final private List<String> fieldNames;
-    final private List<RelDataTypeField> fields;
-    final private Set<DesiredField> desiredFields = Sets.newLinkedHashSet();
+    private final Set<SchemaPath> columns = Sets.newLinkedHashSet();
+    private final List<String> fieldNames;
+    private final List<RelDataTypeField> fields;
+    private final Set<DesiredField> desiredFields = Sets.newLinkedHashSet();
 
-    public RefFieldsVisitor(RelDataType rowType) {
+    RefFieldsVisitor(RelDataType rowType) {
       super(true);
       this.fieldNames = rowType.getFieldNames();
       this.fields = rowType.getFieldList();
     }
 
-    public void addColumn(PathSegment segment) {
+    void addColumn(PathSegment segment) {
       if (segment != null && segment instanceof NameSegment) {
         columns.add(new SchemaPath((NameSegment)segment));
       }
     }
 
-    public ProjectPushInfo getInfo() {
+    ProjectPushInfo getInfo() {
       return new ProjectPushInfo(ImmutableList.copyOf(columns), ImmutableList.copyOf(desiredFields));
     }
 
@@ -279,14 +301,24 @@ public class PrelUtil {
       int index = inputRef.getIndex();
       String name = fieldNames.get(index);
       RelDataTypeField field = fields.get(index);
-      DesiredField f = new DesiredField(index, name, field);
+      DesiredField f = new DesiredField(index, name, field.getType());
       desiredFields.add(f);
       return new NameSegment(name);
     }
 
     @Override
     public PathSegment visitCall(RexCall call) {
-      if ("ITEM".equals(call.getOperator().getName())) {
+      if (SqlStdOperatorTable.ITEM.equals(call.getOperator())) {
+
+        if (hasStar(call.operands.get(0))) {
+          if (call.operands.get(1) instanceof RexLiteral) {
+            String name = RexLiteral.stringValue(call.operands.get(1));
+            addColumn(new NameSegment(name));
+            desiredFields.add(new DesiredField(name, call.getType()));
+          }
+          return null;
+        }
+
         PathSegment mapOrArray = call.operands.get(0).accept(this);
         if (mapOrArray != null) {
           if (call.operands.get(1) instanceof RexLiteral) {
@@ -300,6 +332,16 @@ public class PrelUtil {
         }
       }
       return null;
+    }
+
+    private boolean hasStar(RexNode ref) {
+      if (ref instanceof RexInputRef) {
+        RexInputRef inputRef = (RexInputRef) ref;
+        int index = inputRef.getIndex();
+        String name = fieldNames.get(index);
+        return "*".equals(name);
+      }
+      return false;
     }
 
     private PathSegment convertLiteral(RexLiteral literal) {
@@ -327,41 +369,36 @@ public class PrelUtil {
     }
   }
 
-  public static class InputRefRemap {
-    private int oldIndex;
-    private int newIndex;
+  private static class InputReWriter extends RexShuttle {
 
-    public InputRefRemap(int oldIndex, int newIndex) {
-      super();
-      this.oldIndex = oldIndex;
-      this.newIndex = newIndex;
-    }
-    public int getOldIndex() {
-      return oldIndex;
-    }
-    public int getNewIndex() {
-      return newIndex;
+    private final FieldMapper mapper;
+
+    InputReWriter(FieldMapper mapper) {
+      this.mapper = mapper;
     }
 
-  }
-
-  public static class InputRewriter extends RexShuttle {
-
-    final IntIntHashMap map;
-
-    public InputRewriter(IntIntHashMap map) {
-      super();
-      this.map = map;
+    @Override
+    public RexNode visitCall(final RexCall call) {
+      if (SqlStdOperatorTable.ITEM.equals(call.getOperator()) && call.operands.get(1) instanceof RexLiteral) {
+        RexLiteral literal = (RexLiteral) call.operands.get(1);
+        if (SqlTypeName.CHAR.equals(literal.getType().getSqlTypeName())) {
+          String fieldName = RexLiteral.stringValue(literal);
+          if (mapper.getNewId(fieldName) != null) {
+            return new RexInputRef(mapper.getNewId(fieldName), call.operands.get(0).getType());
+          }
+        }
+      }
+      return super.visitCall(call);
     }
 
     @Override
     public RexNode visitInputRef(RexInputRef inputRef) {
-      return new RexInputRef(map.get(inputRef.getIndex()), inputRef.getType());
+      return new RexInputRef(mapper.getNewId(inputRef.getIndex()), inputRef.getType());
     }
 
     @Override
     public RexNode visitLocalRef(RexLocalRef localRef) {
-      return new RexInputRef(map.get(localRef.getIndex()), localRef.getType());
+      return new RexInputRef(mapper.getNewId(localRef.getIndex()), localRef.getType());
     }
 
   }
