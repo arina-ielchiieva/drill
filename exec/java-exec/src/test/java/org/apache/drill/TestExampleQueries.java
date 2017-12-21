@@ -31,6 +31,10 @@ import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.util.DrillFileUtils;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.test.BaseTestQuery;
+import org.apache.drill.test.ClientFixture;
+import org.apache.drill.test.ClusterFixture;
+import org.apache.drill.test.ClusterFixtureBuilder;
+import org.apache.drill.test.QueryBuilder;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -1166,4 +1170,230 @@ public class TestExampleQueries extends BaseTestQuery {
         .build()
         .run();
   }
+
+  @Test
+  public void t() throws Exception {
+    ClusterFixtureBuilder builder = ClusterFixture.builder(dirTestWatcher)
+            // Easy way to run single threaded for easy debugging
+            .maxParallelization(1)
+            // Set some session options
+            .sessionOption(ExecConstants.ENABLE_VERBOSE_ERRORS_KEY, true);
+
+    String parentDir = "F:\\drill\\files\\fact_dim_tables";
+
+    try (ClusterFixture cluster = builder.build();
+         ClientFixture client = cluster.clientFixture()) {
+      cluster.defineWorkspace("dfs", "root", parentDir, "parquet");
+      //String sql = "select * from `dfs.root`.`fact` t";
+
+      //String sql = "select f.col_vrchr as f_col, d.col_vrchr as d_col from `dfs.root`.`fact` f, `dfs.root`.`dim` d where f.dir0 = d.dir0 and d.dir0 = '1991'";
+      String sql = "select f.col_vrchr as f_col, d.col_vrchr as d_col from `dfs.root`.`fact` f inner join `dfs.root`.`dim` d on f.dir0 = d.dir0 where d.dir0 = '1991'";
+
+      QueryBuilder queryBuilder = client.queryBuilder().sql(sql);
+      // print data
+      //queryBuilder.printCsv();
+
+      // print plan
+      System.out.println(queryBuilder.explainText());
+    }
+
+    /*
+00-00    Screen
+00-01      Project(f_col=[$0], d_col=[$1])
+00-02        Project(f_col=[$1], d_col=[$3])
+00-03          HashJoin(condition=[=($0, $2)], joinType=[inner])
+00-05            Scan(groupscan=[ParquetGroupScan [entries=[ReadEntryWithPath [path=file:/F:/drill/files/fact_dim_tables/fact/1991/alltypes_optional.parquet], ReadEntryWithPath [path=file:/F:/drill/files/fact_dim_tables/fact/1992/alltypes_optional.parquet]], selectionRoot=file:/F:/drill/files/fact_dim_tables/fact, numFiles=2, numRowGroups=2, usedMetadataFile=false, columns=[`dir0`, `col_vrchr`]]])
+00-04            Project(dir00=[$0], col_vrchr0=[$1])
+00-06              Scan(groupscan=[ParquetGroupScan [entries=[ReadEntryWithPath [path=F:/drill/files/fact_dim_tables/dim/1991/alltypes_optional.parquet]], selectionRoot=file:/F:/drill/files/fact_dim_tables/dim, numFiles=1, numRowGroups=1, usedMetadataFile=false, columns=[`dir0`, `col_vrchr`]]])
+
+     */
+  }
+
+  @Test
+  public void test_1312() throws Exception {
+    ClusterFixtureBuilder builder = ClusterFixture.builder(dirTestWatcher)
+      // Easy way to run single threaded for easy debugging
+      .maxParallelization(1)
+      // Set some session options
+      .sessionOption(ExecConstants.ENABLE_VERBOSE_ERRORS_KEY, true);
+
+    String parentDir = "F:\\drill\\files\\fact_dim_tables";
+
+    try (ClusterFixture cluster = builder.build();
+         ClientFixture client = cluster.clientFixture()) {
+      cluster.defineWorkspace("dfs", "root", parentDir, "parquet");
+      //String sql = "select * from `dfs.root`.`fact` t";
+
+      String sql = "select * from `dfs.root`.`dim` d where d.dir0 = '1991'";
+
+      QueryBuilder queryBuilder = client.queryBuilder().sql(sql);
+      // print data
+      //queryBuilder.printCsv();
+
+      // print plan
+      System.out.println(queryBuilder.explainText());
+
+      // create view
+
+      client.queryBuilder().sql("create view dfs.tmp.dim_view as select * from `dfs.root`.`dim`").run();
+
+      String view_sql = "select * from `dfs.tmp`.`dim_view` d where d.dir0 = '1991'";
+
+      QueryBuilder viewQueryBuilder = client.queryBuilder().sql(view_sql);
+      // print data
+      //queryBuilder.printCsv();
+
+      // print plan
+      System.out.println(viewQueryBuilder.explainText());
+
+      client.queryBuilder().sql("drop view dfs.tmp.dim_view as select * from `dfs.root`.`dim`").run();
+    }
+
+    /*
+
+    // from table
+00-00    Screen
+00-01      Project(*=[$0])
+00-02        Project(*=[$0])
+00-03          Scan(groupscan=[ParquetGroupScan [entries=[ReadEntryWithPath [path=file:/F:/drill/files/fact_dim_tables/dim/1991/alltypes_optional.parquet]], selectionRoot=file:/F:/drill/files/fact_dim_tables/dim, numFiles=1, numRowGroups=1, usedMetadataFile=false, columns=[`*`]]])
+
+    // from view
+00-00    Screen
+00-01      Project(*=[$0])
+00-02        SelectionVectorRemover
+00-03          Filter(condition=[=(ITEM($0, 'dir0'), '1991')])
+00-04            Scan(groupscan=[ParquetGroupScan [entries=[ReadEntryWithPath [path=file:/F:/drill/files/fact_dim_tables/dim/1991/alltypes_optional.parquet], ReadEntryWithPath [path=file:/F:/drill/files/fact_dim_tables/dim/1992/alltypes_optional.parquet]], selectionRoot=file:/F:/drill/files/fact_dim_tables/dim, numFiles=2, numRowGroups=2, usedMetadataFile=false, columns=[`*`]]])
+     */
+
+  }
+
+  @Test
+  public void testFilterPDForInterval() throws Exception {
+    dirTestWatcher.copyResourceToRoot(Paths.get("parquetFilterPush"));
+    final String query = "select o_ordertimestamp from dfs.`parquetFilterPush/tsTbl` " +
+      "where o_ordertimestamp >= '1992-01-01' and o_ordertimestamp < date '1992-01-01' + interval '5' day";
+
+    // where L_SHIPDate >= date '1997-01-01' and L_SHIPDate < date '1997-01-01' + interval '3' day
+    ClusterFixtureBuilder builder = ClusterFixture.builder(dirTestWatcher)
+      // Easy way to run single threaded for easy debugging
+      .maxParallelization(1)
+      // Set some session options
+      .sessionOption(ExecConstants.ENABLE_VERBOSE_ERRORS_KEY, true);
+
+    try (ClusterFixture cluster = builder.build();
+         ClientFixture client = cluster.clientFixture()) {
+      QueryBuilder viewQueryBuilder = client.queryBuilder().sql(query);
+      System.out.println(viewQueryBuilder.explainText());
+    }
+
+  }
+
+  @Test
+  public void testFilterPushDownForUnion() throws Exception {
+    // F:\drill\files\fact_dim_tables\dim\1991
+    // F:\drill\files\fact_dim_tables\dim\1992
+
+    ClusterFixtureBuilder builder = ClusterFixture.builder(dirTestWatcher)
+      // Easy way to run single threaded for easy debugging
+      .maxParallelization(1)
+      // Set some session options
+      .sessionOption(ExecConstants.ENABLE_VERBOSE_ERRORS_KEY, true);
+
+    String parentDir = "D:\\drill\\files\\fact_dim_tables\\dim";
+
+    try (ClusterFixture cluster = builder.build();
+         ClientFixture client = cluster.clientFixture()) {
+      cluster.defineWorkspace("dfs", "root", parentDir, "parquet");
+
+      String query = "select col_vrchr from " +
+        "(select col_vrchr from `dfs.root`.`1991` union all select col_vrchr from `dfs.root`.`1992`) v where v.col_vrchr = '10'";
+
+      QueryBuilder viewQueryBuilder = client.queryBuilder().sql(query);
+      System.out.println(viewQueryBuilder.explainText());
+    }
+  }
+
+  @Test
+  public void testWithKnownColumns() throws Exception {
+    ClusterFixtureBuilder builder = ClusterFixture.builder(dirTestWatcher)
+      // Easy way to run single threaded for easy debugging
+      .maxParallelization(1)
+      // Set some session options
+      .sessionOption(ExecConstants.ENABLE_VERBOSE_ERRORS_KEY, true);
+
+    try (ClusterFixture cluster = builder.build();
+         ClientFixture client = cluster.clientFixture()) {
+      //cluster.defineWorkspace("dfs", "root", parentDir, "parquet");
+
+      //String query = "select version from sys.version v join sys.options o on v.version = o.name where o.name = 'xxx'";
+      String query = "select 1 from sys.boot b join sys.options o on b.name = o.name and o.name = 'xxx'";
+
+      QueryBuilder viewQueryBuilder = client.queryBuilder().sql(query);
+      System.out.println(viewQueryBuilder.explainText()); // physical plan
+      // logical -> explain plan without implementation for
+    }
+  }
+
+
+  @Test // MD-1360 + MD-1312
+  public void testItemOperator() throws Exception {
+    ClusterFixtureBuilder builder = ClusterFixture.builder(dirTestWatcher)
+      // Easy way to run single threaded for easy debugging
+      .maxParallelization(1)
+      // Set some session options
+      .sessionOption(ExecConstants.ENABLE_VERBOSE_ERRORS_KEY, true);
+
+    String parentDir = "F:\\drill\\files\\fact_dim_tables\\fact";
+
+    try (ClusterFixture cluster = builder.build();
+         ClientFixture client = cluster.clientFixture()) {
+      cluster.defineWorkspace("dfs", "root", parentDir, "parquet");
+
+      //String query = "select col_vrchr, count(*) from `dfs.root`.`1992` group by col_vrchr";
+      //String query = "select col_vrchr, count(*) from (select * from `dfs.root`.`1992`) v group by col_vrchr";
+      //String query = "select col_vrchr as c1, col_int, count(*) from (select * from `dfs.root`.`1992`) v group by col_vrchr, col_int";
+      //String query = "select col_vrchr, * from `dfs.root`.`1992`";
+      //String query = "select * from `dfs.root`.`1992`";
+     // String query = "select col_vrchr as c1, col_int from (select * from `dfs.root`.`1992`) v ";
+     // String query = "select col_vrchr as c1, col_int from (select * from `dfs.root`.`1992`) v2 union all " +
+     //   "select col_chr as c1, col_int from (select * from `dfs.root`.`1991`) v1";
+
+      String query = "select col_vrchr, count(*), ABC from (select *, upper(ABC) from `dfs.root`.`1992`) v group by col_vrchr, ABC";
+      //String query = "select col_vrchr, count(*), ABC from (select *, ABC from `dfs.root`.`1992`) v group by col_vrchr, ABC";
+      //String query = "select col_vrchr, count(*), c from (select *, 'ABC' as c from `dfs.root`.`1992`) v group by col_vrchr, c";
+
+      QueryBuilder viewQueryBuilder = client.queryBuilder().sql(query);
+      viewQueryBuilder.printCsv();
+      System.out.println(viewQueryBuilder.explainText());
+    }
+  }
+
+  /*
+  DrillScreenRel
+  DrillAggregateRel(group=[{0}], EXPR$1=[COUNT($1)])
+    DrillProjectRel(col_vrchr=[$0], $f1=[1])
+      DrillScanRel(table=[[dfs.root, 1992]], groupscan=[ParquetGroupScan [entries=[ReadEntryWithPath [path=file:/F:/drill/files/fact_dim_tables/fact/1992]], selectionRoot=file:/F:/drill/files/fact_dim_tables/fact/1992, numFiles=1, numRowGroups=1, usedMetadataFile=false, columns=[`col_vrchr`]]])
+
+00-00    Screen
+00-01      Project(col_vrchr=[$0], EXPR$1=[$1])
+00-02        StreamAgg(group=[{0}], EXPR$1=[COUNT()])
+00-03          Sort(sort0=[$0], dir0=[ASC])
+00-04            Scan(groupscan=[ParquetGroupScan [entries=[ReadEntryWithPath [path=file:/F:/drill/files/fact_dim_tables/fact/1992]], selectionRoot=file:/F:/drill/files/fact_dim_tables/fact/1992, numFiles=1, numRowGroups=1, usedMetadataFile=false, columns=[`col_vrchr`]]])
+
+
+DrillScreenRel
+  DrillAggregateRel(group=[{0}], EXPR$1=[COUNT()])
+    DrillProjectRel(col_vrchr=[ITEM($0, 'col_vrchr')])
+      DrillScanRel(table=[[dfs.root, 1992]], groupscan=[ParquetGroupScan [entries=[ReadEntryWithPath [path=file:/F:/drill/files/fact_dim_tables/fact/1992]], selectionRoot=file:/F:/drill/files/fact_dim_tables/fact/1992, numFiles=1, numRowGroups=1, usedMetadataFile=false, columns=[`*`]]])
+
+00-00    Screen
+00-01      Project(col_vrchr=[$0], EXPR$1=[$1])
+00-02        StreamAgg(group=[{0}], EXPR$1=[COUNT()])
+00-03          Sort(sort0=[$0], dir0=[ASC])
+00-04            Project(col_vrchr=[ITEM($0, 'col_vrchr')])
+00-05              Scan(groupscan=[ParquetGroupScan [entries=[ReadEntryWithPath [path=file:/F:/drill/files/fact_dim_tables/fact/1992]], selectionRoot=file:/F:/drill/files/fact_dim_tables/fact/1992, numFiles=1, numRowGroups=1, usedMetadataFile=false, columns=[`*`]]])
+
+
+   */
+
 }

@@ -523,6 +523,7 @@ public class QueryBuilder {
   }
 
   public String explain(String format) throws Exception {
+    //queryText = "EXPLAIN PLAN without implementation FOR " + queryText;
     queryText = "EXPLAIN PLAN FOR " + queryText;
     return queryPlan(format);
   }

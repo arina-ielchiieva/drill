@@ -25,9 +25,13 @@ import org.apache.calcite.plan.volcano.AbstractConverter.ExpandConversionRule;
 import org.apache.calcite.rel.core.RelFactories;
 import org.apache.calcite.rel.rules.AggregateExpandDistinctAggregatesRule;
 import org.apache.calcite.rel.rules.AggregateRemoveRule;
+import org.apache.calcite.rel.rules.FilterJoinRule;
 import org.apache.calcite.rel.rules.FilterMergeRule;
+import org.apache.calcite.rel.rules.FilterProjectTransposeRule;
+import org.apache.calcite.rel.rules.FilterSetOpTransposeRule;
 import org.apache.calcite.rel.rules.JoinPushExpressionsRule;
 import org.apache.calcite.rel.rules.JoinPushThroughJoinRule;
+import org.apache.calcite.rel.rules.JoinPushTransitivePredicatesRule;
 import org.apache.calcite.rel.rules.JoinToMultiJoinRule;
 import org.apache.calcite.rel.rules.LoptOptimizeJoinRule;
 import org.apache.calcite.rel.rules.ProjectRemoveRule;
@@ -48,6 +52,7 @@ import org.apache.drill.exec.planner.logical.DrillJoinRule;
 import org.apache.drill.exec.planner.logical.DrillLimitRule;
 import org.apache.drill.exec.planner.logical.DrillMergeProjectRule;
 import org.apache.drill.exec.planner.logical.DrillProjectRule;
+import org.apache.drill.exec.planner.logical.DrillProjectSetOpTransposeRule;
 import org.apache.drill.exec.planner.logical.DrillPushFilterPastProjectRule;
 import org.apache.drill.exec.planner.logical.DrillPushLimitToScanRule;
 import org.apache.drill.exec.planner.logical.DrillPushProjIntoScan;
@@ -263,7 +268,7 @@ public enum PlannerPhase {
        */
       DrillPushFilterPastProjectRule.INSTANCE,
       // Due to infinite loop in planning (DRILL-3257), temporarily disable this rule
-      //FilterSetOpTransposeRule.INSTANCE,
+      //FilterSetOpTransposeRule.INSTANCE, //todo enabling ONLY this rule allows push filter to union -> testFilterPushDownUnion
       DrillFilterAggregateTransposeRule.INSTANCE,
 
       FilterMergeRule.INSTANCE,
@@ -281,8 +286,18 @@ public enum PlannerPhase {
       DrillPushProjectPastJoinRule.INSTANCE,
       // Due to infinite loop in planning (DRILL-3257), temporarily disable this rule
       //DrillProjectSetOpTransposeRule.INSTANCE,
+
+      //todo rules from Calcite
+/*      FilterJoinRule.JOIN,
+      FilterProjectTransposeRule.INSTANCE,
+      FilterSetOpTransposeRule.INSTANCE,
+      JoinPushTransitivePredicatesRule.INSTANCE,*/
+      //todo rules from Calcite
+
       ProjectWindowTransposeRule.INSTANCE,
       DrillPushProjIntoScan.INSTANCE,
+
+      //JoinPushTransitivePredicatesRule.INSTANCE,
 
       /*
        Convert from Calcite Logical to Drill Logical Rules.
@@ -342,6 +357,7 @@ public enum PlannerPhase {
   static RuleSet getPruneScanRules(OptimizerRulesContext optimizerRulesContext) {
     final ImmutableSet<RelOptRule> pruneRules = ImmutableSet.<RelOptRule>builder()
         .add(
+            //JoinPushTransitivePredicatesRule.INSTANCE, //todo query fails
             PruneScanRule.getDirFilterOnProject(optimizerRulesContext),
             PruneScanRule.getDirFilterOnScan(optimizerRulesContext),
             ParquetPruneScanRule.getFilterOnProjectParquet(optimizerRulesContext),

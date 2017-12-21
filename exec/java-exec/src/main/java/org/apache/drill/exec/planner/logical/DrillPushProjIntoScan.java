@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -15,7 +15,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.drill.exec.planner.logical;
 
 import java.io.IOException;
@@ -36,9 +35,8 @@ import org.apache.calcite.rex.RexNode;
 import com.google.common.collect.Lists;
 
 public class DrillPushProjIntoScan extends RelOptRule {
-  public static final RelOptRule INSTANCE = new DrillPushProjIntoScan(LogicalProject.class, EnumerableTableScan.class);
 
-  public static final RelOptRule DRILL_LOGICAL_INSTANCE = new DrillPushProjIntoScan(DrillProjectRel.class, DrillScanRel.class);
+  public static final RelOptRule INSTANCE = new DrillPushProjIntoScan(LogicalProject.class, EnumerableTableScan.class);
 
   private DrillPushProjIntoScan(Class<? extends Project> projectClass, Class<? extends TableScan> scanClass) {
     super(RelOptHelper.some(projectClass, RelOptHelper.any(scanClass)), "DrillPushProjIntoScan");
@@ -47,8 +45,8 @@ public class DrillPushProjIntoScan extends RelOptRule {
 
   @Override
   public void onMatch(RelOptRuleCall call) {
-    final Project proj = (Project) call.rel(0);
-    final TableScan scan = (TableScan) call.rel(1);
+    final Project proj = call.rel(0);
+    final TableScan scan = call.rel(1);
 
     try {
       ProjectPushInfo columnInfo = PrelUtil.getColumns(scan.getRowType(), proj.getProjects());
@@ -59,9 +57,7 @@ public class DrillPushProjIntoScan extends RelOptRule {
         table = scan.getTable().unwrap(DrillTranslatableTable.class).getDrillTable();
       }
 
-      if (columnInfo == null || columnInfo.isStarQuery() //
-          || !table //
-          .getGroupScan().canPushdownProjects(columnInfo.columns)) {
+      if (columnInfo == null || columnInfo.isStarQuery() || !table.getGroupScan().canPushdownProjects(columnInfo.columns)) {
         return;
       }
 
@@ -75,7 +71,7 @@ public class DrillPushProjIntoScan extends RelOptRule {
 
       List<RexNode> newProjects = Lists.newArrayList();
       for (RexNode n : proj.getChildExps()) {
-        newProjects.add(n.accept(columnInfo.getInputRewriter()));
+        newProjects.add(n.accept(columnInfo.getInputReWriter()));
       }
 
       final DrillProjectRel newProj =
