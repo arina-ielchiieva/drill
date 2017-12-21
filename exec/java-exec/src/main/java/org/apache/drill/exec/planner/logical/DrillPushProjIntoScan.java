@@ -15,16 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.drill.exec.planner.logical;
 
 import java.io.IOException;
 import java.util.List;
 
-import org.apache.calcite.adapter.enumerable.EnumerableTableScan;
 import org.apache.calcite.rel.core.Project;
 import org.apache.calcite.rel.core.TableScan;
-import org.apache.calcite.rel.logical.LogicalProject;
 import org.apache.calcite.rel.rules.ProjectRemoveRule;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.exec.planner.physical.PrelUtil;
@@ -36,7 +33,6 @@ import org.apache.calcite.rex.RexNode;
 import com.google.common.collect.Lists;
 
 public class DrillPushProjIntoScan extends RelOptRule {
-  public static final RelOptRule INSTANCE = new DrillPushProjIntoScan(LogicalProject.class, EnumerableTableScan.class);
 
   private DrillPushProjIntoScan(Class<? extends Project> projectClass,
       Class<? extends TableScan> scanClass) {
@@ -58,9 +54,7 @@ public class DrillPushProjIntoScan extends RelOptRule {
         table = scan.getTable().unwrap(DrillTranslatableTable.class).getDrillTable();
       }
 
-      if (columnInfo == null || columnInfo.isStarQuery() //
-          || !table //
-          .getGroupScan().canPushdownProjects(columnInfo.columns)) {
+      if (columnInfo == null || columnInfo.isStarQuery() || !table.getGroupScan().canPushdownProjects(columnInfo.getColumns())) {
         return;
       }
 
@@ -69,12 +63,12 @@ public class DrillPushProjIntoScan extends RelOptRule {
               scan.getTraitSet().plus(DrillRel.DRILL_LOGICAL),
               scan.getTable(),
               columnInfo.createNewRowType(proj.getInput().getCluster().getTypeFactory()),
-              columnInfo.columns);
+              columnInfo.getColumns());
 
 
       List<RexNode> newProjects = Lists.newArrayList();
       for (RexNode n : proj.getChildExps()) {
-        newProjects.add(n.accept(columnInfo.getInputRewriter()));
+        newProjects.add(n.accept(columnInfo.getInputReWriter()));
       }
 
       final DrillProjectRel newProj =
