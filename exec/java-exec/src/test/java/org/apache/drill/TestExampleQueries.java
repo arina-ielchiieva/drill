@@ -1343,7 +1343,7 @@ public class TestExampleQueries extends BaseTestQuery {
       // Set some session options
       .sessionOption(ExecConstants.ENABLE_VERBOSE_ERRORS_KEY, true);
 
-    String parentDir = "F:\\drill\\files\\fact_dim_tables\\fact";
+    String parentDir = "D:\\drill\\files\\fact_dim_tables\\fact";
 
     try (ClusterFixture cluster = builder.build();
          ClientFixture client = cluster.clientFixture()) {
@@ -1362,10 +1362,12 @@ public class TestExampleQueries extends BaseTestQuery {
       //String query = "select col_vrchr, count(*), ABC from (select *, ABC from `dfs.root`.`1992`) v group by col_vrchr, ABC";
       //String query = "select col_vrchr, count(*), c from (select *, 'ABC' as c from `dfs.root`.`1992`) v group by col_vrchr, c";
       //String query = "select cast(convert_to(interests, 'JSON') as varchar(0)) as interests from cp.`complex_student.json`";
-      //String query = "select * from (select * from `dfs.root`.`*`) v where dir0 = '1992'";
-      String query = "select * from `dfs.root`.`*` where dir0 = '1992'";
+      //String query = "select * from (select * from `dfs.root`.`*`) v where dir0 = '1992'"; //todo filter -> scan example
+      String query = "select *, dir0 from (select * from `dfs.root`.`*`) v where dir0 = '1992'"; //todo filter -> project -> scan example
+      //String query = "select *, dir0 from `dfs.root`.`*` where dir0 = '1992'";
+      //String query = "select * from `dfs.root`.`*` where dir0 = '1992'";
 
-      //todo filter can be removed for better performance
+      //todo filter should be pushed down for better performance
       // Filter(condition=[=(ITEM($0, 'dir0'), '1992')])
 
       QueryBuilder viewQueryBuilder = client.queryBuilder().sql(query);
@@ -1387,6 +1389,7 @@ public class TestExampleQueries extends BaseTestQuery {
 00-03          Filter(condition=[=(ITEM($0, 'dir0'), '1992')])
 00-04            Scan(groupscan=[ParquetGroupScan [entries=[ReadEntryWithPath [path=file:/F:/drill/files/fact_dim_tables/fact/1991], ReadEntryWithPath [path=file:/F:/drill/files/fact_dim_tables/fact/1992]], selectionRoot=file:/F:/drill/files/fact_dim_tables/fact, numFiles=2, numRowGroups=2, usedMetadataFile=false, columns=[`*`]]])
 
+-- without star
 00-00    Screen
 00-01      Project(*=[$0])
 00-02        Project(*=[$0])
