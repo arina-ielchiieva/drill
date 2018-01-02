@@ -29,6 +29,8 @@ import org.apache.calcite.adapter.enumerable.EnumerableTableScan;
 import org.apache.calcite.rel.core.Filter;
 import org.apache.calcite.rel.core.Project;
 import org.apache.calcite.rel.core.TableScan;
+import org.apache.calcite.rex.RexCall;
+import org.apache.calcite.rex.RexLiteral;
 import org.apache.calcite.rex.RexUtil;
 import org.apache.calcite.util.BitSets;
 import org.apache.drill.common.expression.ErrorCollectorImpl;
@@ -146,6 +148,26 @@ public abstract class PruneScanRule extends StoragePluginOptimizerRule {
 
   protected void doOnMatch(RelOptRuleCall call, Filter filterRel, Project projectRel, TableScan scanRel) {
 
+    // with sub-select
+    // rel#67:DrillFilterRel.LOGICAL.ANY([]).[](input=HepRelVertex#66,condition==(ITEM($0, 'dir0'), '1992'))
+
+    // rel#60:DrillScanRel.LOGICAL.ANY([]).[](table=[dfs.root, *],groupscan=ParquetGroupScan
+    // [entries=[ReadEntryWithPath [path=file:/D:/drill/files/fact_dim_tables/fact/1991],
+    // ReadEntryWithPath [path=file:/D:/drill/files/fact_dim_tables/fact/1992]],
+    // selectionRoot=file:/D:/drill/files/fact_dim_tables/fact, numFiles=2, numRowGroups=2, usedMetadataFile=false, columns=[`*`]])
+
+    // (DrillRecordRow[*])
+
+    // without sub-select
+    // rel#36:DrillFilterRel.LOGICAL.ANY([]).[](input=HepRelVertex#35,condition==($1, '1992'))
+
+    // rel#32:DrillScanRel.LOGICAL.ANY([]).[](table=[dfs.root, *],groupscan=ParquetGroupScan
+    // [entries=[ReadEntryWithPath [path=file:/D:/drill/files/fact_dim_tables/fact/1991],
+    // ReadEntryWithPath [path=file:/D:/drill/files/fact_dim_tables/fact/1992]],
+    // selectionRoot=file:/D:/drill/files/fact_dim_tables/fact, numFiles=2, numRowGroups=2, usedMetadataFile=false, columns=[`*`]])
+
+    // (DrillRecordRow[*, dir0])
+
     final String pruningClassName = getClass().getName();
     logger.info("Beginning partition pruning, pruning class: {}", pruningClassName);
     Stopwatch totalPruningTime = Stopwatch.createStarted();
@@ -176,6 +198,11 @@ public abstract class PruneScanRule extends StoragePluginOptimizerRule {
     BitSet columnBitset = new BitSet();
     BitSet partitionColumnBitSet = new BitSet();
     Map<Integer, Integer> partitionMap = Maps.newHashMap();
+
+/*    RexCall rexNode = (RexCall) ((RexCall) condition).getOperands().get(0);
+    RexLiteral rexNode2 = (RexLiteral) rexNode.getOperands().get(1);
+    String s = RexLiteral.stringValue(rexNode2);
+    fieldNames.add(s);*/
 
     int relColIndex = 0;
     for (String field : fieldNames) {
