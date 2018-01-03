@@ -229,8 +229,12 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
     try {
       final RelNode convertedRelNode;
 
+      // convert item star
+      final RelNode convertedItem = transform(PlannerType.HEP_BOTTOM_UP, PlannerPhase.ITEM_STAR_CONVERSION, relNode);
+      //final RelNode convertedItem = relNode;
+
       // HEP Directory pruning .
-      final RelNode pruned = transform(PlannerType.HEP_BOTTOM_UP, PlannerPhase.DIRECTORY_PRUNING, relNode);
+      final RelNode pruned = transform(PlannerType.HEP_BOTTOM_UP, PlannerPhase.DIRECTORY_PRUNING, convertedItem);
       final RelTraitSet logicalTraits = pruned.getTraitSet().plus(DrillRel.DRILL_LOGICAL);
 
       if (!context.getPlannerSettings().isHepOptEnabled()) {
@@ -520,8 +524,7 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
     /*
      * 2.3) Projections that contain reference to flatten are rewritten as Flatten operators followed by Project
      */
-    phyRelNode = phyRelNode.accept(
-        new RewriteProjectToFlatten(config.getConverter().getTypeFactory(), context.getDrillOperatorTable()), null);
+    phyRelNode = phyRelNode.accept(new RewriteProjectToFlatten(config.getConverter().getTypeFactory(), context.getDrillOperatorTable()), null);
 
     /*
      * 3.)
