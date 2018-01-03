@@ -41,6 +41,7 @@ import org.apache.drill.exec.planner.logical.DrillPushLimitToScanRule;
 import org.apache.drill.exec.planner.logical.DrillPushProjIntoScan;
 import org.apache.drill.exec.planner.logical.DrillPushProjectPastFilterRule;
 import org.apache.drill.exec.planner.logical.DrillPushProjectPastJoinRule;
+import org.apache.drill.exec.planner.logical.DrillReWriteItemStarRule;
 import org.apache.drill.exec.planner.logical.DrillReduceAggregatesRule;
 import org.apache.drill.exec.planner.logical.DrillReduceExpressionsRule;
 import org.apache.drill.exec.planner.logical.DrillRelFactories;
@@ -140,6 +141,17 @@ public enum PlannerPhase {
               DrillReduceAggregatesRule.INSTANCE_WINDOW_SUM),
           getStorageRules(context, plugins, this)
           );
+    }
+  },
+
+  ITEM_STAR_CONVERSION("Convert item star") {
+    @Override
+    public RuleSet getRules(OptimizerRulesContext context, Collection<StoragePlugin> plugins) {
+      return PlannerPhase.mergedRuleSets(
+          RuleSets.ofList(DrillReWriteItemStarRule.INSTANCE_FPT),
+          RuleSets.ofList(DrillReWriteItemStarRule.INSTANCE_PPT),
+          getStorageRules(context, plugins, this)
+      );
     }
   },
 
@@ -243,6 +255,11 @@ public enum PlannerPhase {
    * These are merged with per-query rules in getDrillBasicRules() below.
    */
   final static ImmutableSet<RelOptRule> staticRuleSet = ImmutableSet.<RelOptRule> builder().add(
+
+/*      DrillReWriteItemStarRule.INSTANCE_FPT,
+      DrillReWriteItemStarRule.INSTANCE_PPT,
+      DrillReWriteItemStarRule.INSTANCE_PT,*/
+
       // Add support for Distinct Union (by using Union-All followed by Distinct)
       RuleInstance.UNION_TO_DISTINCT_RULE,
 

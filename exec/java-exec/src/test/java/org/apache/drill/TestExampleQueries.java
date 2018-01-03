@@ -1343,7 +1343,7 @@ public class TestExampleQueries extends BaseTestQuery {
       // Set some session options
       .sessionOption(ExecConstants.ENABLE_VERBOSE_ERRORS_KEY, true);
 
-    String parentDir = "D:\\drill\\files\\fact_dim_tables\\fact";
+    String parentDir = "F:\\drill\\files\\fact_dim_tables\\fact";
 
     try (ClusterFixture cluster = builder.build();
          ClientFixture client = cluster.clientFixture()) {
@@ -1354,7 +1354,7 @@ public class TestExampleQueries extends BaseTestQuery {
       //String query = "select col_vrchr as c1, col_int, count(*) from (select * from `dfs.root`.`1992`) v group by col_vrchr, col_int";
       //String query = "select col_vrchr, * from `dfs.root`.`1992`";
       //String query = "select * from `dfs.root`.`1992`";
-     // String query = "select col_vrchr as c1, col_int from (select * from `dfs.root`.`1992`) v ";
+      //String query = "select col_vrchr as c1, col_int from (select * from `dfs.root`.`1992`) v ";
      // String query = "select col_vrchr as c1, col_int from (select * from `dfs.root`.`1992`) v2 union all " +
      //   "select col_chr as c1, col_int from (select * from `dfs.root`.`1991`) v1";
 
@@ -1363,7 +1363,12 @@ public class TestExampleQueries extends BaseTestQuery {
       //String query = "select col_vrchr, count(*), c from (select *, 'ABC' as c from `dfs.root`.`1992`) v group by col_vrchr, c";
       //String query = "select cast(convert_to(interests, 'JSON') as varchar(0)) as interests from cp.`complex_student.json`";
       //String query = "select * from (select * from `dfs.root`.`*`) v where dir0 = '1992'"; //todo filter -> scan example
-      String query = "select *, dir0 from (select * from `dfs.root`.`*`) v where dir0 = '1992'"; //todo filter -> project -> scan example
+      String query = "select * from (select * from `dfs.root`.`*`) v where upper(dir0) = '1992'";
+
+
+      //String query = "select * from `dfs.root`.`*` where dir0 = '1992'";
+      //String query = "select * from `dfs.root`.`*` where upper(dir0) = '1992'";
+      //String query = "select *, dir0 from (select * from `dfs.root`.`*`) v where dir0 = '1992'"; //todo filter -> project -> scan example
       //String query = "select *, dir0 from `dfs.root`.`*` where dir0 = '1992'";
       //String query = "select * from `dfs.root`.`*` where dir0 = '1992'";
 
@@ -1373,6 +1378,50 @@ public class TestExampleQueries extends BaseTestQuery {
       QueryBuilder viewQueryBuilder = client.queryBuilder().sql(query);
       viewQueryBuilder.printCsv();
       System.out.println(viewQueryBuilder.explainText());
+    }
+  }
+
+  @Test
+  public void testItemWithFilterPushDown() throws Exception {
+
+    //note works with new rule -> DrillReWriteStarRule
+
+    ClusterFixtureBuilder builder = ClusterFixture.builder(dirTestWatcher)
+      // Easy way to run single threaded for easy debugging
+      .maxParallelization(1)
+      // Set some session options
+      .sessionOption(ExecConstants.ENABLE_VERBOSE_ERRORS_KEY, true);
+
+
+    try (ClusterFixture cluster = builder.build();
+         ClientFixture client = cluster.clientFixture()) {
+
+      QueryBuilder queryBuilder = client.queryBuilder();
+
+      final String tableName = "order_ctas";
+      try {
+        // create table
+        queryBuilder.sql("use dfs.tmp").run();
+        queryBuilder.sql("create table `%s/t1` as select cast(o_orderdate as date) as o_orderdate from cp.`tpch/orders.parquet` where o_orderdate between date '1992-01-01' and " + "date " +
+          "'1992-01-03'", tableName).run();
+        queryBuilder.sql("create table `%s/t2` as select cast(o_orderdate as date) as o_orderdate from cp.`tpch/orders.parquet` where o_orderdate between date '1992-01-04' and " + "date " +
+          "'1992-01-06'", tableName).run();
+        queryBuilder.sql("create table `%s/t3` as select cast(o_orderdate as date) as o_orderdate from cp.`tpch/orders.parquet` where o_orderdate between date '1992-01-07' and " + "date " +
+          "'1992-01-09'", tableName).run();
+
+        // prepare query
+        //String query = "select * from order_ctas "; // read 3 files
+        //String query = "select * from order_ctas where o_orderdate = date '1992-01-01'"; // read 1 file
+        //String query = "select * from order_ctas where o_orderdate = date '2007-01-01'"; // read 1 file
+        String query = "select * from (select * from order_ctas) where o_orderdate = date '1992-01-01'"; // read 3 files
+
+        // print query plan
+        queryBuilder.sql(query);
+        System.out.println(queryBuilder.explainText());
+
+      } finally {
+        queryBuilder.sql("drop table if exists %s", tableName).run();
+      }
     }
   }
 
