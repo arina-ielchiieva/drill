@@ -17,14 +17,16 @@
  */
 package org.apache.drill.exec.planner.logical;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import org.apache.calcite.adapter.enumerable.EnumerableTableScan;
 import org.apache.calcite.plan.RelOptRule;
 import org.apache.calcite.plan.RelOptRuleCall;
 import org.apache.calcite.plan.RelOptRuleOperand;
 import org.apache.calcite.plan.RelOptTable;
-import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.prepare.RelOptTableImpl;
 import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.core.CorrelationId;
 import org.apache.calcite.rel.core.Filter;
 import org.apache.calcite.rel.core.Project;
 import org.apache.calcite.rel.core.TableScan;
@@ -32,20 +34,11 @@ import org.apache.calcite.rel.logical.LogicalFilter;
 import org.apache.calcite.rel.logical.LogicalProject;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeField;
-import org.apache.calcite.rel.type.RelDataTypeFieldImpl;
-import org.apache.calcite.rel.type.RelRecordType;
 import org.apache.calcite.rex.RexCall;
-import org.apache.calcite.rex.RexCorrelVariable;
-import org.apache.calcite.rex.RexDynamicParam;
-import org.apache.calcite.rex.RexFieldAccess;
 import org.apache.calcite.rex.RexInputRef;
 import org.apache.calcite.rex.RexLiteral;
-import org.apache.calcite.rex.RexLocalRef;
 import org.apache.calcite.rex.RexNode;
-import org.apache.calcite.rex.RexOver;
-import org.apache.calcite.rex.RexRangeRef;
 import org.apache.calcite.rex.RexShuttle;
-import org.apache.calcite.rex.RexVisitor;
 import org.apache.calcite.rex.RexVisitorImpl;
 import org.apache.calcite.schema.Table;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
@@ -54,9 +47,8 @@ import org.apache.drill.exec.planner.types.RelDataTypeDrillImpl;
 import org.apache.drill.exec.planner.types.RelDataTypeHolder;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -83,6 +75,7 @@ public class DrillReWriteItemStarRule extends RelOptRule {
     }*/
 
 
+    //todo we'll have two rules to cover this case
     Filter filterRel = call.rel(0);
     Project projectRel;
     TableScan scanRel;
@@ -94,22 +87,20 @@ public class DrillReWriteItemStarRule extends RelOptRule {
       scanRel = call.rel(2);
     }
 
-    final Map<String, Integer> itemColumns = new LinkedHashMap<>();
+    final Map<RexCall, ItemFieldsHolder> starItemFields = new HashMap<>();
 
     RexNode condition = filterRel.getCondition();
+    final RelDataType rowType = filterRel.getRowType();
 
     final RexVisitorImpl<RexNode> rexVisitor = new RexVisitorImpl<RexNode>(true) {
       @Override
       public RexNode visitCall(RexCall call) {
-        if (SqlStdOperatorTable.ITEM.equals(call.getOperator())) {
-          System.out.println("It's an item");
-          // need to figure out column name and index
-          RexInputRef rexInputRef = (RexInputRef) call.getOperands().get(0);
-          System.out.println("Field index -> " + rexInputRef.getIndex());
-          RexLiteral rexLiteral = (RexLiteral) call.getOperands().get(1);
-          if (SqlTypeName.CHAR.equals(rexLiteral.getType().getSqlTypeName())) {
-            String fieldName = RexLiteral.stringValue(rexLiteral);
-            itemColumns.put(fieldName, rexInputRef.getIndex());
+        // need to figure out field name and index
+        ItemFieldsHolder itemFieldsHolder = ItemFieldsHolder.create(call);
+        if (itemFieldsHolder != null) {
+          String parentFieldName = rowType.getFieldNames().get(itemFieldsHolder.getRefIndex());
+          if ("**".equals(parentFieldName)) { // dynamic star
+            starItemFields.put(call, itemFieldsHolder);
           }
         }
         return super.visitCall(call);
@@ -118,26 +109,8 @@ public class DrillReWriteItemStarRule extends RelOptRule {
 
     condition.accept(rexVisitor);
 
-    // there is no item columns, no need to proceed further
-    if (itemColumns.isEmpty()) {
-      return;
-    }
-
-    // we can only process item columns that contain star
-    List<String> starItemColumns = new ArrayList<>();
-
-    // todo move star item check to rexVisitor
-    RelDataType rowType = filterRel.getRowType();
-    for (Map.Entry<String, Integer> entry : itemColumns.entrySet()) {
-      int index = entry.getValue();
-      String fieldName = rowType.getFieldNames().get(index);
-      if (fieldName.startsWith("*")) {
-        starItemColumns.add(entry.getKey());
-      }
-    }
-
-    // there are no item star columns, no need to proceed
-    if (starItemColumns.isEmpty()) {
+    // there is no item fields, no need to proceed further
+    if (starItemFields.isEmpty()) {
       return;
     }
 
@@ -148,19 +121,19 @@ public class DrillReWriteItemStarRule extends RelOptRule {
 
     List<RelDataTypeField> fieldList = scanRowType.getFieldList();
 
-    RelDataTypeHolder holder = new RelDataTypeHolder();
+    RelDataTypeHolder relDataTypeHolder = new RelDataTypeHolder();
 
-    //List<RelDataTypeField> newFields = new ArrayList<>();
+    // add original fields
     for (RelDataTypeField field : fieldList) {
-      holder.getField(scanRel.getCluster().getTypeFactory(), field.getName());
+      relDataTypeHolder.getField(scanRel.getCluster().getTypeFactory(), field.getName());
     }
 
-    // add new columns
-    for (String fieldName : starItemColumns) {
-      holder.getField(scanRel.getCluster().getTypeFactory(), fieldName);
+    // add new fields
+    for (ItemFieldsHolder itemFieldsHolder : starItemFields.values()) {
+      relDataTypeHolder.getField(scanRel.getCluster().getTypeFactory(), itemFieldsHolder.getFieldName());
     }
 
-    RelDataTypeDrillImpl newRelDataType = new RelDataTypeDrillImpl(holder, scanRel.getCluster().getTypeFactory());
+    RelDataTypeDrillImpl newRelDataType = new RelDataTypeDrillImpl(relDataTypeHolder, scanRel.getCluster().getTypeFactory());
 
 
     // create new scan
@@ -181,8 +154,9 @@ public class DrillReWriteItemStarRule extends RelOptRule {
             unwrap.getUserName(),
             unwrap.getSelection())); // need to wrap into translatable table due to assertion error
 
-    final RelOptTableImpl newOptTableImpl = RelOptTableImpl.create(table.getRelOptSchema(), newRelDataType, newTable);
+    final RelOptTableImpl newOptTableImpl = RelOptTableImpl.create(table.getRelOptSchema(), newRelDataType, newTable, ImmutableList.<String>of());
 
+    //todo can we create this differently
     RelNode newScan =
         new EnumerableTableScan(scanRel.getCluster(), scanRel.getTraitSet(), newOptTableImpl, elementType);
 
@@ -192,18 +166,17 @@ public class DrillReWriteItemStarRule extends RelOptRule {
     // create new project
     RelDataType newScanRowType = newScan.getRowType();
     List<RelDataTypeField> newScanFields = newScanRowType.getFieldList();
-    //RelRecordType projectRecordType = new RelRecordType(newScanFields);
 
     // get expressions
     final List<RexNode> expressions = new ArrayList<>(projectRel.getProjects());
 
-    final Map<String, RexNode> mapToItemExpressions = new HashMap<>();
-
     // add references to item star fields
+    Iterator<ItemFieldsHolder> iterator = starItemFields.values().iterator();
     for (int i = expressions.size(); i < newScanFields.size(); i++) {
       RexInputRef inputRef = new RexInputRef(i, newScanFields.get(i).getType());
       expressions.add(inputRef);
-      mapToItemExpressions.put(newScanFields.get(i).getName(), inputRef);
+      ItemFieldsHolder itemFieldsHolder = iterator.next();
+      itemFieldsHolder.setNewInputRex(inputRef); //todo we need cleaner solution
     }
 
     RelNode newProject = new LogicalProject(projectRel.getCluster(), projectRel.getTraitSet(), newScan, expressions, newScanRowType);
@@ -214,90 +187,88 @@ public class DrillReWriteItemStarRule extends RelOptRule {
 
       @Override
       public RexNode visitCall(RexCall call) {
-        if (SqlStdOperatorTable.ITEM.equals(call.getOperator())) {
-          System.out.println("It's an item");
-          // need to figure out column name and index
-          RexInputRef rexInputRef = (RexInputRef) call.getOperands().get(0);
-          System.out.println("Field index -> " + rexInputRef.getIndex());
-          RexLiteral rexLiteral = (RexLiteral) call.getOperands().get(1);
-          if (SqlTypeName.CHAR.equals(rexLiteral.getType().getSqlTypeName())) {
-            String fieldName = RexLiteral.stringValue(rexLiteral);
-            RexNode rexNode = mapToItemExpressions.get(fieldName);
-            if (rexNode != null) {
-              //todo
-              return rexNode;
-            }
-          }
+        ItemFieldsHolder itemFieldsHolder = starItemFields.get(call);
+        if (itemFieldsHolder != null) {
+          return itemFieldsHolder.getNewInputRex();
         }
+
         return super.visitCall(call);
       }
     };
 
+    // transform filter condition
     RexNode newCondition = filterRel.getCondition().accept(filterTransformer);
 
-    RelNode newFilter = new LogicalFilter(filterRel.getCluster(), filterRel.getTraitSet(), newProject, newCondition);
+    RelNode newFilter = new LogicalFilter(filterRel.getCluster(), filterRel.getTraitSet(), newProject, newCondition, ImmutableSet.<CorrelationId>of());
     //without project
     //RelNode newFilter = new LogicalFilter(filterRel.getCluster(), filterRel.getTraitSet(), newScan, newFilterCondition);
 
     // create new project to have the same row type as before
-    // can use old project
+    // can not use old project
     Project wrapper = projectRel.copy(projectRel.getTraitSet(), newFilter, projectRel.getProjects(), projectRel.getRowType());
 
     call.transformTo(wrapper);
-
-    //RelDataType rowType = filterRel.getRowType();
-/*    int index = inputRefs.get(0);
-    String s = rowType.getFieldNames().get(index);
-    if ("*".equals(s)) {
-      System.out.println("It's star item");*/
-
-
-
-
-      //newFields.addAll(fieldList);
-
-      // create dir0 field
-      //RelDataTypeField dir0 = new RelDataTypeFieldImpl("dir0", fieldList.size(),
-      //scanRel.getCluster().getTypeFactory().createSqlType(SqlTypeName.ANY));
-
-      //holder.getField(scanRel.getCluster().getTypeFactory(), "dir0");
-      //holder.getField(scanRel.getCluster().getTypeFactory(), "o_orderdate");
-
-      //newFields.add(dir0);
-
-      //RelDataTypeDrillImpl newRelDataType = new RelDataTypeDrillImpl(holder, scanRel.getCluster().getTypeFactory());
-      //RelDataType newRelDataType = new RelRecordType(newFields);
-
-
-
-      //call.transformTo(newScan);
-
-
-
-    //}
-
-    //todo since we know that we have star item, we need to replace it with field reference...
-    // rel#23:LogicalFilter.NONE.ANY([]).[](input=HepRelVertex#22,condition==(ITEM($0, 'dir0'), '1992'))
-    // rel#21:LogicalProject.NONE.ANY([]).[](input=HepRelVertex#20,*=$0)
-    // rel#4:EnumerableTableScan.ENUMERABLE.ANY([]).[](table=[dfs.root, *])
-
-
   }
-}
+
+  private static class ItemFieldsHolder {
+
+    private final String fieldName;
+    private final int refIndex;
+    private RexInputRef newInputRex;
 
 
-/*
-  private RelDataType constructDataType(DrillAggregateRel aggregateRel, Collection<String> fieldNames) {
-    List<RelDataTypeField> fields = new ArrayList<>();
-    Iterator<String> filedNamesIterator = fieldNames.iterator();
-    int fieldIndex = 0;
-    while (filedNamesIterator.hasNext()) {
-      RelDataTypeField field = new RelDataTypeFieldImpl(
-          filedNamesIterator.next(),
-          fieldIndex++,
-          aggregateRel.getCluster().getTypeFactory().createSqlType(SqlTypeName.BIGINT));
-      fields.add(field);
+    ItemFieldsHolder(String fieldName, int refIndex) {
+      this.fieldName = fieldName;
+      this.refIndex = refIndex;
     }
-    return new RelRecordType(fields);
+
+    String getFieldName() {
+      return fieldName;
+    }
+
+    int getRefIndex() {
+      return refIndex;
+    }
+
+    RexInputRef getNewInputRex() {
+      return newInputRex;
+    }
+
+    void setNewInputRex(RexInputRef newInputRex) {
+      this.newInputRex = newInputRex;
+    }
+
+    /**
+     * Creates {@link ItemFieldsHolder} instance by retrieving information from call to an ITEM operator.
+     * If it is not ITEM operator or operands types do not match expected returns null.
+     *
+     * @param rexCall call to an operator
+     * @return {@link ItemFieldsHolder} instance, null otherwise
+     */
+    static ItemFieldsHolder create(RexCall rexCall) {
+      if (!SqlStdOperatorTable.ITEM.equals(rexCall.getOperator())) {
+        return null;
+      }
+
+      if (rexCall.getOperands().size() != 2) {
+        return null;
+      }
+
+      if (!(rexCall.getOperands().get(0) instanceof RexInputRef &&
+          rexCall.getOperands().get(1) instanceof RexLiteral)) {
+        return null;
+      }
+
+      RexInputRef rexInputRef = (RexInputRef) rexCall.getOperands().get(0);
+      RexLiteral rexLiteral = (RexLiteral) rexCall.getOperands().get(1);
+      if (SqlTypeName.CHAR.equals(rexLiteral.getType().getSqlTypeName())) {
+        String fieldName = RexLiteral.stringValue(rexLiteral);
+        return new ItemFieldsHolder(fieldName, rexInputRef.getIndex());
+      }
+
+      return null;
+    }
+
   }
- */
+
+}

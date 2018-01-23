@@ -20,8 +20,10 @@ package org.apache.drill.exec.planner.logical;
 import java.io.IOException;
 import java.util.List;
 
+import org.apache.calcite.adapter.enumerable.EnumerableTableScan;
 import org.apache.calcite.rel.core.Project;
 import org.apache.calcite.rel.core.TableScan;
+import org.apache.calcite.rel.logical.LogicalProject;
 import org.apache.calcite.rel.rules.ProjectRemoveRule;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.exec.planner.physical.PrelUtil;
@@ -33,6 +35,7 @@ import org.apache.calcite.rex.RexNode;
 import com.google.common.collect.Lists;
 
 public class DrillPushProjIntoScan extends RelOptRule {
+  public static final RelOptRule INSTANCE = new DrillPushProjIntoScan(LogicalProject.class, EnumerableTableScan.class);
 
   private DrillPushProjIntoScan(Class<? extends Project> projectClass,
       Class<? extends TableScan> scanClass) {
