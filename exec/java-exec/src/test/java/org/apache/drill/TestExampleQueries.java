@@ -1414,8 +1414,8 @@ public class TestExampleQueries extends BaseTestQuery {
         //String query = "select * from order_ctas where o_orderdate = date '1992-01-01'"; // read 1 file
         //String query = "select * from order_ctas where upper(o_orderdate) = date '1992-01-01'"; // read 3 file
         //String query = "select * from order_ctas where o_orderdate = date '2007-01-01'"; // read 1 file
-        //String query = "select * from (select * from order_ctas) where o_orderdate = date '1992-01-01'"; // read 3 files
-        String query = "select * from (select * from order_ctas) where o_orderdate = date '1992-01-01' and ccc = 'aa'"; // read 3 files
+        String query = "select * from (select * from order_ctas) where o_orderdate = date '1992-01-01'"; // read 3 files
+        //String query = "select * from (select * from order_ctas) where o_orderdate = date '1992-01-01' and ccc = 'aa'"; // read 3 files
         //String query = "select * from (select * from order_ctas) where upper(o_orderdate) = date '1992-01-01'"; // read 3 files
 
         // print query plan
