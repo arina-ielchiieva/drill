@@ -33,6 +33,7 @@ import org.apache.calcite.rel.core.TableScan;
 import org.apache.calcite.rel.logical.LogicalFilter;
 import org.apache.calcite.rel.logical.LogicalProject;
 import org.apache.calcite.rel.type.RelDataType;
+import org.apache.calcite.rel.type.RelDataTypeFactory;
 import org.apache.calcite.rel.type.RelDataTypeField;
 import org.apache.calcite.rex.RexCall;
 import org.apache.calcite.rex.RexInputRef;
@@ -43,24 +44,20 @@ import org.apache.calcite.rex.RexVisitorImpl;
 import org.apache.calcite.schema.Table;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.type.SqlTypeName;
+import org.apache.drill.common.expression.PathSegment;
+import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.planner.types.RelDataTypeDrillImpl;
 import org.apache.drill.exec.planner.types.RelDataTypeHolder;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 public class DrillReWriteItemStarRule extends RelOptRule {
 
-  public static final DrillReWriteItemStarRule INSTANCE_FPT =
-      new DrillReWriteItemStarRule(RelOptHelper.some(Filter.class, RelOptHelper.some(Project.class, RelOptHelper.any(TableScan.class))),
-        "DrillReWriteItemStarRule:FPT");
-
-  public static final DrillReWriteItemStarRule INSTANCE_PPT =
-    new DrillReWriteItemStarRule(RelOptHelper.some(Project.class, RelOptHelper.some(Project.class, RelOptHelper.any(TableScan.class))),
-      "DrillReWriteItemStarRule:PPT");
+  public static final DrillReWriteItemStarRule INSTANCE = new DrillReWriteItemStarRule(RelOptHelper.some(Filter.class, RelOptHelper.some(Project.class, RelOptHelper.any
+      (TableScan.class))), "DrillReWriteItemStarRule");
 
   public DrillReWriteItemStarRule(RelOptRuleOperand operand, String id) {
     super(operand, id);
@@ -68,25 +65,11 @@ public class DrillReWriteItemStarRule extends RelOptRule {
 
   @Override
   public void onMatch(RelOptRuleCall call) {
-    System.out.println("ARINA");
+    System.out.println("ARINA: DrillReWriteItemStarRule"); //todo entered two times...
 
-/*    if (true) {
-      return;
-    }*/
-
-
-    //todo we'll have two rules to cover this case
     Filter filterRel = call.rel(0);
-    Project projectRel;
-    TableScan scanRel;
-    if (call.getRelList().size() == 2) {
-      projectRel = null;
-      scanRel = call.rel(1);
-    } else {
-      projectRel = call.rel(1);
-      scanRel = call.rel(2);
-    }
-
+    Project projectRel = call.rel(1);
+    TableScan scanRel = call.rel(2);
     final Map<RexCall, ItemFieldsHolder> starItemFields = new HashMap<>();
 
     RexNode condition = filterRel.getCondition();
@@ -122,18 +105,22 @@ public class DrillReWriteItemStarRule extends RelOptRule {
     List<RelDataTypeField> fieldList = scanRowType.getFieldList();
 
     RelDataTypeHolder relDataTypeHolder = new RelDataTypeHolder();
+    RelDataTypeFactory typeFactory = scanRel.getCluster().getTypeFactory();
 
     // add original fields
     for (RelDataTypeField field : fieldList) {
-      relDataTypeHolder.getField(scanRel.getCluster().getTypeFactory(), field.getName());
+      relDataTypeHolder.getField(typeFactory, field.getName());
     }
+
+    List<SchemaPath> newColumns = new ArrayList<>();
 
     // add new fields
     for (ItemFieldsHolder itemFieldsHolder : starItemFields.values()) {
-      relDataTypeHolder.getField(scanRel.getCluster().getTypeFactory(), itemFieldsHolder.getFieldName());
+      itemFieldsHolder.initNewField(relDataTypeHolder, typeFactory);
+      newColumns.add(new SchemaPath(new PathSegment.NameSegment(itemFieldsHolder.getFieldName())));
     }
 
-    RelDataTypeDrillImpl newRelDataType = new RelDataTypeDrillImpl(relDataTypeHolder, scanRel.getCluster().getTypeFactory());
+    RelDataTypeDrillImpl newRelDataType = new RelDataTypeDrillImpl(relDataTypeHolder, typeFactory);
 
 
     // create new scan
@@ -149,34 +136,33 @@ public class DrillReWriteItemStarRule extends RelOptRule {
       unwrap = table.unwrap(DrillTranslatableTable.class).getDrillTable();
     }
 
-    final DrillTranslatableTable newTable = new DrillTranslatableTable(
-        new DynamicDrillTable(unwrap.getPlugin(), unwrap.getStorageEngineName(),
-            unwrap.getUserName(),
-            unwrap.getSelection())); // need to wrap into translatable table due to assertion error
+    final DrillTranslatableTable newTable = new DrillTranslatableTable(new DynamicDrillTable(unwrap.getPlugin(), unwrap.getStorageEngineName(), unwrap.getUserName(), unwrap.getSelection())); // need to wrap into translatable table due to assertion error
 
     final RelOptTableImpl newOptTableImpl = RelOptTableImpl.create(table.getRelOptSchema(), newRelDataType, newTable, ImmutableList.<String>of());
 
-    //todo can we create this differently
-    RelNode newScan =
-        new EnumerableTableScan(scanRel.getCluster(), scanRel.getTraitSet(), newOptTableImpl, elementType);
+    RelNode newScan = new EnumerableTableScan(scanRel.getCluster(), scanRel.getTraitSet(), newOptTableImpl, elementType);
+    //todo we use this method instead of DrillScanRel to include previous columns... consider if can be re-written
 
-    //todo this works when we have project, need to check what should be modified for the second rule
-    assert projectRel != null;
+    // new SchemaPath(new NameSegment(name))
+
+/*    final DrillScanRel newScan =
+        new DrillScanRel(scanRel.getCluster(),
+            scanRel.getTraitSet().plus(DrillRel.DRILL_LOGICAL),
+            scanRel.getTable(),
+            newRelDataType,
+            newColumns); //////todo only new columns....., we need old as well*/
 
     // create new project
     RelDataType newScanRowType = newScan.getRowType();
-    List<RelDataTypeField> newScanFields = newScanRowType.getFieldList();
 
     // get expressions
     final List<RexNode> expressions = new ArrayList<>(projectRel.getProjects());
 
     // add references to item star fields
-    Iterator<ItemFieldsHolder> iterator = starItemFields.values().iterator();
-    for (int i = expressions.size(); i < newScanFields.size(); i++) {
-      RexInputRef inputRef = new RexInputRef(i, newScanFields.get(i).getType());
-      expressions.add(inputRef);
-      ItemFieldsHolder itemFieldsHolder = iterator.next();
-      itemFieldsHolder.setNewInputRex(inputRef); //todo we need cleaner solution
+    int newRexIndex = scanRowType.getFieldCount();
+    for (ItemFieldsHolder itemFieldsHolder : starItemFields.values()) {
+      itemFieldsHolder.initNewInputRef(newRexIndex++);
+      expressions.add(itemFieldsHolder.getNewInputRef());
     }
 
     RelNode newProject = new LogicalProject(projectRel.getCluster(), projectRel.getTraitSet(), newScan, expressions, newScanRowType);
@@ -189,7 +175,7 @@ public class DrillReWriteItemStarRule extends RelOptRule {
       public RexNode visitCall(RexCall call) {
         ItemFieldsHolder itemFieldsHolder = starItemFields.get(call);
         if (itemFieldsHolder != null) {
-          return itemFieldsHolder.getNewInputRex();
+          return itemFieldsHolder.getNewInputRef();
         }
 
         return super.visitCall(call);
@@ -213,8 +199,12 @@ public class DrillReWriteItemStarRule extends RelOptRule {
   private static class ItemFieldsHolder {
 
     private final String fieldName;
+
     private final int refIndex;
-    private RexInputRef newInputRex;
+
+    private RexInputRef newInputRef;
+
+    private RelDataTypeField newField;
 
 
     ItemFieldsHolder(String fieldName, int refIndex) {
@@ -230,13 +220,19 @@ public class DrillReWriteItemStarRule extends RelOptRule {
       return refIndex;
     }
 
-    RexInputRef getNewInputRex() {
-      return newInputRex;
+    RexInputRef getNewInputRef() {
+      return newInputRef;
     }
 
-    void setNewInputRex(RexInputRef newInputRex) {
-      this.newInputRex = newInputRex;
+    void initNewInputRef(int index) {
+      assert newField != null;
+      newInputRef = new RexInputRef(index, newField.getType());
     }
+
+    void initNewField(RelDataTypeHolder relDataTypeHolder, RelDataTypeFactory factory) {
+      newField = relDataTypeHolder.getField(factory, fieldName);
+    }
+
 
     /**
      * Creates {@link ItemFieldsHolder} instance by retrieving information from call to an ITEM operator.
@@ -254,8 +250,7 @@ public class DrillReWriteItemStarRule extends RelOptRule {
         return null;
       }
 
-      if (!(rexCall.getOperands().get(0) instanceof RexInputRef &&
-          rexCall.getOperands().get(1) instanceof RexLiteral)) {
+      if (!(rexCall.getOperands().get(0) instanceof RexInputRef && rexCall.getOperands().get(1) instanceof RexLiteral)) {
         return null;
       }
 

@@ -144,17 +144,6 @@ public enum PlannerPhase {
     }
   },
 
-  ITEM_STAR_CONVERSION("Convert item star") {
-    @Override
-    public RuleSet getRules(OptimizerRulesContext context, Collection<StoragePlugin> plugins) {
-      return PlannerPhase.mergedRuleSets(
-          RuleSets.ofList(DrillReWriteItemStarRule.INSTANCE_FPT),
-          RuleSets.ofList(DrillReWriteItemStarRule.INSTANCE_PPT),
-          getStorageRules(context, plugins, this)
-      );
-    }
-  },
-
   PARTITION_PRUNING("Partition Prune Planning") {
     public RuleSet getRules(OptimizerRulesContext context, Collection<StoragePlugin> plugins) {
       return PlannerPhase.mergedRuleSets(getPruneScanRules(context), getStorageRules(context, plugins, this));
@@ -353,6 +342,7 @@ public enum PlannerPhase {
   static RuleSet getPruneScanRules(OptimizerRulesContext optimizerRulesContext) {
     final ImmutableSet<RelOptRule> pruneRules = ImmutableSet.<RelOptRule>builder()
         .add(
+            //DrillReWriteItemStarRule.INSTANCE, //todo should we keep this here?
             PruneScanRule.getDirFilterOnProject(optimizerRulesContext),
             PruneScanRule.getDirFilterOnScan(optimizerRulesContext),
             ParquetPruneScanRule.getFilterOnProjectParquet(optimizerRulesContext),
@@ -393,6 +383,7 @@ public enum PlannerPhase {
   static RuleSet getDirPruneScanRules(OptimizerRulesContext optimizerRulesContext) {
     final ImmutableSet<RelOptRule> pruneRules = ImmutableSet.<RelOptRule>builder()
         .add(
+            DrillReWriteItemStarRule.INSTANCE,
             PruneScanRule.getDirFilterOnProject(optimizerRulesContext),
             PruneScanRule.getDirFilterOnScan(optimizerRulesContext)
         )

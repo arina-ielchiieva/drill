@@ -935,7 +935,7 @@ public class TestWindowFunctions extends BaseTestQuery {
     }
   }
 
-  @Test // DRILL-4469
+  @Test // DRILL-4469 //todo fix the test
   public void testWindowOnSubqueryWithStar() throws Exception {
     String query = "SELECT SUM(n_nationkey) OVER w as s\n" +
         "FROM (SELECT * FROM cp.`tpch/nation.parquet`) subQry\n" +
