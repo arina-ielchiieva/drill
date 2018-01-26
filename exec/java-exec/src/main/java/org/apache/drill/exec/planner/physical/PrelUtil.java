@@ -33,7 +33,6 @@ import org.apache.calcite.rel.type.RelDataTypeField;
 import org.apache.calcite.rex.RexCall;
 import org.apache.calcite.rex.RexInputRef;
 import org.apache.calcite.rex.RexLiteral;
-import org.apache.calcite.rex.RexLocalRef;
 import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.rex.RexShuttle;
 import org.apache.calcite.rex.RexVisitorImpl;
@@ -244,7 +243,7 @@ public class PrelUtil {
 
     public boolean isStarQuery() {
       for (SchemaPath column : columns) {
-        if (column.getRootSegment().getPath().startsWith("*")) {
+        if (column.getRootSegment().getPath().startsWith(SchemaPath.DYNAMIC_STAR)) {
           return true;
         }
       }
@@ -353,7 +352,7 @@ public class PrelUtil {
         RexInputRef inputRef = (RexInputRef) ref;
         int index = inputRef.getIndex();
         String name = fieldNames.get(index);
-        return "**".equals(name); // dynamic star //todo think about startsWith method usage
+        return SchemaPath.DYNAMIC_STAR.equals(name);
       }
       return false;
     }

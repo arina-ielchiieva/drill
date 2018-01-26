@@ -942,7 +942,7 @@ public class TestWindowFunctions extends BaseTestQuery {
         "WINDOW w AS (PARTITION BY REGION ORDER BY n_nationkey)\n" +
         "limit 1";
 
-    final String[] expectedPlan = {"Project.*\\$0=\\[ITEM\\(\\$1, 'n_nationkey'\\)\\].*"};
+    final String[] expectedPlan = {"Project.*\\$0=\\[ITEM\\(\\$0, 'n_nationkey'\\)\\].*"};
     PlanTestBase.testPlanMatchingPatterns(query, expectedPlan, new String[]{});
 
     testBuilder()

@@ -198,7 +198,7 @@ public class MockGroupScanPOP extends AbstractGroupScan {
     Pattern p = Pattern.compile("(\\w+)_([isdb])(\\d*)");
     for (SchemaPath path : columns) {
       String col = path.getLastSegment().getNameSegment().getPath();
-      if (col.equals("*")) {
+      if (col.equals(SchemaPath.DYNAMIC_STAR)) {
         return this;
       }
       Matcher m = p.matcher(col);

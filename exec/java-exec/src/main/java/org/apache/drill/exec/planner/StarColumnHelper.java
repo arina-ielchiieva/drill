@@ -29,7 +29,7 @@ public class StarColumnHelper {
 
   public final static String PREFIX_DELIMITER = "\u00a6\u00a6";
 
-  public final static String PREFIXED_STAR_COLUMN = PREFIX_DELIMITER + SchemaPath.WILDCARD;
+  public final static String PREFIXED_STAR_COLUMN = PREFIX_DELIMITER + SchemaPath.DYNAMIC_STAR;
 
   public static boolean containsStarColumn(RelDataType type) {
     if (! type.isStruct()) {
@@ -39,7 +39,7 @@ public class StarColumnHelper {
     List<String> fieldNames = type.getFieldNames();
 
     for (String s : fieldNames) {
-      if (s.startsWith(SchemaPath.WILDCARD)) {
+      if (s.startsWith(SchemaPath.DYNAMIC_STAR)) {
         return true;
       }
     }
@@ -56,7 +56,7 @@ public class StarColumnHelper {
       if (expr instanceof RexInputRef) {
         String name = inputRowType.getFieldNames().get(((RexInputRef) expr).getIndex());
 
-        if (name.startsWith(SchemaPath.WILDCARD)) {
+        if (name.startsWith(SchemaPath.DYNAMIC_STAR)) {
           return true;
         }
       }
@@ -70,7 +70,7 @@ public class StarColumnHelper {
   }
 
   public static boolean isNonPrefixedStarColumn(String fieldName) {
-    return fieldName.startsWith(SchemaPath.WILDCARD);
+    return fieldName.startsWith(SchemaPath.DYNAMIC_STAR);
   }
 
   public static boolean isStarColumn(String fieldName) {

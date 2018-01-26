@@ -26,6 +26,7 @@ import org.apache.calcite.rel.type.RelDataTypeFieldImpl;
 import org.apache.calcite.sql.type.SqlTypeName;
 
 import com.google.common.collect.Lists;
+import org.apache.drill.common.expression.SchemaPath;
 
 public class RelDataTypeHolder {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(RelDataTypeHolder.class);
@@ -44,9 +45,9 @@ public class RelDataTypeHolder {
     return fields.size();
   }
 
-  private void addStarIfEmpty(RelDataTypeFactory typeFactory){
-    if (fields.isEmpty()){
-      getField(typeFactory, "**");
+  private void addStarIfEmpty(RelDataTypeFactory typeFactory) {
+    if (fields.isEmpty()) {
+      getField(typeFactory, SchemaPath.DYNAMIC_STAR);
     }
   }
 

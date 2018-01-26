@@ -203,7 +203,7 @@ public class PreProcessLogicalRel extends RelShuttleImpl {
   public RelNode visit(LogicalUnion union) {
     for(RelNode child : union.getInputs()) {
       for(RelDataTypeField dataField : child.getRowType().getFieldList()) {
-        if(dataField.getName().contains(SchemaPath.WILDCARD)) {
+        if(dataField.getName().contains(SchemaPath.DYNAMIC_STAR)) {
           unsupportedOperatorCollector.setException(SqlUnsupportedException.ExceptionType.RELATIONAL,
               "Union-All over schema-less tables must specify the columns explicitly\n" +
               "See Apache Drill JIRA: DRILL-2414");
