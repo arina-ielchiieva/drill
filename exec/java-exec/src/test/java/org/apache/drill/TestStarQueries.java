@@ -353,7 +353,7 @@ public class TestStarQueries extends BaseTestQuery {
          " on n.n_regionkey = r.r_regionkey " );
   }
 
-  @Test
+  @Test //todo fix the test
   public void testSelectStartSubQueryJoinWithWhereClause() throws Exception {
     // select clause, where, on, group by, order by.
     test(" select n.n_regionkey, count(*) as cnt \n" +

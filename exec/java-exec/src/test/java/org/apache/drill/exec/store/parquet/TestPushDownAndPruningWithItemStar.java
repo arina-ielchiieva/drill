@@ -28,7 +28,7 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-public class TestPushDownAndPruningWithStarItem {
+public class TestPushDownAndPruningWithItemStar {
 
   @ClassRule
   public static final BaseDirTestWatcher dirTestWatcher = new BaseDirTestWatcher();
@@ -134,7 +134,7 @@ public class TestPushDownAndPruningWithStarItem {
 
    */
 
-  //@Test
+  @Test
   public void testFilterPushDown() throws Exception {
     QueryBuilder queryBuilder = client.queryBuilder();
     final String tableName = "order_ctas";
@@ -153,7 +153,8 @@ public class TestPushDownAndPruningWithStarItem {
       //String query = "select * from order_ctas where o_orderdate = date '1992-01-01'"; // read 1 file
       //String query = "select * from order_ctas where upper(o_orderdate) = date '1992-01-01'"; // read 3 file
       //String query = "select * from order_ctas where o_orderdate = date '2007-01-01'"; // read 1 file
-      String query = "select * from (select * from order_ctas) where o_orderdate = date '1992-01-01'"; // read 3 files
+      String query = "select * from (select * from order_ctas) where o_orderdate = date '1992-01-01' or o_orderdate = date '1992-01-09'"; // read 3 files
+      //String query = "select * from order_ctas where o_orderdate = date '1992-01-01' or o_orderdate = date '1992-01-09'"; // read 3 files
       //String query = "select * from (select * from order_ctas) where o_orderdate = date '1992-01-01' and ccc = 'aa'"; // read 3 files
       //String query = "select * from (select * from order_ctas) where upper(o_orderdate) = date '1992-01-01'"; // read 3 files
 
@@ -186,5 +187,28 @@ public class TestPushDownAndPruningWithStarItem {
 
 
    */
+
+  @Test
+  public void testFailure() throws Exception {
+    String query = " select n.n_regionkey, count(*) as cnt \n" +
+        " from   (select * from cp.`tpch/nation.parquet`) n  \n" +
+        "   join (select * from cp.`tpch/region.parquet`) r  \n" +
+        " on n.n_regionkey = r.r_regionkey \n" +
+        " where n.n_nationkey > 10 \n" +
+        " group by n.n_regionkey \n" +
+        " order by n.n_regionkey";
+
+    String query1 = "SELECT SUM(n_nationkey) OVER w as s\n" +
+        "FROM (SELECT * FROM cp.`tpch/nation.parquet`) subQry\n" +
+        "WINDOW w AS (PARTITION BY REGION ORDER BY n_nationkey)\n" +
+        "limit 1";
+
+    QueryBuilder queryBuilder = client.queryBuilder();
+
+    queryBuilder.sql(query1);
+    queryBuilder.printCsv();
+    System.out.println(queryBuilder.explainText());
+
+  }
 
 }

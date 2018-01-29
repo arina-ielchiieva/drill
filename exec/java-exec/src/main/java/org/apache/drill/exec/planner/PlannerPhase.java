@@ -38,10 +38,10 @@ import org.apache.drill.exec.planner.logical.DrillMergeProjectRule;
 import org.apache.drill.exec.planner.logical.DrillProjectRule;
 import org.apache.drill.exec.planner.logical.DrillPushFilterPastProjectRule;
 import org.apache.drill.exec.planner.logical.DrillPushLimitToScanRule;
-import org.apache.drill.exec.planner.logical.DrillPushProjIntoScan;
+import org.apache.drill.exec.planner.logical.DrillPushProjectIntoScanRule;
 import org.apache.drill.exec.planner.logical.DrillPushProjectPastFilterRule;
 import org.apache.drill.exec.planner.logical.DrillPushProjectPastJoinRule;
-import org.apache.drill.exec.planner.logical.DrillReWriteItemStarRule;
+import org.apache.drill.exec.planner.logical.DrillFilterItemStarReWriterRule;
 import org.apache.drill.exec.planner.logical.DrillReduceAggregatesRule;
 import org.apache.drill.exec.planner.logical.DrillReduceExpressionsRule;
 import org.apache.drill.exec.planner.logical.DrillRelFactories;
@@ -282,7 +282,7 @@ public enum PlannerPhase {
       // Due to infinite loop in planning (DRILL-3257), temporarily disable this rule
       //DrillProjectSetOpTransposeRule.INSTANCE,
       RuleInstance.PROJECT_WINDOW_TRANSPOSE_RULE,
-      DrillPushProjIntoScan.INSTANCE,
+      DrillPushProjectIntoScanRule.INSTANCE,
 
       /*
        Convert from Calcite Logical to Drill Logical Rules.
@@ -383,7 +383,7 @@ public enum PlannerPhase {
   static RuleSet getDirPruneScanRules(OptimizerRulesContext optimizerRulesContext) {
     final ImmutableSet<RelOptRule> pruneRules = ImmutableSet.<RelOptRule>builder()
         .add(
-            DrillReWriteItemStarRule.INSTANCE,
+            DrillFilterItemStarReWriterRule.INSTANCE,
             PruneScanRule.getDirFilterOnProject(optimizerRulesContext),
             PruneScanRule.getDirFilterOnScan(optimizerRulesContext)
         )
