@@ -1335,7 +1335,7 @@ public class TestExampleQueries extends BaseTestQuery {
   }
 
 
-  @Test // MD-1360 + MD-1312
+  //@Test // MD-1360 + MD-1312
   public void testItemOperator() throws Exception {
     ClusterFixtureBuilder builder = ClusterFixture.builder(dirTestWatcher)
       // Easy way to run single threaded for easy debugging
@@ -1381,7 +1381,7 @@ public class TestExampleQueries extends BaseTestQuery {
     }
   }
 
-  @Test
+  //@Test
   public void testItemWithFilterPushDown() throws Exception {
 
     //note works with new rule -> DrillReWriteStarRule

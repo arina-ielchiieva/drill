@@ -59,7 +59,7 @@ public class TestPushDownAndPruningWithStarItem {
     }
   }
 
-  @Test
+  //@Test
   public void testPushProjectIntoScan() throws Exception {
     String parentDir = "D:\\drill\\files\\fact_dim_tables\\fact";
 
@@ -98,7 +98,7 @@ public class TestPushDownAndPruningWithStarItem {
    */
 
 
-  @Test
+  //@Test
   public void testDirectoryPruning() throws Exception {
     String parentDir = "D:\\drill\\files\\fact_dim_tables";
 
@@ -134,7 +134,7 @@ public class TestPushDownAndPruningWithStarItem {
 
    */
 
-  @Test
+  //@Test
   public void testFilterPushDown() throws Exception {
     QueryBuilder queryBuilder = client.queryBuilder();
     final String tableName = "order_ctas";
