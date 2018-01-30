@@ -99,14 +99,17 @@ public class DrillFilterItemStarReWriterRule extends RelOptRule {
     // since scan might have some fields already, new field reference index should start from the last used in scan
     // NB: field reference index starts from 0 thus original field count can be takes as starting index
     int index = scanRel.getRowType().getFieldCount();
+
     for (DesiredField desiredField : itemStarFields.values()) {
-      RexInputRef inputRef = new RexInputRef(index++, desiredField.getType());
+      RexInputRef inputRef = new RexInputRef(index, desiredField.getType());
       // add references to item star fields in new project
       newProjects.add(inputRef);
       for (RexNode node : desiredField.getNodes()) {
         // if field is referenced in more then one call, add each call to field mapper
         fieldMapper.put(node, index);
       }
+      // increment index for the next field reference
+      index++;
     }
 
     // create new project row type

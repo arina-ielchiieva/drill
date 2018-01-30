@@ -244,11 +244,6 @@ public enum PlannerPhase {
    * These are merged with per-query rules in getDrillBasicRules() below.
    */
   final static ImmutableSet<RelOptRule> staticRuleSet = ImmutableSet.<RelOptRule> builder().add(
-
-/*      DrillReWriteItemStarRule.INSTANCE_FPT,
-      DrillReWriteItemStarRule.INSTANCE_PPT,
-      DrillReWriteItemStarRule.INSTANCE_PT,*/
-
       // Add support for Distinct Union (by using Union-All followed by Distinct)
       RuleInstance.UNION_TO_DISTINCT_RULE,
 
@@ -342,7 +337,7 @@ public enum PlannerPhase {
   static RuleSet getPruneScanRules(OptimizerRulesContext optimizerRulesContext) {
     final ImmutableSet<RelOptRule> pruneRules = ImmutableSet.<RelOptRule>builder()
         .add(
-            //DrillReWriteItemStarRule.INSTANCE, //todo should we keep this here?
+            DrillFilterItemStarReWriterRule.INSTANCE,
             PruneScanRule.getDirFilterOnProject(optimizerRulesContext),
             PruneScanRule.getDirFilterOnScan(optimizerRulesContext),
             ParquetPruneScanRule.getFilterOnProjectParquet(optimizerRulesContext),
