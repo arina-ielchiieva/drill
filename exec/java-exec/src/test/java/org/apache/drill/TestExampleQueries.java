@@ -22,6 +22,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.math.BigDecimal;
 import java.nio.file.Paths;
+import java.util.List;
 
 import org.apache.drill.categories.OperatorTest;
 import org.apache.drill.categories.PlannerTest;
@@ -30,6 +31,7 @@ import org.apache.drill.categories.UnlikelyTest;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.util.DrillFileUtils;
 import org.apache.drill.exec.ExecConstants;
+import org.apache.drill.exec.rpc.user.QueryDataBatch;
 import org.apache.drill.test.BaseTestQuery;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -1165,5 +1167,17 @@ public class TestExampleQueries extends BaseTestQuery {
         .baselineValues("1930-01-08")
         .build()
         .run();
+  }
+
+  @Test
+  public void t() throws Exception {
+    //test("select birth_date, count(1) from cp.`employee.json` group by birth_date");
+
+    //String query= "select birth_date, count(1) from cp.`employee.json` group by birth_date";
+    //String query = "select n_regionkey, n_nationkey, count(1) as cnt from cp.`tpch/nation.parquet` group by n_regionkey, n_nationkey";
+    String query = "select n_nationkey, n_regionkey, count(1) as cnt from cp.`tpch/nation.parquet` group by rollup(n_nationkey, n_regionkey)";
+    setColumnWidths(new int[] {40});
+    List<QueryDataBatch> res = testSqlWithResults(query);
+    printResult(res);
   }
 }

@@ -98,9 +98,9 @@ public class UnsupportedOperatorsVisitor extends SqlShuttle {
     if(sqlCall instanceof SqlSelect) {
       SqlSelect sqlSelect = (SqlSelect) sqlCall;
 
-      checkGrouping((sqlSelect));
+      //checkGrouping((sqlSelect));
 
-      checkRollupCubeGrpSets(sqlSelect);
+      //checkRollupCubeGrpSets(sqlSelect);
 
       for(SqlNode nodeInSelectList : sqlSelect.getSelectList()) {
         // If the window function is used with an alias,
