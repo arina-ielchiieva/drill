@@ -30,6 +30,7 @@ import org.apache.drill.exec.expr.fn.DrillSimpleFuncHolder;
 import org.apache.drill.exec.expr.fn.FunctionGenerationHelper;
 import org.apache.drill.exec.expr.fn.interpreter.InterpreterEvaluator;
 import org.apache.drill.exec.expr.holders.BigIntHolder;
+import org.apache.drill.exec.expr.holders.BitHolder;
 import org.apache.drill.exec.expr.holders.DateHolder;
 import org.apache.drill.exec.expr.holders.Float4Holder;
 import org.apache.drill.exec.expr.holders.Float8Holder;
@@ -124,6 +125,11 @@ public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression,
   }
 
   @Override
+  public LogicalExpression visitBooleanConstant(ValueExpressions.BooleanExpression booleanExpression, Set<LogicalExpression> value) throws RuntimeException {
+    return booleanExpression;
+  }
+
+  @Override
   public LogicalExpression visitBooleanOperator(BooleanOperator op, Set<LogicalExpression> value) {
     List<LogicalExpression> childPredicates = new ArrayList<>();
     String functionName = op.getName();
@@ -181,6 +187,8 @@ public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression,
       return ValueExpressions.getTimeStamp(((TimeStampHolder) holder).value);
     case TIME:
       return ValueExpressions.getTime(((TimeHolder) holder).value);
+    case BIT:
+      return ValueExpressions.getBit(((BitHolder) holder).value == 0);
     default:
       return null;
     }

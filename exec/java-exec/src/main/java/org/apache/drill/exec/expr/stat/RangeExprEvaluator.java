@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -38,6 +38,7 @@ import org.apache.drill.exec.expr.holders.IntHolder;
 import org.apache.drill.exec.expr.holders.ValueHolder;
 import org.apache.drill.exec.store.parquet.stat.ColumnStatistics;
 import org.apache.drill.exec.vector.ValueHolderHelper;
+import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.DoubleStatistics;
 import org.apache.parquet.column.statistics.FloatStatistics;
 import org.apache.parquet.column.statistics.IntStatistics;
@@ -87,6 +88,11 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
   @Override
   public Statistics visitIntConstant(ValueExpressions.IntExpression expr, Void value) throws RuntimeException {
     return getStatistics(expr.getInt());
+  }
+
+  @Override
+  public Statistics visitBooleanConstant(ValueExpressions.BooleanExpression expr, Void value) throws RuntimeException {
+    return getStatistics(expr.getBoolean());
   }
 
   @Override
@@ -151,6 +157,17 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
     intStatistics.setMinMax(min, max);
     return intStatistics;
   }
+
+  private BooleanStatistics getStatistics(boolean value) {
+    return getStatistics(value, value);
+  }
+
+  private BooleanStatistics getStatistics(boolean min, boolean max) {
+    final BooleanStatistics booleanStatistics = new BooleanStatistics();
+    booleanStatistics.setMinMax(min, max);
+    return booleanStatistics;
+  }
+
 
   private LongStatistics getStatistics(long value) {
     return getStatistics(value, value);
