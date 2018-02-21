@@ -24,6 +24,7 @@ import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.exec.ops.FragmentContextImpl;
 import org.apache.drill.exec.planner.physical.PlannerSettings;
 import org.apache.drill.exec.proto.BitControl;
+import org.apache.drill.exec.rpc.user.QueryDataBatch;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -40,6 +41,7 @@ import org.junit.runner.Description;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
@@ -212,7 +214,9 @@ public class TestParquetFilterPushDown extends PlanTestBase {
       .toFile();
     ParquetMetadata footer = getParquetMetaData(file);
 
-    testDatePredicateAgainstDrillCTASHelper(footer);
+    testParquetRowGroupFilterEval(footer, "o_orderdate > cast('1992-01-03 10:20:30' as timestamp)", true);
+
+    //testDatePredicateAgainstDrillCTASHelper(footer);
   }
 
   private void testDatePredicateAgainstDrillCTASHelper(ParquetMetadata footer) throws Exception{
@@ -386,6 +390,74 @@ public class TestParquetFilterPushDown extends PlanTestBase {
 
     final String query3 = "select o_ordertimestamp from dfs.`parquetFilterPush/tsTbl` where o_ordertimestamp between timestamp '1992-01-01 00:00:00' and timestamp '1992-01-06 10:20:30'";
     testParquetFilterPD(query3, 49, 2, false);
+  }
+
+  @Test
+  public void testC() throws Exception {
+    //String query = "select * from dfs.`parquetFilterPush/tsTbl` where o_ordertimestamp > cast('1992-01-04' as date)"; // 27 rows
+    String query = "select * from dfs.`parquetFilterPush/tsTbl` where o_ordertimestamp = '1992-01-04 10:20:30'"; // 27 rows
+    //String query = "select * from dfs.`parquetFilterPush/tsTbl` where o_ordertimestamp > cast('10:20:20' as time)"; // 27 rows
+    setColumnWidths(new int[] {40});
+    List<QueryDataBatch> res = testSqlWithResults(query);
+    printResult(res);
+
+    String plan = PlanTestBase.getPlanInString("EXPLAIN PLAN FOR " + query, PlanTestBase.OPTIQ_FORMAT);
+    System.out.println(plan);
+
+  }
+
+  /*
+  date -> timestamp : not works (needs cast fix)
+  timestamp -> date : works
+  timestamp -> time : should not work, we cannot determine such pruning
+  time -> timestamp : works
+  time -> date      : does not work at all
+  date -> varchar : ok
+  timestamp -> varchar : ok
+  time -> varchar :
+   */
+
+  @Test
+  public void testT() throws Exception {
+    test("use dfs.tmp");
+    test("create table `%s/t1` as select cast(o_orderdate as date) as o_orderdate from cp.`tpch/orders.parquet` where o_orderdate between date '1992-01-01' and " +
+        "date '1992-01-03'", CTAS_TABLE);
+    test("create table `%s/t2` as select cast(o_orderdate as date) as o_orderdate from cp.`tpch/orders.parquet` where o_orderdate between date '1992-01-04' and " +
+        "date '1992-01-06'", CTAS_TABLE);
+    test("create table `%s/t3` as select cast(o_orderdate as date) as o_orderdate from cp.`tpch/orders.parquet` where o_orderdate between date '1992-01-07' and " +
+        "date '1992-01-09'", CTAS_TABLE);
+
+    //final String query = "select o_orderdate from dfs.tmp.order_ctas where o_orderdate > timestamp '1992-01-03 10:20:30'";
+    final String query = "select o_orderdate from dfs.tmp.order_ctas where o_orderdate > '1992-01-03 10:20:30'";
+    String plan = PlanTestBase.getPlanInString("EXPLAIN PLAN FOR " + query, PlanTestBase.OPTIQ_FORMAT);
+    System.out.println(plan);
+  }
+
+  @Test
+  public void testTime() throws Exception {
+/*    String query = "select col_tim from cp.`parquet/alltypes_optional.parquet`";
+    setColumnWidths(new int[] {40});
+    List<QueryDataBatch> res = testSqlWithResults(query);
+    printResult(res);*/
+
+    // create table with several files
+    test("use dfs.tmp");
+    test("create table `time_t/t1` as select cast(col_tim as time) as col_tim from cp.`parquet/alltypes_optional.parquet`");
+    test("create table `time_t/t2` as select cast(col_tim as time) as col_tim from cp.`parquet/alltypes_optional.parquet` where col_tim = time '21:12:17'");
+    test("create table `time_t/t3` as select cast(col_tim as time) as col_tim from cp.`parquet/alltypes_optional.parquet` where col_tim = time '22:17:04'");
+    test("create table `time_t/t4` as select cast('00:00:00' as time) as col_tim from (values(1))");
+
+    // check filter push down
+
+    final String query = "select cast(cast('2017-01-01' as date) as time) from (values(1))"; //todo can parse date into time...
+    //final String query = "select * from time_t where col_tim = timestamp '2017-01-01 21:12:17'";
+    //final String query = "select * from time_t where col_tim = date '2017-01-01'";
+    //final String query = "select col_tim from time_t where col_tim = date '2017-01-01'"; //todo works fine for timestamp but for date return nothing
+    String plan = PlanTestBase.getPlanInString("EXPLAIN PLAN FOR " + query, PlanTestBase.OPTIQ_FORMAT);
+    System.out.println(plan);
+    setColumnWidths(new int[] {40});
+    List<QueryDataBatch> res = testSqlWithResults(query);
+    printResult(res);
   }
 
   @Test // DRILL-5359

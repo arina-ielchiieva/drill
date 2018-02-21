@@ -405,6 +405,7 @@ public class TypeCastRules {
     /** TIME cast able from **/
     rule = new HashSet<>();
     rule.add(MinorType.TIME);
+  //  rule.add(MinorType.DATE);
     rule.add(MinorType.TIMESTAMP);
     rule.add(MinorType.TIMESTAMPTZ);
     rule.add(MinorType.FIXEDCHAR);

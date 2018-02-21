@@ -35,6 +35,7 @@ import org.apache.drill.exec.expr.holders.BigIntHolder;
 import org.apache.drill.exec.expr.holders.Float4Holder;
 import org.apache.drill.exec.expr.holders.Float8Holder;
 import org.apache.drill.exec.expr.holders.IntHolder;
+import org.apache.drill.exec.expr.holders.TimeStampHolder;
 import org.apache.drill.exec.expr.holders.ValueHolder;
 import org.apache.drill.exec.store.parquet.stat.ColumnStatistics;
 import org.apache.drill.exec.vector.ValueHolderHelper;
@@ -234,9 +235,15 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
         minHolder = ValueHolderHelper.getFloat8Holder(((DoubleStatistics)input).getMin());
         maxHolder = ValueHolderHelper.getFloat8Holder(((DoubleStatistics)input).getMax());
         break;
+      case DATE:
+        minHolder = ValueHolderHelper.getDateHolder(((LongStatistics)input).getMin());
+        maxHolder = ValueHolderHelper.getDateHolder(((LongStatistics)input).getMax());
+        break;
       default:
         return null;
       }
+
+      //ValueHolderHelper.getTimeStampHolder()
 
       final ValueHolder[] args1 = {minHolder};
       final ValueHolder[] args2 = {maxHolder};
@@ -254,6 +261,8 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
         return getStatistics( ((Float4Holder)minFuncHolder).value, ((Float4Holder)maxFuncHolder).value);
       case FLOAT8:
         return getStatistics( ((Float8Holder)minFuncHolder).value, ((Float8Holder)maxFuncHolder).value);
+      case TIMESTAMP:
+        return getStatistics( ((TimeStampHolder)minFuncHolder).value, ((TimeStampHolder)maxFuncHolder).value);
       default:
         return null;
       }
@@ -262,7 +271,7 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
     }
   }
 
-  static Map<TypeProtos.MinorType, Set<TypeProtos.MinorType>> CAST_FUNC = new HashMap<>();
+  private static final Map<TypeProtos.MinorType, Set<TypeProtos.MinorType>> CAST_FUNC = new HashMap<>();
   static {
     // float -> double , int, bigint
     CAST_FUNC.put(TypeProtos.MinorType.FLOAT4, new HashSet<TypeProtos.MinorType>());
@@ -287,6 +296,10 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
     CAST_FUNC.get(TypeProtos.MinorType.BIGINT).add(TypeProtos.MinorType.INT);
     CAST_FUNC.get(TypeProtos.MinorType.BIGINT).add(TypeProtos.MinorType.FLOAT4);
     CAST_FUNC.get(TypeProtos.MinorType.BIGINT).add(TypeProtos.MinorType.FLOAT8);
+
+    // date -> timestamp
+    CAST_FUNC.put(TypeProtos.MinorType.DATE, new HashSet<TypeProtos.MinorType>());
+    CAST_FUNC.get(TypeProtos.MinorType.DATE).add(TypeProtos.MinorType.TIMESTAMP);
   }
 
 }

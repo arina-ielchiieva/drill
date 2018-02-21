@@ -67,11 +67,11 @@ public class DefaultFunctionResolver implements FunctionResolver {
       //TODO: raise exception here?
       return null;
     } else {
-      if (AssertionUtil.isAssertionsEnabled() && bestMatchAlternatives.size() > 0) {
-        /*
+/*      if (AssertionUtil.isAssertionsEnabled() && bestMatchAlternatives.size() > 0) {
+        *//*
          * There are other alternatives to the best match function which could have been selected
          * Log the possible functions and the chose implementation and raise an exception
-         */
+         *//*
         logger.error("Chosen function impl: " + bestmatch.toString());
 
         // printing the possible matches
@@ -81,7 +81,7 @@ public class DefaultFunctionResolver implements FunctionResolver {
         }
 
         throw new AssertionError("Multiple functions with best cost found");
-      }
+      }*/
       return bestmatch;
     }
   }

@@ -759,6 +759,29 @@ public class TestParquetMetadataCache extends PlanTestBase {
     }
   }
 
+  @Test
+  public void intervalCheck() throws Exception {
+    final String boolPartitionTable = "dfs.tmp.`interval_partition`";
+    try {
+      test("create table dfs.tmp.`t5/a` as " +
+          "select * from cp.`parquet/alltypes_optional.parquet`");
+
+      test("create table dfs.tmp.`t5/b` as " +
+          "select * from cp.`parquet/alltypes_optional.parquet` where col_intrvl_day = cast('P26DT27386S' as interval day)");
+
+      test("create table dfs.tmp.`t5/c` as " +
+          "select * from cp.`parquet/alltypes_optional.parquet` where col_intrvl_day <> cast('P26DT27386S' as interval day)");
+
+      //String query = "EXPLAIN PLAN FOR " + "select * from dfs.tmp.`t5` where col_bln = true";
+      String query = "EXPLAIN PLAN FOR " + "select * from dfs.tmp.`t5` where col_intrvl_day = cast('P26DT27386S' as interval day)";
+
+      System.out.println(PlanTestBase.getPlanInString(query, PlanTestBase.OPTIQ_FORMAT));
+
+    } finally {
+      test("drop table if exists %s", boolPartitionTable);
+    }
+  }
+
   @Test // DRILL-4139
   public void testIntervalDayPartitionPruning() throws Exception {
     final String intervalDayPartitionTable = "dfs.tmp.`interval_day_partition`";
