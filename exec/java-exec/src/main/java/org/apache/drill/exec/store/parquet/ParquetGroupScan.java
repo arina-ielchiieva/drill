@@ -40,6 +40,7 @@ import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.TypeProtos.MinorType;
 import org.apache.drill.common.types.Types;
+import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.compile.sig.ConstantExpressionIdentifier;
 import org.apache.drill.exec.expr.ExpressionTreeMaterializer;
 import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
@@ -418,6 +419,21 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
    * @return major type
    */
   public static MajorType getType(PrimitiveTypeName type, OriginalType originalType, int scale, int precision) {
+    return getType(type, originalType, scale, precision, null);
+  }
+
+  /**
+   * Builds major type using given {@code OriginalType originalType} or {@code PrimitiveTypeName type}.
+   * For DECIMAL will be returned major type with scale and precision.
+   *
+   * @param type         parquet primitive type
+   * @param originalType parquet original type
+   * @param scale        type scale (used for DECIMAL type)
+   * @param precision    type precision (used for DECIMAL type)
+   * @param options      system / user options
+   * @return major type
+   */
+  public static MajorType getType(PrimitiveTypeName type, OriginalType originalType, int scale, int precision, OptionManager options) {
     if (originalType != null) {
       switch (originalType) {
         case DECIMAL:
@@ -458,9 +474,13 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
         return Types.optional(MinorType.FLOAT4);
       case DOUBLE:
         return Types.optional(MinorType.FLOAT8);
+      case INT96:
+        if (options != null && options.getBoolean(ExecConstants.PARQUET_READER_INT96_AS_TIMESTAMP)) {
+          return Types.optional(MinorType.TIMESTAMP);
+        }
+        // fall through
       case BINARY:
       case FIXED_LEN_BYTE_ARRAY:
-      case INT96:
         return Types.optional(MinorType.VARBINARY);
       default:
         // Should never hit this
@@ -1267,7 +1287,8 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
       ParquetMetaStatCollector statCollector = new ParquetMetaStatCollector(
               parquetTableMetadata,
               rowGroup.getColumns(),
-              implicitColValues);
+              implicitColValues,
+              optionManager);
 
       Map<SchemaPath, ColumnStatistics> columnStatisticsMap = statCollector.collectColStat(schemaPathsInExpr);
 

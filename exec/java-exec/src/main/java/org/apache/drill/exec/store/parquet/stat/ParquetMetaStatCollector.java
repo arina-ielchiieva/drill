@@ -21,33 +21,42 @@ import com.google.common.base.Stopwatch;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.Types;
+import org.apache.drill.exec.server.options.OptionManager;
 import org.apache.drill.exec.store.parquet.Metadata;
 import org.apache.drill.exec.store.parquet.ParquetGroupScan;
+import org.apache.drill.exec.store.parquet.ParquetReaderUtility;
 import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.DoubleStatistics;
 import org.apache.parquet.column.statistics.FloatStatistics;
 import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
+import org.joda.time.DateTime;
 import org.joda.time.DateTimeConstants;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-public class ParquetMetaStatCollector implements  ColumnStatCollector{
-  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ParquetMetaStatCollector.class);
+public class ParquetMetaStatCollector implements ColumnStatCollector {
+  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ParquetMetaStatCollector.class);
 
-  private  final Metadata.ParquetTableMetadataBase parquetTableMetadata;
-  private  final List<? extends Metadata.ColumnMetadata> columnMetadataList;
-  final Map<String, String> implicitColValues;
+  private final Metadata.ParquetTableMetadataBase parquetTableMetadata;
+  private final List<? extends Metadata.ColumnMetadata> columnMetadataList;
+  private final Map<String, String> implicitColValues;
+  private final OptionManager options;
 
-  public ParquetMetaStatCollector(Metadata.ParquetTableMetadataBase parquetTableMetadata,
-      List<? extends Metadata.ColumnMetadata> columnMetadataList, Map<String, String> implicitColValues) {
+  public ParquetMetaStatCollector(
+      Metadata.ParquetTableMetadataBase parquetTableMetadata,
+      List<? extends Metadata.ColumnMetadata> columnMetadataList,
+      Map<String, String> implicitColValues,
+      OptionManager options) {
     this.parquetTableMetadata = parquetTableMetadata;
     this.columnMetadataList = columnMetadataList;
 
@@ -64,6 +73,7 @@ public class ParquetMetaStatCollector implements  ColumnStatCollector{
     //    may allow us to prune some row groups using condition regCol = 5 or dir0 = 1995.
 
     this.implicitColValues = implicitColValues;
+    this.options = options;
   }
 
   @Override
@@ -105,7 +115,7 @@ public class ParquetMetaStatCollector implements  ColumnStatCollector{
           precision = columnTypeInfo.precision;
         }
 
-        statMap.put(schemaPath, getStat(min, max, numNull, primitiveType, originalType, repetitionLevel, scale, precision));
+        statMap.put(schemaPath, getStat(min, max, numNull, primitiveType, originalType, repetitionLevel, scale, precision, options));
       } else {
         final String columnName = schemaPath.getRootSegment().getPath();
         if (implicitColValues.containsKey(columnName)) {
@@ -138,15 +148,16 @@ public class ParquetMetaStatCollector implements  ColumnStatCollector{
    * @param repetitionLevel field repetition level
    * @param scale           scale value (used for DECIMAL type)
    * @param precision       precision value (used for DECIMAL type)
+   * @param options         system / user options
    * @return column statistics
    */
   private ColumnStatistics getStat(Object min, Object max, Long numNull,
                                    PrimitiveType.PrimitiveTypeName primitiveType, OriginalType originalType,
-                                   Integer repetitionLevel, int scale, int precision) {
+                                   Integer repetitionLevel, int scale, int precision, OptionManager options) {
     Statistics stat = Statistics.getStatsBasedOnType(primitiveType);
     Statistics convertedStat = stat;
 
-    TypeProtos.MajorType type = ParquetGroupScan.getType(primitiveType, originalType, scale, precision);
+    TypeProtos.MajorType type = ParquetGroupScan.getType(primitiveType, originalType, scale, precision, options);
 
     // Change to repeated if repetitionLevel > 0
     if (repetitionLevel != null && repetitionLevel > 0) {
@@ -165,6 +176,16 @@ public class ParquetMetaStatCollector implements  ColumnStatCollector{
         break;
       case BIGINT:
       case TIMESTAMP:
+        if (primitiveType == PrimitiveType.PrimitiveTypeName.INT96) {
+          convertedStat = new LongStatistics();
+          convertedStat.setNumNulls(stat.getNumNulls());
+          long minMs = ParquetReaderUtility.NanoTimeUtils.getDateTimeValueFromBinary((Binary) min, false);
+          System.out.println(new Date(minMs));
+          long maxMs = ParquetReaderUtility.NanoTimeUtils.getDateTimeValueFromBinary((Binary) max, false);
+          System.out.println(new Date(maxMs));
+          ((LongStatistics) convertedStat).setMinMax(minMs, maxMs);
+          break;
+        }
         ((LongStatistics) stat).setMinMax(Long.parseLong(min.toString()), Long.parseLong(max.toString()));
         break;
       case FLOAT4:

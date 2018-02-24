@@ -606,6 +606,11 @@
       <artifactId>netty-tcnative</artifactId>
       <classifier>${netty.tcnative.classifier}</classifier>
     </dependency>
+<!--    <dependency>
+      <groupId>org.apache.hive</groupId>
+      <artifactId>hive-exec</artifactId>
+      <scope>test</scope>
+    </dependency>-->
   </dependencies>
 
   <profiles>
