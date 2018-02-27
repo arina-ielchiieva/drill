@@ -224,4 +224,45 @@ public abstract class DrillRelOptUtil {
     }
   }
 
+  public static RexCall findFlatten(
+    final RexNode node,
+    final List<RexNode> projExprs) {
+    try {
+      RexVisitor<Void> visitor =
+        new RexVisitorImpl<Void>(true) {
+          public Void visitCall(RexCall call) {
+            if ("item11".equals(call.getOperator().getName().toLowerCase()) ||
+              "flatten".equals(call.getOperator().getName().toLowerCase())) {
+              throw new Util.FoundOne(call); /* throw exception to interrupt tree walk (this is similar to
+                                              other utility methods in RexUtil.java */
+            }
+            return super.visitCall(call);
+          }
+
+          public Void visitInputRef(RexInputRef inputRef) {
+            if (projExprs.size() == 0 ) {
+              return super.visitInputRef(inputRef);
+            } else {
+              final int index = inputRef.getIndex();
+              RexNode n = projExprs.get(index);
+              if (n instanceof RexCall) {
+                RexCall r = (RexCall) n;
+                if ("item11".equals(r.getOperator().getName().toLowerCase()) ||
+                  "flatten".equals(r.getOperator().getName().toLowerCase())) {
+                  throw new Util.FoundOne(r);
+                }
+              }
+
+              return super.visitInputRef(inputRef);
+            }
+          }
+        };
+      node.accept(visitor);
+      return null;
+    } catch (Util.FoundOne e) {
+      Util.swallow(e, null);
+      return (RexCall) e.getNode();
+    }
+  }
+
 }

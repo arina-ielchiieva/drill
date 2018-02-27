@@ -22,6 +22,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.math.BigDecimal;
 import java.nio.file.Paths;
+import java.util.List;
 
 import org.apache.drill.categories.OperatorTest;
 import org.apache.drill.categories.PlannerTest;
@@ -29,7 +30,14 @@ import org.apache.drill.categories.SqlFunctionTest;
 import org.apache.drill.categories.UnlikelyTest;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.exec.ExecConstants;
+import org.apache.drill.exec.rpc.user.QueryDataBatch;
 import org.apache.drill.test.BaseTestQuery;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.parquet.format.converter.ParquetMetadataConverter;
+import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.schema.MessageType;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -1164,5 +1172,48 @@ public class TestExampleQueries extends BaseTestQuery {
         .baselineValues("1930-01-08")
         .build()
         .run();
+  }
+
+  //@Test
+  public void t() throws Exception {
+    //String query = "select * from cp.`store/parquet/complex/complex.parquet`";
+    //todo why we always have to use table alias?
+    test("use dfs.tmp");
+    test("create table `tbl/t1` as select * from cp.`store/parquet/complex/complex.parquet`");
+    test("create table `tbl/t2` as select * from cp.`store/parquet/complex/complex.parquet` t where t.user_info.cust_id > 28");
+    test("create table `tbl/t3` as select * from cp.`store/parquet/complex/complex.parquet` t where t.user_info.cust_id = 28");
+    //String query = "select * from `tbl` t where t.user_info.cust_id = 28";
+    //String query = "select * from cp.`tpch/nation.parquet` nation";
+
+    String query = "select n_regionkey\n"
+      + "from (select n_regionkey, \n"
+      + "            flatten(nation.cities) as cities \n"
+      + "      from cp.`tpch/nation.parquet` nation) as flattenedCities \n"
+      + "where flattenedCities.cities.`zip` = '12345'";
+
+    //String query = "select * from cp.`store/parquet/complex/complex.parquet` t where t.user_info.cust_id = 28";
+//    setColumnWidths(new int[] {40});
+//    List<QueryDataBatch> res = testSqlWithResults(query);
+//    printResult(res);
+
+    String plan = PlanTestBase.getPlanInString("explain plan for " + query, PlanTestBase.OPTIQ_FORMAT);
+    System.out.println(plan);
+    /*
+00-00    Screen
+00-01      Project(**=[$0])
+00-02        Project(T3¦¦**=[$0])
+00-03          SelectionVectorRemover
+00-04            Filter(condition=[=(ITEM($1, 'cust_id'), 28)])
+00-05              Project(T3¦¦**=[$0], user_info=[$1])
+00-06                Scan(groupscan=[ParquetGroupScan [entries=[ReadEntryWithPath [path=file:/F:/git_repo/drill/exec/java-exec/target/org.apache.drill.TestExampleQueries/dfsTestTmp/1519736063448-0/tbl/t1/0_0_0.parquet], ReadEntryWithPath [path=file:/F:/git_repo/drill/exec/java-exec/target/org.apache.drill.TestExampleQueries/dfsTestTmp/1519736063448-0/tbl/t2/0_0_0.parquet], ReadEntryWithPath [path=file:/F:/git_repo/drill/exec/java-exec/target/org.apache.drill.TestExampleQueries/dfsTestTmp/1519736063448-0/tbl/t3/0_0_0.parquet]], selectionRoot=file:/F:/git_repo/drill/exec/java-exec/target/org.apache.drill.TestExampleQueries/dfsTestTmp/1519736063448-0/tbl, numFiles=3, numRowGroups=3, usedMetadataFile=false, columns=[`**`]]])
+     */
+
+    String tableName = "tbl/t1";
+    Path filePath = new Path(Paths.get(dirTestWatcher.getDfsTestTmpDir().getPath(), tableName, "0_0_0.parquet").toUri().getPath());
+    Configuration configuration = new Configuration();
+    ParquetMetadata parquetMetadata = ParquetFileReader.readFooter(configuration, filePath, ParquetMetadataConverter.NO_FILTER);
+    MessageType schema = parquetMetadata.getFileMetaData().getSchema();
+
+
   }
 }

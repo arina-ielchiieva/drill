@@ -389,6 +389,7 @@ public class TestParquetFilterPushDown extends PlanTestBase {
   }
 
   @Test // DRILL-5359
+  //todo this test actually fails...., query is fake but it produces needed plan
   public void testFilterWithItemFlatten() throws Exception {
     final String sql = "select n_regionkey\n"
         + "from (select n_regionkey, \n"
