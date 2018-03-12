@@ -21,6 +21,7 @@ import com.google.common.base.Stopwatch;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.Types;
+import org.apache.drill.exec.proto.UserBitShared;
 import org.apache.drill.exec.store.parquet.Metadata;
 import org.apache.drill.exec.store.parquet.ParquetGroupScan;
 import org.apache.parquet.column.statistics.BinaryStatistics;
@@ -40,12 +41,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-public class ParquetMetaStatCollector implements  ColumnStatCollector{
-  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ParquetMetaStatCollector.class);
+public class ParquetMetaStatCollector implements ColumnStatCollector {
+  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ParquetMetaStatCollector.class);
 
-  private  final Metadata.ParquetTableMetadataBase parquetTableMetadata;
-  private  final List<? extends Metadata.ColumnMetadata> columnMetadataList;
-  final Map<String, String> implicitColValues;
+  private final Metadata.ParquetTableMetadataBase parquetTableMetadata;
+  private final List<? extends Metadata.ColumnMetadata> columnMetadataList;
+  private final Map<String, String> implicitColValues;
 
   public ParquetMetaStatCollector(Metadata.ParquetTableMetadataBase parquetTableMetadata,
       List<? extends Metadata.ColumnMetadata> columnMetadataList, Map<String, String> implicitColValues) {
@@ -82,11 +83,18 @@ public class ParquetMetaStatCollector implements  ColumnStatCollector{
       columnMetadataMap.put(schemaPath, columnMetadata);
     }
 
-    for (final SchemaPath schemaPath : fields) {
+    for (final SchemaPath field : fields) {
       final PrimitiveType.PrimitiveTypeName primitiveType;
       final OriginalType originalType;
 
-      final Metadata.ColumnMetadata columnMetadata = columnMetadataMap.get(schemaPath);
+      SchemaPath newField = field;
+      if (field.isArray()) {
+        newField = field.getWithoutArrayIndexes();
+
+      }
+
+      final Metadata.ColumnMetadata columnMetadata = columnMetadataMap.get(newField); //todo does not return value ....
+      //final Metadata.ColumnMetadata columnMetadata = columnMetadataMap.get(schemaPath); //todo does not return value ....
 
       if (columnMetadata != null) {
         final Object min = columnMetadata.getMinValue();
@@ -106,16 +114,16 @@ public class ParquetMetaStatCollector implements  ColumnStatCollector{
           precision = columnTypeInfo.precision;
         }
 
-        statMap.put(schemaPath, getStat(min, max, numNull, primitiveType, originalType, repetitionLevel, scale, precision));
+        statMap.put(field, getStat(min, max, numNull, primitiveType, originalType, repetitionLevel, scale, precision));
       } else {
-        final String columnName = schemaPath.getRootSegment().getPath();
+        final String columnName = field.getRootSegment().getPath(); //todo consider this option
         if (implicitColValues.containsKey(columnName)) {
           TypeProtos.MajorType type = Types.required(TypeProtos.MinorType.VARCHAR);
           Statistics stat = new BinaryStatistics();
           stat.setNumNulls(0);
           byte[] val = implicitColValues.get(columnName).getBytes();
           stat.setMinMaxFromBytes(val, val);
-          statMap.put(schemaPath, new ColumnStatistics(stat, type));
+          statMap.put(field, new ColumnStatistics(stat, type));
         }
       }
     }
@@ -149,10 +157,10 @@ public class ParquetMetaStatCollector implements  ColumnStatCollector{
 
     TypeProtos.MajorType type = ParquetGroupScan.getType(primitiveType, originalType, scale, precision);
 
-    // Change to repeated if repetitionLevel > 0
-    if (repetitionLevel != null && repetitionLevel > 0) {
+    //todo Change to repeated if repetitionLevel > 0
+/*    if (repetitionLevel != null && repetitionLevel > 0) {
       type = Types.withScaleAndPrecision(type.getMinorType(), TypeProtos.DataMode.REPEATED, scale, precision);
-    }
+    }*/
 
     if (numNull != null) {
       stat.setNumNulls(numNull);

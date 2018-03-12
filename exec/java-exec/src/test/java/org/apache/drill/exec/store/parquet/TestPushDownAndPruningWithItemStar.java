@@ -18,15 +18,27 @@
 package org.apache.drill.exec.store.parquet;
 
 import org.apache.drill.PlanTestBase;
+import org.apache.drill.exec.ops.FragmentContextImpl;
+import org.apache.drill.exec.proto.BitControl;
+import org.apache.drill.exec.rpc.user.QueryDataBatch;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import java.nio.file.Paths;
+import java.util.List;
 
 import static org.apache.drill.exec.util.StoragePluginTestUtils.DFS_TMP_SCHEMA;
 
 public class TestPushDownAndPruningWithItemStar extends PlanTestBase {
 
   private static final String TABLE_NAME = "order_ctas";
+
+  @BeforeClass
+  public static void copyData() {
+    dirTestWatcher.copyResourceToRoot(Paths.get("arr_parq"));
+    dirTestWatcher.copyResourceToRoot(Paths.get("rep_int"));
+  }
 
   @BeforeClass
   public static void setup() throws Exception {
@@ -75,7 +87,7 @@ public class TestPushDownAndPruningWithItemStar extends PlanTestBase {
       .build();
   }
 
-  @Test
+  @Test //todo fail after array changes
   public void testPushProjectIntoScanWithExpressionInFilter() throws Exception {
     String query = String.format("select o_orderdate from (select * from `%s`.`%s`) where o_custkey + o_orderkey < 5", DFS_TMP_SCHEMA, TABLE_NAME);
 
@@ -281,5 +293,56 @@ public class TestPushDownAndPruningWithItemStar extends PlanTestBase {
         .sqlBaselineQuery("select *, o_orderdate from `%s`.`%s` where o_orderdate = date '1992-01-01'", DFS_TMP_SCHEMA, TABLE_NAME)
         .build();
   }
+
+  @Test
+  public void t() throws Exception {
+    //String query = String.format("select *, o_orderdate, o_custkey from (select *  from `%s`.`%s` where o_orderdate = date '1992-01-01') where o_orderdate = date '1992-01-01'",
+    String query = String.format("select * from (select *  from `%s`.`%s` where o_orderdate >= date '1992-01-01') where o_orderdate = date '1992-01-01'",
+    //String query = String.format("select o_orderdate from (select *  from `%s`.`%s` where o_orderdate >= date '1992-01-01') where o_orderdate = date '1992-01-01'",
+    //String query = String.format("select * from (select *, o_orderdate, o_custkey from `%s`.`%s` where o_orderdate >= date '1992-01-01') where o_orderdate = date '1992-01-01'",
+    //String query = String.format("select *, o_orderdate, o_custkey from (select *  from `%s`.`%s`) where o_orderdate = date '1992-01-01' AND o_custkey = 1",
+      DFS_TMP_SCHEMA, TABLE_NAME);
+
+    String plan = PlanTestBase.getPlanInString("explain plan for " + query, PlanTestBase.OPTIQ_FORMAT);
+    System.out.println(plan);
+
+    setColumnWidths(new int[] {40});
+    List<QueryDataBatch> res = testSqlWithResults(query);
+    printResult(res);
+
+  }
+
+  @Test
+  public void tt() throws Exception {
+    //String query = "select *, filename from dfs.`rep_int`";
+    //String query = "select *, filename from dfs.`rep_int` where `element`[3] > 3";
+    String query = "select *, filename from dfs.`rep_int` where `element`[3] is null";
+    //todo when optimization is turned off, we do return records where 4th element in array is
+    //todo present, with optimization turned off, we returned 0 rows...
+
+    //String query = "select *, filename from dfs.`arr_parq`";
+    //String query = "select *, filename from dfs.`arr_parq` t where t.int_array.`element`[0] > 3";
+
+    String plan = PlanTestBase.getPlanInString("explain plan for " + query, PlanTestBase.OPTIQ_FORMAT);
+    System.out.println(plan);
+
+    setColumnWidths(new int[] {100});
+    List<QueryDataBatch> res = testSqlWithResults(query);
+    printResult(res);
+  }
+
+  /*
+
+00-00    Screen
+00-01      Project(**=[$0])
+00-02        SelectionVectorRemover
+00-03          Filter(condition=[=(ITEM($0, 'o_orderdate'), 1992-01-01)])
+00-04            Project(T0¦¦**=[$0])
+00-05              SelectionVectorRemover
+00-06                Filter(condition=[=($1, 1992-01-01)])
+00-07                  Project(T0¦¦**=[$0], o_orderdate=[$1])
+00-08                    Scan(groupscan=[ParquetGroupScan [entries=[ReadEntryWithPath [path=C:/Data/git_repo/drill/exec/java-exec/target/org.apache.drill.exec.store.parquet.TestPushDownAndPruningWithItemStar/dfsTestTmp/1520440870016-0/order_ctas/t1/0_0_0.parquet]], selectionRoot=file:/C:/Data/git_repo/drill/exec/java-exec/target/org.apache.drill.exec.store.parquet.TestPushDownAndPruningWithItemStar/dfsTestTmp/1520440870016-0/order_ctas, numFiles=1, numRowGroups=1, usedMetadataFile=false, columns=[`**`]]])
+
+   */
 
 }

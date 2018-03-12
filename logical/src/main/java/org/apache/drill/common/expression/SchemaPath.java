@@ -255,6 +255,36 @@ public class SchemaPath extends LogicalExpressionBase {
     return new SchemaPath(newRoot);
   }
 
+  public SchemaPath getWithoutArrayIndexes() {
+    return create(getAsNamePart2());
+  }
+
+  private NamePart getAsNamePart2() {
+    return getNamePart2(rootSegment);
+  }
+
+  private NamePart getNamePart2(PathSegment s) {
+    if (s == null) {
+      return null;
+    }
+    NamePart.Builder b = NamePart.newBuilder();
+    if (s.getChild() != null) {
+      NamePart namePart = getNamePart2(s.getChild());
+      if (namePart != null) {
+        b.setChild(namePart);
+      }
+    }
+
+    if (s.isArray()) {
+      return null;
+    } else {
+      b.setType(Type.NAME);
+      b.setName(s.getNameSegment().getPath());
+    }
+    return b.build();
+  }
+
+
   public SchemaPath getUnindexedArrayChild() {
     NameSegment newRoot = rootSegment.cloneWithNewChild(new ArraySegment(null));
     return new SchemaPath(newRoot);

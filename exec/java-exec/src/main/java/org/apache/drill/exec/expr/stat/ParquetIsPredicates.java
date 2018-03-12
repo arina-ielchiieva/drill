@@ -18,7 +18,10 @@ package org.apache.drill.exec.expr.stat;
 
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.LogicalExpressionBase;
+import org.apache.drill.common.expression.SchemaPath;
+import org.apache.drill.common.expression.TypedFieldExpr;
 import org.apache.drill.common.expression.visitors.ExprVisitor;
+import org.apache.drill.common.types.TypeProtos;
 import org.apache.parquet.column.statistics.Statistics;
 
 import java.util.ArrayList;
@@ -29,6 +32,7 @@ import java.util.List;
  * IS predicates for parquet filter pushdown.
  */
 public class ParquetIsPredicates {
+
   public static abstract class ParquetIsPredicate extends LogicalExpressionBase implements ParquetFilterPredicate {
     protected final LogicalExpression expr;
 
@@ -50,6 +54,15 @@ public class ParquetIsPredicates {
     }
   }
 
+  public static boolean isComplex(LogicalExpression expr) {
+    if (expr instanceof TypedFieldExpr) {
+      TypedFieldExpr typedFieldExpr = (TypedFieldExpr) expr;
+      SchemaPath path = typedFieldExpr.getPath();
+      return path.isArray();
+    }
+    return false;
+  }
+
   /**
    * IS NULL predicate.
    */
@@ -60,6 +73,14 @@ public class ParquetIsPredicates {
 
     @Override
     public boolean canDrop(RangeExprEvaluator evaluator) {
+
+      // for repeated types number of element is not defined,
+      // so it's impossible to define if null is present [1,2,3] vs [1,2] -> three is absent and thus it's null but statistics shows no nulls
+      //todo check behavior for map types
+      if (isComplex(expr)) {
+        return false;
+      }
+
       Statistics exprStat = expr.accept(evaluator, null);
 
       if (exprStat == null) {
@@ -173,7 +194,8 @@ public class ParquetIsPredicates {
       }
 
       //if min value is not false or if there are no nulls  -> canDrop
-      if (exprStat.genericGetMin().compareTo(false) != 0 && !ParquetPredicatesHelper.hasNulls(exprStat)) {
+      if (exprStat.genericGetMin().compareTo(false) != 0 &&
+        (!isComplex(expr) && !ParquetPredicatesHelper.hasNulls(exprStat))) {
         return true;
       } else {
         return false;
@@ -199,7 +221,9 @@ public class ParquetIsPredicates {
       }
 
       //if max value is not true or if there are no nulls  -> canDrop
-      if (exprStat.genericGetMax().compareTo(true) != 0 && !ParquetPredicatesHelper.hasNulls(exprStat)) {
+      if (exprStat.genericGetMax().compareTo(true) != 0 &&
+        //todo think one more time is this is enough.....
+        (!isComplex(expr) && !ParquetPredicatesHelper.hasNulls(exprStat))) {
         return true;
       } else {
         return false;

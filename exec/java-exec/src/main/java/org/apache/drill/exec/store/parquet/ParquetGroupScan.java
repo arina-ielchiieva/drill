@@ -1190,8 +1190,6 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
 
   @Override
   public GroupScan applyLimit(long maxRecords) {
-    Preconditions.checkArgument(rowGroupInfos.size() >= 0);
-
     maxRecords = Math.max(maxRecords, 1); // Make sure it request at least 1 row -> 1 rowGroup.
     // further optimization : minimize # of files chosen, or the affinity of files chosen.
 
@@ -1277,6 +1275,7 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
                 filterExpr, columnStatisticsMap, errorCollector, functionImplementationRegistry);
 
         if (errorCollector.hasErrors()) {
+          System.out.println(errorCollector.toErrorString());
           logger.error("{} error(s) encountered when materialize filter expression : {}",
                   errorCollector.getErrorCount(), errorCollector.toErrorString());
           return null;

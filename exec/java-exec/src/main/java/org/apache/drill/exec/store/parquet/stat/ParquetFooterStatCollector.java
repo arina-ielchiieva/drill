@@ -113,7 +113,7 @@ public class ParquetFooterStatCollector implements ColumnStatCollector {
 
     for (final ColumnChunkMetaData colMetaData: footer.getBlocks().get(rowGroupIndex).getColumns()) {
       final SchemaPath schemaPath = SchemaPath.getCompoundPath(colMetaData.getPath().toArray());
-      if (fields.contains(schemaPath)) {
+      if (fields.contains(schemaPath)) { //todo check if here works
         columnChkMetaMap.put(schemaPath, colMetaData);
       }
     }

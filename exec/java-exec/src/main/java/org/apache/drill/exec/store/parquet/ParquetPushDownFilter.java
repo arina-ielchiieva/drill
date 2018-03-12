@@ -127,7 +127,8 @@ public abstract class ParquetPushDownFilter extends StoragePluginOptimizerRule {
     final List<RexNode> qualifiedPredList = Lists.newArrayList();
 
     for (final RexNode pred : predList) {
-      if (DrillRelOptUtil.findItemOrFlatten(pred, ImmutableList.<RexNode>of()) == null) {
+      if (DrillRelOptUtil.findFlatten(pred, ImmutableList.<RexNode>of()) == null) {
+      //if (DrillRelOptUtil.findItemOrFlatten(pred, ImmutableList.<RexNode>of()) == null) {
         qualifiedPredList.add(pred);
       }
     }
