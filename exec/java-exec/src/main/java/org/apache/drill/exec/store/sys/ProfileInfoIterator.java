@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -37,24 +37,25 @@ public class ProfileInfoIterator extends ProfileIterator {
 
   private final Iterator<ProfileInfo> itr;
 
-  public ProfileInfoIterator(ExecutorFragmentContext context) {
-    super(context);
-    itr = iterateProfileInfo();
+  public ProfileInfoIterator(ExecutorFragmentContext context, int maxRecords) {
+    super(context, maxRecords);
+    this.itr = iterateProfileInfo();
+  }
+
+  @Override
+  protected Iterator<Entry<String, QueryProfile>> getProfiles(int skip, int take) {
+    return profileStoreContext
+      .getCompletedProfileStore()
+      .getRange(skip, take);
   }
 
   //Returns an iterator for authorized profiles
   private Iterator<ProfileInfo> iterateProfileInfo() {
     try {
       //Transform authorized profiles to iterator for ProfileInfo
-      return transform(
-          getAuthorizedProfiles(
-            profileStoreContext
-              .getCompletedProfileStore()
-              .getAll(),
-            queryingUsername, isAdmin));
-
+      return transform(getAuthorizedProfiles(queryingUsername, isAdmin));
     } catch (Exception e) {
-      logger.error(e.getMessage());
+      logger.error(e.getMessage(), e);
       return Iterators.singletonIterator(ProfileInfo.getDefault());
     }
   }
