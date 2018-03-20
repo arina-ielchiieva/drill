@@ -37,6 +37,7 @@ import org.apache.drill.exec.planner.physical.PrelUtil;
 import org.apache.drill.exec.planner.sql.DrillSqlOperator;
 import org.apache.drill.exec.store.StoragePluginOptimizerRule;
 import org.apache.drill.exec.store.hive.HiveDrillNativeParquetScan;
+import org.apache.drill.exec.store.hive.HiveDrillNativeParquetScan2;
 import org.apache.drill.exec.store.hive.HiveReadEntry;
 import org.apache.drill.exec.store.hive.HiveScan;
 import org.apache.drill.exec.store.hive.HiveTableWithColumnCache;
@@ -89,7 +90,7 @@ public class ConvertHiveParquetScanToDrillParquetScan extends StoragePluginOptim
    */
   @Override
   public boolean matches(RelOptRuleCall call) {
-    final DrillScanRel scanRel = (DrillScanRel) call.rel(0);
+    final DrillScanRel scanRel = call.rel(0);
 
     if (!(scanRel.getGroupScan() instanceof HiveScan) || ((HiveScan) scanRel.getGroupScan()).isNativeReader()) {
       return false;
@@ -242,12 +243,12 @@ public class ConvertHiveParquetScanToDrillParquetScan extends StoragePluginOptim
     }
 
     final HiveScan hiveScan = (HiveScan) hiveScanRel.getGroupScan();
-    final HiveDrillNativeParquetScan nativeHiveScan =
-        new HiveDrillNativeParquetScan(
+    final HiveDrillNativeParquetScan2 nativeHiveScan =
+        new HiveDrillNativeParquetScan2(
             hiveScan.getUserName(),
+            nativeScanCols,
             hiveScan.getHiveReadEntry(),
             hiveScan.getStoragePlugin(),
-            nativeScanCols,
             null);
 
     return new DrillScanRel(

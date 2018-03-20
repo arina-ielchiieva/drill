@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -70,7 +70,7 @@ public class InfoSchemaGroupScan extends AbstractGroupScan{
   }
 
   @JsonProperty("filter")
-  public InfoSchemaFilter getFilter() {
+  public InfoSchemaFilter getSchemaFilter() {
     return filter;
   }
 

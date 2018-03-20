@@ -17,6 +17,7 @@
 package org.apache.drill.exec.store;
 
 import org.apache.drill.PlanTestBase;
+import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.store.avro.AvroTestUtil;
 import org.junit.Test;
 
@@ -26,12 +27,17 @@ public class FormatPluginSerDeTest extends PlanTestBase {
 
   @Test
   public void testParquet() throws Exception {
-    test("alter session set `planner.slice_target` = 1");
-    testPhysicalPlanSubmission(
-        String.format("select * from table(cp.`%s`(type=>'parquet'))", "parquet/alltypes_required.parquet"),
-        String.format("select * from table(cp.`%s`(type=>'parquet', autoCorrectCorruptDates=>false))", "parquet/alltypes_required.parquet"),
-        String.format("select * from table(cp.`%s`(type=>'parquet', autoCorrectCorruptDates=>true))", "parquet/alltypes_required.parquet")
-    );
+    //todo add test with parquet metadata ...
+    //todo for hive add test as well with native drill parquet reader turned on (in hive module)
+    try {
+      setSessionOption(ExecConstants.SLICE_TARGET, 1);
+      testPhysicalPlanSubmission(
+          String.format("select * from table(cp.`%s`(type=>'parquet'))", "parquet/alltypes_required.parquet"),
+          String.format("select * from table(cp.`%s`(type=>'parquet', autoCorrectCorruptDates=>false))", "parquet/alltypes_required.parquet"),
+          String.format("select * from table(cp.`%s`(type=>'parquet', autoCorrectCorruptDates=>true))", "parquet/alltypes_required.parquet"));
+    } finally {
+      resetSessionOption(ExecConstants.SLICE_TARGET);
+    }
   }
 
   @Test

@@ -165,6 +165,11 @@ public class HiveTestDataGenerator {
         "ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE");
     executeQuery(hiveDriver, "LOAD DATA LOCAL INPATH '" + testDataFile + "' OVERWRITE INTO TABLE default.kv");
 
+    executeQuery(hiveDriver,
+            "CREATE external table kv_parquet_non(key INT, value STRING) STORED AS PARQUET " +
+                    "LOCATION '/home/arina/files'");
+    //executeQuery(hiveDriver, "insert into default.kv_parquet select * from default.kv");
+
     // Create a (key, value) schema table in non-default database with RegexSerDe which is available in hive-contrib.jar
     // Table with RegExSerde is expected to have columns of STRING type only.
     executeQuery(hiveDriver, "CREATE DATABASE IF NOT EXISTS db1");
@@ -186,6 +191,10 @@ public class HiveTestDataGenerator {
 
     executeQuery(hiveDriver, avroCreateQuery);
     executeQuery(hiveDriver, "INSERT INTO TABLE db1.avro SELECT * FROM default.kv");
+
+
+    executeQuery(hiveDriver,"create external table md4107_hive (a varchar(10), b double) " +
+            "STORED AS PARQUET LOCATION '/tmp/md4107_par'");
 
     executeQuery(hiveDriver, "USE default");
 
@@ -495,7 +504,7 @@ public class HiveTestDataGenerator {
     executeQuery(hiveDriver, "INSERT INTO TABLE kv_parquet PARTITION(part1) SELECT key, value, key FROM default.kv");
     executeQuery(hiveDriver, "ALTER TABLE kv_parquet ADD COLUMNS (newcol string)");
 
-    executeQuery(hiveDriver,
+    /*executeQuery(hiveDriver,
         "CREATE TABLE countStar_Parquet (int_field INT) STORED AS parquet");
 
     final int numOfRows = 200;
@@ -550,7 +559,7 @@ public class HiveTestDataGenerator {
     executeQuery(hiveDriver, "create table default.simple_json(json string)");
     final String loadData = "load data local inpath '" +
         Resources.getResource("simple.json") + "' into table default.simple_json";
-    executeQuery(hiveDriver, loadData);
+    executeQuery(hiveDriver, loadData);*/
 
     ss.close();
   }
