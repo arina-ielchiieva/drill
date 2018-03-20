@@ -23,10 +23,10 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.base.Preconditions;
-import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 
+import org.apache.drill.common.Stopwatch;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.exec.util.DrillFileSystemUtil;
 import org.apache.hadoop.fs.FileStatus;
@@ -95,7 +95,7 @@ public class FileSelection {
       final String cacheFileRoot, final boolean wasAllPartitionsPruned, final StatusType dirStatus) {
     this.statuses = statuses;
     this.files = files;
-    this.selectionRoot = Preconditions.checkNotNull(selectionRoot);
+    this.selectionRoot = selectionRoot;
     this.dirStatus = dirStatus;
     this.cacheFileRoot = cacheFileRoot;
     this.wasAllPartitionsPruned = wasAllPartitionsPruned;
@@ -121,7 +121,7 @@ public class FileSelection {
   }
 
   public List<FileStatus> getStatuses(final DrillFileSystem fs) throws IOException {
-    Stopwatch timer = Stopwatch.createStarted();
+    Stopwatch timer = Stopwatch.createStarted(logger.isDebugEnabled());
 
     if (statuses == null)  {
       final List<FileStatus> newStatuses = Lists.newArrayList();
@@ -130,7 +130,7 @@ public class FileSelection {
       }
       statuses = newStatuses;
     }
-    logger.info("FileSelection.getStatuses() took {} ms, numFiles: {}",
+    logger.debug("FileSelection.getStatuses() took {} ms, numFiles: {}",
         timer.elapsed(TimeUnit.MILLISECONDS), statuses == null ? 0 : statuses.size());
 
     return statuses;
@@ -164,7 +164,7 @@ public class FileSelection {
     if (isExpandedFully()) {
       return this;
     }
-    Stopwatch timer = Stopwatch.createStarted();
+    Stopwatch timer = Stopwatch.createStarted(logger.isDebugEnabled());
     List<FileStatus> statuses = getStatuses(fs);
 
     List<FileStatus> nonDirectories = Lists.newArrayList();
@@ -259,7 +259,7 @@ public class FileSelection {
 
   public static FileSelection create(final DrillFileSystem fs, final String parent, final String path,
       final boolean allowAccessOutsideWorkspace) throws IOException {
-    Stopwatch timer = Stopwatch.createStarted();
+    Stopwatch timer = Stopwatch.createStarted(logger.isDebugEnabled());
     boolean hasWildcard = path.contains(WILD_CARD);
 
     final Path combined = new Path(parent, removeLeadingSlash(path));
@@ -322,7 +322,7 @@ public class FileSelection {
 
   public static FileSelection createFromDirectories(final List<String> dirPaths, final FileSelection selection,
       final String cacheFileRoot) {
-    Stopwatch timer = Stopwatch.createStarted();
+    Stopwatch timer = Stopwatch.createStarted(logger.isDebugEnabled());
     final String root = selection.getSelectionRoot();
     if (Strings.isNullOrEmpty(root)) {
       throw new DrillRuntimeException("Selection root is null or empty" + root);
@@ -349,7 +349,7 @@ public class FileSelection {
     final Path path = new Path(uri.getScheme(), uri.getAuthority(), rootPath.toUri().getPath());
     FileSelection fileSel = new FileSelection(null, dirs, path.toString(), cacheFileRoot, false);
     fileSel.setHadWildcard(selection.hadWildcard());
-    logger.info("FileSelection.createFromDirectories() took {} ms ", timer.elapsed(TimeUnit.MILLISECONDS));
+    logger.debug("FileSelection.createFromDirectories() took {} ms ", timer.elapsed(TimeUnit.MILLISECONDS));
     return fileSel;
   }
 

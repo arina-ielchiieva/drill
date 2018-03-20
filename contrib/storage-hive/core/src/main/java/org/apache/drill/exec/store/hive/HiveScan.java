@@ -132,7 +132,8 @@ public class HiveScan extends AbstractGroupScan {
     return metadataProvider;
   }
 
-  private List<LogicalInputSplit> getInputSplits() {
+  @JsonIgnore
+  protected List<LogicalInputSplit> getInputSplits() {
     if (inputSplits == null) {
       inputSplits = metadataProvider.getInputSplits(hiveReadEntry);
     }
@@ -145,7 +146,7 @@ public class HiveScan extends AbstractGroupScan {
   public void applyAssignments(final List<CoordinationProtos.DrillbitEndpoint> endpoints) {
     mappings = new ArrayList<>();
     for (int i = 0; i < endpoints.size(); i++) {
-      mappings.add(new ArrayList<LogicalInputSplit>());
+      mappings.add(new ArrayList<>());
     }
     final int count = endpoints.size();
     final List<LogicalInputSplit> inputSplits = getInputSplits();
@@ -237,6 +238,7 @@ public class HiveScan extends AbstractGroupScan {
       // Hive's native reader is neither memory efficient nor fast. Increase the CPU cost
       // by a factor to let the planner choose HiveDrillNativeScan over HiveScan with SerDes.
       float cpuCost = 1 * getSerDeOverheadFactor();
+      //return new ScanStats(GroupScanProperty.NO_EXACT_ROW_COUNT, 1000, cpuCost, stats.getSizeInBytes());
       return new ScanStats(GroupScanProperty.NO_EXACT_ROW_COUNT, stats.getNumRows(), cpuCost, stats.getSizeInBytes());
     } catch (final IOException e) {
       throw new DrillRuntimeException(e);
