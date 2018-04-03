@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermission;
 import java.sql.Date;
 import java.sql.Timestamp;
@@ -29,9 +30,9 @@ import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.Sets;
-import com.google.common.io.Resources;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.drill.test.BaseDirTestWatcher;
 import org.apache.drill.test.BaseTestQuery;
 import org.apache.drill.common.exceptions.DrillException;
 import org.apache.drill.exec.store.StoragePluginRegistry;
@@ -53,9 +54,11 @@ public class HiveTestDataGenerator {
 
   private final String dbDir;
   private final String whDir;
+  private final BaseDirTestWatcher dirTestWatcher;
   private final Map<String, String> config;
 
-  public static synchronized HiveTestDataGenerator getInstance(File baseDir) throws Exception {
+  public static synchronized HiveTestDataGenerator getInstance(BaseDirTestWatcher dirTestWatcher) throws Exception {
+    File baseDir = dirTestWatcher.getRootDir();
     if (instance == null || !HiveTestDataGenerator.baseDir.equals(baseDir)) {
       HiveTestDataGenerator.baseDir = baseDir;
 
@@ -65,16 +68,17 @@ public class HiveTestDataGenerator {
       final String dbDir = dbDirFile.getAbsolutePath();
       final String whDir = whDirFile.getAbsolutePath();
 
-      instance = new HiveTestDataGenerator(dbDir, whDir);
+      instance = new HiveTestDataGenerator(dbDir, whDir, dirTestWatcher);
       instance.generateTestData();
     }
 
     return instance;
   }
 
-  private HiveTestDataGenerator(final String dbDir, final String whDir) {
+  private HiveTestDataGenerator(final String dbDir, final String whDir, final BaseDirTestWatcher dirTestWatcher) {
     this.dbDir = dbDir;
     this.whDir = whDir;
+    this.dirTestWatcher = dirTestWatcher;
 
     config = Maps.newHashMap();
     config.put("hive.metastore.uris", "");
@@ -129,7 +133,7 @@ public class HiveTestDataGenerator {
     try {
       Files.setPosixFilePermissions(dir.toPath(), perms);
     } catch (IOException e) {
-      new RuntimeException(e);
+      throw new RuntimeException(e);
     }
 
     return dir;
@@ -561,7 +565,39 @@ public class HiveTestDataGenerator {
         Resources.getResource("simple.json") + "' into table default.simple_json";
     executeQuery(hiveDriver, loadData);*/
 
+    createTestDataForDrillNativeReaderTests(hiveDriver);
+
     ss.close();
+  }
+
+  private void createTestDataForDrillNativeReaderTests(Driver hiveDriver) {
+
+    // table that has data qualified for partition pruning and filter push down
+    executeQuery(hiveDriver, "create table kv_push(key int, sub_key int) stored as parquet");
+    // each insert is created in separate file
+    executeQuery(hiveDriver, "insert into table kv_push values (1, 1), (1, 2)");
+    executeQuery(hiveDriver, "insert into table kv_push values (1, 3), (1, 4)");
+    executeQuery(hiveDriver, "insert into table kv_push values (2, 5), (2, 6)");
+    executeQuery(hiveDriver, "insert into table kv_push values (null, 9), (null, 10)");
+
+    executeQuery(hiveDriver, "create table kv_push_test(key int, part_key int) stored as parquet");
+    // each insert is created in separate file
+    executeQuery(hiveDriver, "insert into table kv_push_test values (1, 1), (2, 1)");
+    executeQuery(hiveDriver, "insert into table kv_push_test values (3, 2), (4, 2)");
+
+    // copy external table with data
+    dirTestWatcher.copyResourceToRoot(Paths.get("external"));
+
+    File external = new File (baseDir, "external");
+    String tableLocation = new File(external, "kv_push_ext").toURI().getPath();
+
+    //executeQuery(hiveDriver, "create external table kv_push_ext(key int) partitioned by (part_key int) stored as parquet" +
+    executeQuery(hiveDriver, "create external table kv_push_ext(key int, part_key int) partitioned by (part_keys int) stored as parquet" +
+        " location '" + tableLocation + "'");
+
+    executeQuery(hiveDriver, String.format("alter table kv_push_ext add partition (part_keys = '1') location '%s'", tableLocation + "/part_keys=1"));
+    //executeQuery(hiveDriver, String.format("alter table kv_push_ext add partition (part_key = '2') location '%s'", external.toURI().getPath() + "/part_key=2"));
+
   }
 
   private File getTempFile() throws Exception {

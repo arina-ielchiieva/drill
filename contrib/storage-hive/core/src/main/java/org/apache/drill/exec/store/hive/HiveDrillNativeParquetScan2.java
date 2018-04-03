@@ -72,28 +72,19 @@ public class HiveDrillNativeParquetScan2 extends AbstractParquetGroupScan {
 
   public HiveDrillNativeParquetScan2(String userName,
                                      List<SchemaPath> columns,
-                                     HiveReadEntry hiveReadEntry,
                                      HiveStoragePlugin hiveStoragePlugin,
-                                     HiveMetadataProvider hiveMetadataProvider) throws IOException {
-    this(userName, columns, hiveReadEntry, hiveStoragePlugin, hiveMetadataProvider, ValueExpressions.BooleanExpression.TRUE);
+                                     List<LogicalInputSplit> logicalInputSplits) throws IOException {
+    this(userName, columns, hiveStoragePlugin, logicalInputSplits, ValueExpressions.BooleanExpression.TRUE);
   }
 
   public HiveDrillNativeParquetScan2(String userName,
                                      List<SchemaPath> columns,
-                                     HiveReadEntry hiveReadEntry,
                                      HiveStoragePlugin hiveStoragePlugin,
-                                     HiveMetadataProvider hiveMetadataProvider,
+                                     List<LogicalInputSplit> logicalInputSplits,
                                      LogicalExpression filter) throws IOException {
     super(userName, columns, new ArrayList<>(), filter);
 
     this.hiveStoragePlugin = hiveStoragePlugin;
-
-    if (hiveMetadataProvider == null) {
-      hiveMetadataProvider = new HiveMetadataProvider(userName, hiveReadEntry, hiveStoragePlugin.getHiveConf());
-    }
-
-    // transform hiveReadEntry
-    List<LogicalInputSplit> logicalInputSplits = hiveMetadataProvider.getInputSplits(hiveReadEntry);
 
     // logical input split contains list of splits by files
     // we need to read only one to get file path
@@ -199,6 +190,8 @@ public class HiveDrillNativeParquetScan2 extends AbstractParquetGroupScan {
 
     //todo for each file we should take separate file system, needs some re-writing
     //todo what if we skip projection pusher???
+
+    //todo failed to get parquet table metadata if table is empty
     parquetTableMetadata = Metadata.getParquetTableMetadata(fs, fileStatuses, formatConfig);
   }
 

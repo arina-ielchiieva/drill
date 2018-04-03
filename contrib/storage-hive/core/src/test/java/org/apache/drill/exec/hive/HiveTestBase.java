@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -31,7 +31,7 @@ public class HiveTestBase extends PlanTestBase {
 
   @BeforeClass
   public static void generateHive() throws Exception {
-    hiveTest = HiveTestDataGenerator.getInstance(dirTestWatcher.getRootDir());
+    hiveTest = HiveTestDataGenerator.getInstance(dirTestWatcher);
     hiveTest.addHiveTestPlugin(getDrillbitContext().getStorage());
   }
 

@@ -47,6 +47,11 @@ public class ScanStats {
     return diskCost;
   }
 
+  @Override
+  public String toString() {
+    return "ScanStats{" + "recordCount=" + recordCount + ", cpuCost=" + cpuCost + ", diskCost=" + diskCost + ", property=" + property + '}';
+  }
+
   /**
    * Return if GroupScan knows the exact row count in the result of getSize() call.
    * By default, groupscan does not know the exact row count, before it scans every rows.
