@@ -239,6 +239,8 @@ public class HiveScan extends AbstractGroupScan {
       // by a factor to let the planner choose HiveDrillNativeScan over HiveScan with SerDes.
       float cpuCost = 1 * getSerDeOverheadFactor();
       //return new ScanStats(GroupScanProperty.NO_EXACT_ROW_COUNT, 1000, cpuCost, stats.getSizeInBytes());
+/*      ScanStats scanStats = new ScanStats(GroupScanProperty.NO_EXACT_ROW_COUNT, 10000000, cpuCost, stats.getSizeInBytes());
+      System.out.println("HIVE: " + scanStats);*/
       return new ScanStats(GroupScanProperty.NO_EXACT_ROW_COUNT, stats.getNumRows(), cpuCost, stats.getSizeInBytes());
     } catch (final IOException e) {
       throw new DrillRuntimeException(e);

@@ -92,7 +92,7 @@ public class HiveDrillNativeParquetRowGroupScan extends AbstractParquetRowGroupS
   @Override
   public boolean areCorruptDatesAutoCorrected() {
     return true;
-  }
+  } //todo check prev impl
 
   @Override
   public Configuration getFsConf() {

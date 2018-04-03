@@ -433,6 +433,7 @@ public abstract class PruneScanRule extends StoragePluginOptimizerRule {
         call.transformTo(newFilter);
       }
 
+      System.out.println("Applied Drill partition pruning");
       setPruneStatus(metaContext, PruneStatus.PRUNED);
 
     } catch (Exception e) {

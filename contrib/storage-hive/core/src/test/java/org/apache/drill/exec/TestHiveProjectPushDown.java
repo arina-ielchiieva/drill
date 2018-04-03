@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -182,7 +182,6 @@ public class TestHiveProjectPushDown extends HiveTestBase {
     }
   }
 
-  //todo check select from empty hive table with native drill reader
   /*
   Test cases to check:
     1. item star operator re-write
