@@ -17,6 +17,10 @@
  */
 package org.apache.drill.exec.store;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -29,7 +33,6 @@ import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.server.options.OptionManager;
 import org.apache.drill.exec.server.options.OptionValue;
 import org.apache.drill.exec.store.dfs.FileSelection;
-import org.apache.drill.exec.store.dfs.easy.FileWork;
 import org.apache.drill.exec.util.Utilities;
 import org.apache.hadoop.fs.Path;
 
@@ -161,16 +164,6 @@ public class ColumnExplorer {
    *
    * @return map with columns names as keys and their values
    */
-  public Map<String, String> populateImplicitColumns(FileWork work, String selectionRoot) {
-    return populateImplicitColumns(work.getPath(), selectionRoot);
-  }
-
-  /**
-   * Compares selection root and actual file path to determine partition columns values.
-   * Adds implicit file columns according to columns list.
-   *
-   * @return map with columns names as keys and their values
-   */
   public Map<String, String> populateImplicitColumns(String filePath, String selectionRoot) {
     Map<String, String> implicitValues = Maps.newLinkedHashMap();
     if (selectionRoot != null) {
@@ -191,6 +184,28 @@ public class ColumnExplorer {
       }
     }
     return implicitValues;
+  }
+
+  //tod maybe some static method
+  List<String> doSmth(String filePath, String selectionRoot) {
+    int rootDepth = new Path(selectionRoot).depth();
+    Path path = new Path(filePath);
+    int pathDepth = path.depth();
+
+    int diff = pathDepth - rootDepth;
+
+    if (diff < 0) {
+      return Collections.emptyList();
+    }
+
+    String[] arr = new String[diff];
+    for (int i = rootDepth; pathDepth > i; i++) {
+      path = path.getParent();
+      // place in the end of array
+      arr[pathDepth - i - 1] = path.getName();
+    }
+
+    return Arrays.asList(arr);
   }
 
   public boolean isStarQuery() {
