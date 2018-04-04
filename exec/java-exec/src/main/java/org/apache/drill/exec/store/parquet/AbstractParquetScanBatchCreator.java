@@ -46,6 +46,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 public abstract class AbstractParquetScanBatchCreator {
 
@@ -87,7 +88,7 @@ public abstract class AbstractParquetScanBatchCreator {
     List<RecordReader> readers = new LinkedList<>();
     List<Map<String, String>> implicitColumns = Lists.newArrayList();
     Map<String, String> mapWithMaxColumns = Maps.newLinkedHashMap();
-    for(RowGroupReadEntry e : rowGroupScan.getRowGroupReadEntries()){
+    for(RowGroupReadEntry e : rowGroupScan.getRowGroupReadEntries()) {
       /*
       Here we could store a map from file names to footers, to prevent re-reading the footer for each row group in a file
       TODO - to prevent reading the footer again in the parquet record reader (it is read earlier in the ParquetStorageEngine)
@@ -125,7 +126,7 @@ public abstract class AbstractParquetScanBatchCreator {
           readers.add(new DrillParquetReader(context, footer, e, columnExplorer.getTableColumns(), fs, containsCorruptDates));
         }
 
-        Map<String, String> implicitValues = columnExplorer.populateImplicitColumns(e, rowGroupScan.getSelectionRoot(e));
+        Map<String, String> implicitValues = columnExplorer.populateImplicitColumns(e.getPath(), rowGroupScan.getSelectionRoot(e));
         implicitColumns.add(implicitValues);
         if (implicitValues.size() > mapWithMaxColumns.size()) {
           mapWithMaxColumns = implicitValues;
@@ -159,6 +160,22 @@ public abstract class AbstractParquetScanBatchCreator {
       }
     }
     return false;
+  }
+
+
+  public class PartitionPopulator {
+
+    public void main(String[] args) {
+      final String mapper = "MAPPER";
+
+      Function<String, String> strategy = new Function<String, String>() {
+
+        @Override
+        public String apply(String s) {
+          return mapper;
+        }
+      };
+    }
   }
 
 

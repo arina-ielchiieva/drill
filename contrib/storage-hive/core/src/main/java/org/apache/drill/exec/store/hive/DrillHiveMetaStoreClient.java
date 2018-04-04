@@ -339,7 +339,8 @@ public abstract class DrillHiveMetaStoreClient extends HiveMetaStoreClient {
    * @param partition partition instance
    * @return hive partition wrapper
    */
-  public static HiveTableWrapper.HivePartitionWrapper createPartitionWithSpecColumns(HiveTableWithColumnCache table, Partition partition) {
+  public static HiveTableWrapper.HivePartitionWrapper createPartitionWithSpecColumns(HiveTableWithColumnCache table,
+                                                                                     Partition partition) {
     int listIndex = table.getColumnListsCache().addOrGet(partition.getSd().getCols());
     HivePartition hivePartition = new HivePartition(partition, listIndex);
     HiveTableWrapper.HivePartitionWrapper hivePartitionWrapper = new HiveTableWrapper.HivePartitionWrapper(hivePartition);

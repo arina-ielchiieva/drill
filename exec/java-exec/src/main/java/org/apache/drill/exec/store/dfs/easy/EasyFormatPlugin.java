@@ -150,7 +150,7 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
     for(FileWork work : scan.getWorkUnits()){
       RecordReader recordReader = getRecordReader(context, dfs, work, scan.getColumns(), scan.getUserName());
       readers.add(recordReader);
-      Map<String, String> implicitValues = columnExplorer.populateImplicitColumns(work, scan.getSelectionRoot());
+      Map<String, String> implicitValues = columnExplorer.populateImplicitColumns(work.getPath(), scan.getSelectionRoot());
       implicitColumns.add(implicitValues);
       if (implicitValues.size() > mapWithMaxColumns.size()) {
         mapWithMaxColumns = implicitValues;

@@ -38,6 +38,7 @@ public class HiveDrillNativeParquetRowGroupScan extends AbstractParquetRowGroupS
 
   private final HiveStoragePlugin hiveStoragePlugin;
   private final HiveStoragePluginConfig hiveStoragePluginConfig;
+  private final HivePartitionHolder<Integer> hivePartitionHolder;
 
   @JsonCreator
   public HiveDrillNativeParquetRowGroupScan(@JacksonInject StoragePluginRegistry registry,
@@ -45,11 +46,13 @@ public class HiveDrillNativeParquetRowGroupScan extends AbstractParquetRowGroupS
                                             @JsonProperty("hiveStoragePluginConfig") HiveStoragePluginConfig hiveStoragePluginConfig,
                                             @JsonProperty("rowGroupReadEntries") List<RowGroupReadEntry> rowGroupReadEntries,
                                             @JsonProperty("columns") List<SchemaPath> columns,
+                                            @JsonProperty("hivePartitionHolder") HivePartitionHolder<Integer> hivePartitionHolder,
                                             @JsonProperty("filter") LogicalExpression filter) throws ExecutionSetupException {
     this(userName,
         (HiveStoragePlugin) registry.getPlugin(hiveStoragePluginConfig),
         rowGroupReadEntries,
         columns,
+        hivePartitionHolder,
         filter);
   }
 
@@ -57,15 +60,22 @@ public class HiveDrillNativeParquetRowGroupScan extends AbstractParquetRowGroupS
                                             HiveStoragePlugin hiveStoragePlugin,
                                             List<RowGroupReadEntry> rowGroupReadEntries,
                                             List<SchemaPath> columns,
+                                            HivePartitionHolder<Integer> hivePartitionHolder,
                                             LogicalExpression filter) {
     super(userName, rowGroupReadEntries, columns, filter);
     this.hiveStoragePlugin = Preconditions.checkNotNull(hiveStoragePlugin, "Could not find format config for the given configuration");
     this.hiveStoragePluginConfig = hiveStoragePlugin.getConfig();
+    this.hivePartitionHolder = hivePartitionHolder;
   }
 
   @JsonProperty
   public HiveStoragePluginConfig getHiveStoragePluginConfig() {
     return hiveStoragePluginConfig;
+  }
+
+  @JsonProperty
+  public HivePartitionHolder<Integer> getHivePartitionHolder() {
+    return hivePartitionHolder;
   }
 
   @JsonIgnore
@@ -76,7 +86,7 @@ public class HiveDrillNativeParquetRowGroupScan extends AbstractParquetRowGroupS
   @Override
   public PhysicalOperator getNewWithChildren(List<PhysicalOperator> children) {
     Preconditions.checkArgument(children.isEmpty());
-    return new HiveDrillNativeParquetRowGroupScan(getUserName(), hiveStoragePlugin, rowGroupReadEntries, columns, filter);
+    return new HiveDrillNativeParquetRowGroupScan(getUserName(), hiveStoragePlugin, rowGroupReadEntries, columns, hivePartitionHolder, filter);
   }
 
   @Override
@@ -86,7 +96,7 @@ public class HiveDrillNativeParquetRowGroupScan extends AbstractParquetRowGroupS
 
   @Override
   public AbstractParquetRowGroupScan copy(List<SchemaPath> columns) {
-    return new HiveDrillNativeParquetRowGroupScan(getUserName(), hiveStoragePlugin, rowGroupReadEntries, columns, filter);
+    return new HiveDrillNativeParquetRowGroupScan(getUserName(), hiveStoragePlugin, rowGroupReadEntries, columns, hivePartitionHolder, filter);
   }
 
   @Override
