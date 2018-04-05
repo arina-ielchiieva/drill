@@ -257,20 +257,20 @@ public class ConvertHiveParquetScanToDrillParquetScan extends StoragePluginOptim
     }
 
     final HiveScan hiveScan = (HiveScan) hiveScanRel.getGroupScan();
-    final HiveDrillNativeParquetScan2 nativeHiveScan =
+ /*   final HiveDrillNativeParquetScan2 nativeHiveScan =
         new HiveDrillNativeParquetScan2(
             hiveScan.getUserName(),
             nativeScanCols,
             hiveScan.getStoragePlugin(),
             logicalInputSplits);
-
-/*    final HiveDrillNativeParquetScan nativeHiveScan =
+*/
+    final HiveDrillNativeParquetScan nativeHiveScan =
         new HiveDrillNativeParquetScan(
             hiveScan.getUserName(),
             hiveScan.getHiveReadEntry(),
             hiveScan.getStoragePlugin(),
             nativeScanCols,
-            null);*/
+            null);
 
 
     return new DrillScanRel(

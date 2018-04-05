@@ -43,7 +43,7 @@ public class TestHiveDrillNativeReader extends HiveTestBase {
     3. partition pruning via Drill -
     4. ser / de
     5. empty hive table + / maybe empty partitions
-    6. external simple Hive table + statistics
+    6. external simple Hive table + statistics --> calculate how many bytes in one row boolean file....
     7. external partitions in different locations (external)
     8. limit push down without filter +
     9. project push down +
@@ -146,6 +146,11 @@ public class TestHiveDrillNativeReader extends HiveTestBase {
     System.out.println(plan);
     List<QueryDataBatch> res = testSqlWithResults(query);
     printResult(res);
+  }
+
+  @Test
+  public void testPhysicalPlanSubmission() throws Exception {
+    PlanTestBase.testPhysicalPlanExecutionBasedOnQuery("select * from hive.kv_push_ext");
   }
 
 

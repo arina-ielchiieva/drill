@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,18 +18,19 @@
 package org.apache.drill.exec.store.dfs;
 
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class ReadEntryWithPath {
 
   protected String path;
 
-
-  public ReadEntryWithPath(String path) {
-    super();
+  @JsonCreator
+  public ReadEntryWithPath(@JsonProperty("path") String path) {
     this.path = path;
   }
 
-  public ReadEntryWithPath(){}
-
+  @JsonProperty
   public String getPath(){
    return path;
   }

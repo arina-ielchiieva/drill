@@ -46,7 +46,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 
 public abstract class AbstractParquetScanBatchCreator {
 
@@ -126,7 +125,8 @@ public abstract class AbstractParquetScanBatchCreator {
           readers.add(new DrillParquetReader(context, footer, e, columnExplorer.getTableColumns(), fs, containsCorruptDates));
         }
 
-        Map<String, String> implicitValues = columnExplorer.populateImplicitColumns(e.getPath(), rowGroupScan.getSelectionRoot(e));
+        List<String> partitionValues = rowGroupScan.getPartitionValues(e);
+        Map<String, String> implicitValues = columnExplorer.populateImplicitColumns(e.getPath(), partitionValues, rowGroupScan.supportsFileImplicitColumns());
         implicitColumns.add(implicitValues);
         if (implicitValues.size() > mapWithMaxColumns.size()) {
           mapWithMaxColumns = implicitValues;
@@ -161,22 +161,5 @@ public abstract class AbstractParquetScanBatchCreator {
     }
     return false;
   }
-
-
-  public class PartitionPopulator {
-
-    public void main(String[] args) {
-      final String mapper = "MAPPER";
-
-      Function<String, String> strategy = new Function<String, String>() {
-
-        @Override
-        public String apply(String s) {
-          return mapper;
-        }
-      };
-    }
-  }
-
 
 }

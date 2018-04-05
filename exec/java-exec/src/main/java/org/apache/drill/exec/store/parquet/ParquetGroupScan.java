@@ -32,6 +32,7 @@ import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.exec.physical.base.GroupScan;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
+import org.apache.drill.exec.store.ColumnExplorer;
 import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.apache.drill.exec.store.dfs.DrillFileSystem;
 import org.apache.drill.exec.store.dfs.FileSelection;
@@ -284,9 +285,15 @@ public class ParquetGroupScan extends AbstractParquetGroupScan {
   }
 
   @Override
-  protected String getSelectionRoot(RowGroupInfo rowGroup) {
-    return selectionRoot;
+  protected boolean supportsFileImplicitColumns() {
+    return true;
   }
+
+  @Override
+  protected List<String> getPartitionValues(RowGroupInfo rowGroupInfo) {
+    return ColumnExplorer.listDiffDirectoryNames(rowGroupInfo.getPath(), selectionRoot);
+  }
+
   // overridden protected methods block end
 
   // private methods block start
