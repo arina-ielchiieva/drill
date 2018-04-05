@@ -82,7 +82,8 @@ public abstract class AbstractParquetRowGroupScan extends AbstractBase implement
   public abstract boolean areCorruptDatesAutoCorrected();
   @JsonIgnore
   public abstract Configuration getFsConf();
+  public abstract boolean supportsFileImplicitColumns();
   @JsonIgnore
-  public abstract String getSelectionRoot(RowGroupReadEntry rowGroupReadEntry);
+  public abstract List<String> getPartitionValues(RowGroupReadEntry rowGroupReadEntry);
 
 }

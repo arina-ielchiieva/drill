@@ -62,8 +62,8 @@ public class HiveDrillNativeParquetScan2 extends AbstractParquetGroupScan {
   public HiveDrillNativeParquetScan2(@JacksonInject StoragePluginRegistry engineRegistry,
                            @JsonProperty("userName") String userName,
                            @JsonProperty("hiveStoragePluginConfig") HiveStoragePluginConfig hiveStoragePluginConfig,
-                           @JsonProperty("entries") List<ReadEntryWithPath> entries,
                            @JsonProperty("columns") List<SchemaPath> columns,
+                           @JsonProperty("entries") List<ReadEntryWithPath> entries,
                            @JsonProperty("hivePartitionHolder") HivePartitionHolder<String> hivePartitionHolder,
                            @JsonProperty("filter") LogicalExpression filter) throws IOException, ExecutionSetupException {
     super(ImpersonationUtil.resolveUserName(userName), columns, entries, filter);
@@ -225,14 +225,18 @@ public class HiveDrillNativeParquetScan2 extends AbstractParquetGroupScan {
   }
 
   @Override
-  protected String getSelectionRoot(RowGroupInfo rowGroup) {
-    return rowGroup.getPath();
-  }
-
-  @Override
   protected AbstractParquetGroupScan cloneWithFileSelection(Collection<String> filePaths) throws IOException {
     FileSelection newSelection = new FileSelection(null, new ArrayList<>(filePaths), null, null, false);
     return clone(newSelection);
   }
 
+  @Override
+  protected boolean supportsFileImplicitColumns() {
+    return false;
+  }
+
+  @Override
+  protected List<String> getPartitionValues(RowGroupInfo rowGroupInfo) {
+    return hivePartitionHolder.get(rowGroupInfo.getPath());
+  }
 }

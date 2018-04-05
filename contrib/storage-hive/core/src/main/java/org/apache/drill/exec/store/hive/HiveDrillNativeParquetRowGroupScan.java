@@ -110,9 +110,13 @@ public class HiveDrillNativeParquetRowGroupScan extends AbstractParquetRowGroupS
   }
 
   @Override
-  public String getSelectionRoot(RowGroupReadEntry rowGroupReadEntry) {
-    return rowGroupReadEntry.getPath();
+  public boolean supportsFileImplicitColumns() {
+    return false;
   }
 
+  @Override
+  public List<String> getPartitionValues(RowGroupReadEntry rowGroupReadEntry) {
+    return hivePartitionHolder.get(rowGroupReadEntry.getRowGroupIndex());
+  }
 }
 

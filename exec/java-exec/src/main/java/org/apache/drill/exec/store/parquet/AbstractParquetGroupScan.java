@@ -111,7 +111,7 @@ public abstract class AbstractParquetGroupScan extends AbstractFileGroupScan {
   }
 
   @JsonProperty
-  public List<ReadEntryWithPath> getEntries () {
+  public List<ReadEntryWithPath> getEntries() {
     return entries;
   }
 
@@ -232,7 +232,8 @@ public abstract class AbstractParquetGroupScan extends AbstractFileGroupScan {
 
     for (RowGroupInfo rowGroup : rowGroupInfos) {
       final ColumnExplorer columnExplorer = new ColumnExplorer(optionManager, columns);
-      Map<String, String> implicitColValues = columnExplorer.populateImplicitColumns(rowGroup.getPath(), getSelectionRoot(rowGroup));
+      List<String> partitionValues = getPartitionValues(rowGroup);
+      Map<String, String> implicitColValues = columnExplorer.populateImplicitColumns(rowGroup.getPath(), partitionValues, supportsFileImplicitColumns());
 
       ParquetMetaStatCollector statCollector = new ParquetMetaStatCollector(
           parquetTableMetadata,
@@ -430,8 +431,9 @@ public abstract class AbstractParquetGroupScan extends AbstractFileGroupScan {
   // abstract methods block start
   protected abstract void initInternal() throws IOException;
   protected abstract Collection<CoordinationProtos.DrillbitEndpoint> getDrillbits();
-  protected abstract String getSelectionRoot(RowGroupInfo rowGroup);
   protected abstract AbstractParquetGroupScan cloneWithFileSelection(Collection<String> filePaths) throws IOException;
+  protected abstract boolean supportsFileImplicitColumns();
+  protected abstract List<String> getPartitionValues(RowGroupInfo rowGroupInfo);
   // abstract methods block end
 
   // private methods block start

@@ -27,6 +27,7 @@ import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.proto.UserBitShared.CoreOperatorType;
+import org.apache.drill.exec.store.ColumnExplorer;
 import org.apache.drill.exec.store.StoragePluginRegistry;
 
 import com.fasterxml.jackson.annotation.JacksonInject;
@@ -36,7 +37,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.mapred.JobConf;
 
 // Class containing information for reading a single parquet row group form HDFS
 @JsonTypeName("parquet-row-group-scan")
@@ -123,8 +123,13 @@ public class ParquetRowGroupScan extends AbstractParquetRowGroupScan {
   }
 
   @Override
-  public String getSelectionRoot(RowGroupReadEntry rowGroupReadEntry) {
-    return selectionRoot;
+  public boolean supportsFileImplicitColumns() {
+    return true;
+  }
+
+  @Override
+  public List<String> getPartitionValues(RowGroupReadEntry rowGroupReadEntry) {
+    return ColumnExplorer.listDiffDirectoryNames(rowGroupReadEntry.getPath(), selectionRoot);
   }
 }
 
