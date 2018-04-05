@@ -36,7 +36,7 @@ import java.util.List;
 /**
  * Extension of {@link HiveScan} which support reading Hive tables using Drill's native parquet reader.
  */
-@JsonTypeName("hive-drill-native-parquet-scan")
+@JsonTypeName("hive-drill-native-parquet-scan-2-2-2-2")
 public class HiveDrillNativeParquetScan extends HiveScan {
 
   @JsonCreator

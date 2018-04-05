@@ -30,24 +30,24 @@ import java.util.Map;
 
 public class HivePartitionHolder<T> {
 
-  private final Map<T, Integer> filePathToIndexMapper;
+  private final Map<T, Integer> keyToIndexMapper;
   private final List<List<String>> partitionValues;
 
   @JsonCreator
-  public HivePartitionHolder(@JsonProperty("filePathToIndexMapper") Map<T, Integer> filePathToIndexMapper,
+  public HivePartitionHolder(@JsonProperty("keyToIndexMapper") Map<T, Integer> keyToIndexMapper,
                              @JsonProperty("partitionValues") List<List<String>> partitionValues) {
-    this.filePathToIndexMapper = filePathToIndexMapper;
+    this.keyToIndexMapper = keyToIndexMapper;
     this.partitionValues = partitionValues;
   }
 
   public HivePartitionHolder() {
-    this.filePathToIndexMapper = new HashMap<>();
+    this.keyToIndexMapper = new HashMap<>();
     this.partitionValues = new ArrayList<>();
   }
 
   @JsonProperty
-  public Map<T, Integer> getFilePathToIndexMapper() {
-    return filePathToIndexMapper;
+  public Map<T, Integer> getKeyToIndexMapper() {
+    return keyToIndexMapper;
   }
 
   @JsonProperty
@@ -62,46 +62,13 @@ public class HivePartitionHolder<T> {
       partitionValues.add(values);
 
     }
-    filePathToIndexMapper.put(path, index);
+    keyToIndexMapper.put(path, index);
   }
 
   public List<String> get(T path) {
-    Integer index = filePathToIndexMapper.get(path);
+    Integer index = keyToIndexMapper.get(path);
     assert index != null;
     return partitionValues.get(index);
   }
-
-  /**
-   * An utility class that converts from {@link com.fasterxml.jackson.databind.JsonNode}
-   * to DynamicPojoRecordReader during physical plan fragment deserialization.
-   */
-/*
-  public static class Converter extends StdConverter<JsonNode, HivePartitionHolder> {
-*/
-/*    private static final TypeReference<LinkedHashMap<String, Class<?>>> schemaType =
-      new TypeReference<LinkedHashMap<String, Class<?>>>() {};*//*
-
-
-    private final ObjectMapper mapper;
-
-    public Converter(ObjectMapper mapper)
-    {
-      this.mapper = mapper;
-    }
-
-    @Override
-    public HivePartitionHolder convert(JsonNode value) {
-      //LinkedHashMap<String, Class<?>> schema = mapper.convertValue(value.get("schema"), schemaType);
-
-      //ArrayList records = new ArrayList(schema.size());
-      //final Iterator<JsonNode> recordsIterator = value.get("records").get(0).elements();
-      //for (Class<?> fieldType : schema.values()) {
-        //records.add(mapper.convertValue(recordsIterator.next(), fieldType));
-      //}
-      //int maxRecordsToRead = value.get("recordsPerBatch").asInt();
-      //return new DynamicPojoRecordReader(schema, Collections.singletonList(records), maxRecordsToRead);
-    }
-  }
-*/
 
 }

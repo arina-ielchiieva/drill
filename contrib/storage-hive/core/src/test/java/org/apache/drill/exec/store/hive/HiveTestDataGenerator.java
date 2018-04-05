@@ -596,7 +596,14 @@ public class HiveTestDataGenerator {
         " location '" + tableLocation + "'");
 
     executeQuery(hiveDriver, String.format("alter table kv_push_ext add partition (part_keys = '1') location '%s'", tableLocation + "/part_keys=1"));
+    //executeQuery(hiveDriver, String.format("alter table kv_push_ext add partition (part_key = '1') location '%s'", tableLocation + "/part_keys=1"));
     //executeQuery(hiveDriver, String.format("alter table kv_push_ext add partition (part_key = '2') location '%s'", external.toURI().getPath() + "/part_key=2"));
+    executeQuery(hiveDriver, String.format("alter table kv_push_ext add partition (part_keys = '2') location '%s'", external.toURI().getPath() + "/part_keys=2"));
+    // add empty partition
+    File empty = dirTestWatcher.makeSubDir(Paths.get("empty_part"));
+    executeQuery(hiveDriver, String.format("alter table kv_push_ext add partition (part_keys = '3') location '%s'", empty.toURI().getPath() + "/part_keys=3"));
+
+
 
   }
 

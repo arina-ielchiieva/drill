@@ -39,16 +39,17 @@ public class TestHiveDrillNativeReader extends HiveTestBase {
     /*
   Test cases to check:
     1. item star operator re-write + (works with simple sub-select)
-    2. partition pruning based on Hive partitions + (applied earlier on logical stage)
+    2. partition pruning based on Hive partitions (applied earlier on logical stage): check it was actually applied
     3. partition pruning via Drill -
-    4. ser / de
-    5. empty hive table + / maybe empty partitions
+    4. ser / de : group scan +, row group scan
+    5. empty hive table + / maybe empty partitions + (empty partition is allowed to be added, but ignored)
     6. external simple Hive table + statistics --> calculate how many bytes in one row boolean file....
-    7. external partitions in different locations (external)
+    7. external partitions in different locations (external) +
     8. limit push down without filter +
     9. project push down +
     10. count to direct scan optimization +
     11. partitioned table managed (not external)
+    12. check with nested partitions
    */
 
   @BeforeClass
@@ -150,7 +151,9 @@ public class TestHiveDrillNativeReader extends HiveTestBase {
 
   @Test
   public void testPhysicalPlanSubmission() throws Exception {
+    // checks only group scan
     PlanTestBase.testPhysicalPlanExecutionBasedOnQuery("select * from hive.kv_push_ext");
+    //todo need to check row group scan
   }
 
 
