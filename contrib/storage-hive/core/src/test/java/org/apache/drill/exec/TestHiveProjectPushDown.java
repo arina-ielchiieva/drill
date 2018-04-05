@@ -129,13 +129,16 @@ public class TestHiveProjectPushDown extends HiveTestBase {
   @Test
   public void testPushDown() throws Exception {
     test(String.format("alter session set `%s` = true", ExecConstants.HIVE_OPTIMIZE_SCAN_WITH_NATIVE_READERS));
-    String query = "select * from hive.readtest_parquet where int_field = 123456";
+    //String query = "select * from hive.readtest_parquet where int_field = 123456";
+    String query = "select * from hive.readtest_parquet";
     setColumnWidths(new int[] {40});
     List<QueryDataBatch> res = testSqlWithResults(query);
     printResult(res);
 
     String plan = PlanTestBase.getPlanInString("explain plan for " + query, PlanTestBase.OPTIQ_FORMAT);
     System.out.println(plan);
+
+    PlanTestBase.testPhysicalPlanExecutionBasedOnQuery(query);
 
     /*
 00-00    Screen

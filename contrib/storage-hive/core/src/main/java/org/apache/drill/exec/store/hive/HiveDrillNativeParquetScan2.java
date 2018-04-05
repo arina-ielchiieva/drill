@@ -19,6 +19,7 @@ package org.apache.drill.exec.store.hive;
 import com.fasterxml.jackson.annotation.JacksonInject;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.google.common.base.Preconditions;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
@@ -56,7 +57,7 @@ public class HiveDrillNativeParquetScan2 extends AbstractParquetGroupScan {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(HiveDrillNativeParquetScan2.class);
 
   private final HiveStoragePlugin hiveStoragePlugin;
-  private final HivePartitionHolder<String> hivePartitionHolder; //todo check how this will deserialize!
+  private HivePartitionHolder<String> hivePartitionHolder; //todo check how this will deserialize!
 
   @JsonCreator
   public HiveDrillNativeParquetScan2(@JacksonInject StoragePluginRegistry engineRegistry,
@@ -64,11 +65,11 @@ public class HiveDrillNativeParquetScan2 extends AbstractParquetGroupScan {
                            @JsonProperty("hiveStoragePluginConfig") HiveStoragePluginConfig hiveStoragePluginConfig,
                            @JsonProperty("columns") List<SchemaPath> columns,
                            @JsonProperty("entries") List<ReadEntryWithPath> entries,
-                           @JsonProperty("hivePartitionHolder") HivePartitionHolder<String> hivePartitionHolder,
+                           //@JsonProperty("hivePartitionHolder") HivePartitionHolder<String> hivePartitionHolder,
                            @JsonProperty("filter") LogicalExpression filter) throws IOException, ExecutionSetupException {
     super(ImpersonationUtil.resolveUserName(userName), columns, entries, filter);
     this.hiveStoragePlugin = (HiveStoragePlugin) engineRegistry.getPlugin(hiveStoragePluginConfig);
-    this.hivePartitionHolder = hivePartitionHolder;
+    //this.hivePartitionHolder = hivePartitionHolder;
     init();
   }
 

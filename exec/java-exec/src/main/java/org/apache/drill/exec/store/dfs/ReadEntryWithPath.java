@@ -18,19 +18,18 @@
 package org.apache.drill.exec.store.dfs;
 
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 public class ReadEntryWithPath {
 
   protected String path;
 
-  @JsonCreator
-  public ReadEntryWithPath(@JsonProperty("path") String path) {
+
+  public ReadEntryWithPath(String path) {
+    super();
     this.path = path;
   }
 
-  @JsonProperty
+  public ReadEntryWithPath(){}
+
   public String getPath(){
    return path;
   }
