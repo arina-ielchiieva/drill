@@ -19,22 +19,20 @@ package org.apache.drill.exec.store.hive;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.util.StdConverter;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class HivePartitionHolder<T> {
+public class HivePartitionHolder {
 
-  private final Map<T, Integer> keyToIndexMapper;
+  private final Map<String, Integer> keyToIndexMapper;
   private final List<List<String>> partitionValues;
 
   @JsonCreator
-  public HivePartitionHolder(@JsonProperty("keyToIndexMapper") Map<T, Integer> keyToIndexMapper,
+  public HivePartitionHolder(@JsonProperty("keyToIndexMapper") Map<String, Integer> keyToIndexMapper,
                              @JsonProperty("partitionValues") List<List<String>> partitionValues) {
     this.keyToIndexMapper = keyToIndexMapper;
     this.partitionValues = partitionValues;
@@ -46,7 +44,7 @@ public class HivePartitionHolder<T> {
   }
 
   @JsonProperty
-  public Map<T, Integer> getKeyToIndexMapper() {
+  public Map<String, Integer> getKeyToIndexMapper() {
     return keyToIndexMapper;
   }
 
@@ -55,7 +53,11 @@ public class HivePartitionHolder<T> {
     return partitionValues;
   }
 
-  public void add(T path, List<String> values) {
+  public boolean hasPartitions() {
+    return !keyToIndexMapper.isEmpty();
+  }
+
+  public void add(String path, List<String> values) {
     int index = partitionValues.indexOf(values);
     if (index == -1) {
       index = partitionValues.size();
@@ -65,9 +67,11 @@ public class HivePartitionHolder<T> {
     keyToIndexMapper.put(path, index);
   }
 
-  public List<String> get(T path) {
+  public List<String> get(String path) {
     Integer index = keyToIndexMapper.get(path);
-    assert index != null;
+    if (index == null) {
+      return Collections.emptyList();
+    }
     return partitionValues.get(index);
   }
 

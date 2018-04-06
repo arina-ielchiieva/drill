@@ -571,40 +571,46 @@ public class HiveTestDataGenerator {
   }
 
   private void createTestDataForDrillNativeReaderTests(Driver hiveDriver) {
-
-    // table that has data qualified for partition pruning and filter push down
-    executeQuery(hiveDriver, "create table kv_push(key int, sub_key int) stored as parquet");
+    // Hive managed table that has data qualified for Drill native filter push down
+    executeQuery(hiveDriver, "create table kv_native(key int, sub_key int) stored as parquet");
     // each insert is created in separate file
-    executeQuery(hiveDriver, "insert into table kv_push values (1, 1), (1, 2)");
-    executeQuery(hiveDriver, "insert into table kv_push values (1, 3), (1, 4)");
-    executeQuery(hiveDriver, "insert into table kv_push values (2, 5), (2, 6)");
-    executeQuery(hiveDriver, "insert into table kv_push values (null, 9), (null, 10)");
+    executeQuery(hiveDriver, "insert into table kv_native values (1, 1), (1, 2)");
+    executeQuery(hiveDriver, "insert into table kv_native values (1, 3), (1, 4)");
+    executeQuery(hiveDriver, "insert into table kv_native values (2, 5), (2, 6)");
+    executeQuery(hiveDriver, "insert into table kv_native values (null, 9), (null, 10)");
 
-    executeQuery(hiveDriver, "create table kv_push_test(key int, part_key int) stored as parquet");
-    // each insert is created in separate file
-    executeQuery(hiveDriver, "insert into table kv_push_test values (1, 1), (2, 1)");
-    executeQuery(hiveDriver, "insert into table kv_push_test values (3, 2), (4, 2)");
+    // Hive external table which has three partitions
 
-    // copy external table with data
+    // copy external table with data from test resources
     dirTestWatcher.copyResourceToRoot(Paths.get("external"));
 
     File external = new File (baseDir, "external");
-    String tableLocation = new File(external, "kv_push_ext").toURI().getPath();
+    String tableLocation = new File(external, "kv_native_ext").toURI().getPath();
 
-    //executeQuery(hiveDriver, "create external table kv_push_ext(key int) partitioned by (part_key int) stored as parquet" +
-    executeQuery(hiveDriver, "create external table kv_push_ext(key int, part_key int) partitioned by (part_keys int) stored as parquet" +
-        " location '" + tableLocation + "'");
+    executeQuery(hiveDriver, String.format("create external table kv_native_ext(key int) " +
+        "partitioned by (part_key int) " +
+        "stored as parquet location '%s'",
+        tableLocation));
 
-    executeQuery(hiveDriver, String.format("alter table kv_push_ext add partition (part_keys = '1') location '%s'", tableLocation + "/part_keys=1"));
-    //executeQuery(hiveDriver, String.format("alter table kv_push_ext add partition (part_key = '1') location '%s'", tableLocation + "/part_keys=1"));
-    //executeQuery(hiveDriver, String.format("alter table kv_push_ext add partition (part_key = '2') location '%s'", external.toURI().getPath() + "/part_key=2"));
-    executeQuery(hiveDriver, String.format("alter table kv_push_ext add partition (part_keys = '2') location '%s'", external.toURI().getPath() + "/part_keys=2"));
+    // add partitions
+
+    // partition in the same location as table
+    String firstPartition = new File(tableLocation, "part_key=1").toURI().getPath();
+    executeQuery(hiveDriver, String.format("alter table kv_native_ext add partition (part_key = '1') " +
+      "location '%s'", firstPartition));
+
+    // partition in different location with table
+    String secondPartition = new File(external, "part_key=2").toURI().getPath();
+    executeQuery(hiveDriver, String.format("alter table kv_native_ext add partition (part_key = '2') " +
+      "location '%s'", secondPartition));
+
     // add empty partition
-    File empty = dirTestWatcher.makeSubDir(Paths.get("empty_part"));
-    executeQuery(hiveDriver, String.format("alter table kv_push_ext add partition (part_keys = '3') location '%s'", empty.toURI().getPath() + "/part_keys=3"));
+    String thirdPartition = new File(dirTestWatcher.makeSubDir(Paths.get("empty_part")), "part_key=3").toURI().getPath();
+    executeQuery(hiveDriver, String.format("alter table kv_native_ext add partition (part_key = '3') " +
+      "location '%s'", thirdPartition));
 
-
-
+    // Hive empty table
+    executeQuery(hiveDriver, "create table kv_native_empty(key int, sub_key int) stored as parquet");
   }
 
   private File getTempFile() throws Exception {

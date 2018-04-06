@@ -310,7 +310,6 @@ public class PlanTestBase extends BaseTestQuery {
   public static void testPhysicalPlanExecutionBasedOnQuery(String query) throws Exception {
     query = "EXPLAIN PLAN for " + QueryTestUtil.normalizeQuery(query);
     String plan = getPlanInString(query, JSON_FORMAT);
-    System.out.println(plan);
     testPhysical(plan);
   }
 
