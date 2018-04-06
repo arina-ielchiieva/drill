@@ -19,14 +19,23 @@ package org.apache.drill.exec;
 import org.apache.drill.PlanTestBase;
 import org.apache.drill.categories.HiveStorageTest;
 import org.apache.drill.categories.SlowTest;
+import org.apache.drill.common.config.DrillConfig;
+import org.apache.drill.common.exceptions.UserRemoteException;
 import org.apache.drill.exec.hive.HiveTestBase;
 import org.apache.drill.exec.rpc.user.QueryDataBatch;
+import org.hamcrest.CoreMatchers;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.ExpectedException;
 
 import java.util.List;
+import java.util.Properties;
+
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 @Category({SlowTest.class, HiveStorageTest.class})
 public class TestHiveDrillNativeReader extends HiveTestBase {
@@ -48,8 +57,9 @@ public class TestHiveDrillNativeReader extends HiveTestBase {
     8. limit push down without filter +
     9. project push down +
     10. count to direct scan optimization +
-    11. partitioned table managed (not external)
-    12. check with nested partitions
+    11. partitioned table managed (not external) +
+    12. check with nested partitions +
+    13. check parallelization is working fine (need to check on the cluster, that several drillbits can read data)
    */
 
   @BeforeClass
@@ -62,6 +72,9 @@ public class TestHiveDrillNativeReader extends HiveTestBase {
   public static void cleanup() {
     resetSessionOption(ExecConstants.HIVE_OPTIMIZE_SCAN_WITH_NATIVE_READERS);
   }
+
+  @Rule
+  public ExpectedException thrown = ExpectedException.none();
 
   @Test
   public void testFilterPushDown() throws Exception {
@@ -89,45 +102,10 @@ public class TestHiveDrillNativeReader extends HiveTestBase {
     printResult(res);
   }
 
-  @Test
-  public void testLimit() throws Exception {
-    String query = "select * from hive.kv_push limit 2"; // work without filter only, which is expected
-    // limit is not applied when convert is turned on during physical scan
-    // copied rules to physical scan rules set, rule started to work
 
-    String plan = PlanTestBase.getPlanInString("explain plan for " + query, PlanTestBase.OPTIQ_FORMAT);
-    System.out.println(plan);
-    List<QueryDataBatch> res = testSqlWithResults(query);
-    printResult(res);
-  }
 
   @Test
-  public void testEmpty() throws Exception {
-    //String query = "select `key` from hive.kv_push where key = 2";
-    String query = "select `key` from hive.kv_push";
-    // hive scan was chosen. check in rule is applied in case table is empty
-    // and we need to output the schema only
-
-    String plan = PlanTestBase.getPlanInString("explain plan for " + query, PlanTestBase.OPTIQ_FORMAT);
-    System.out.println(plan);
-    List<QueryDataBatch> res = testSqlWithResults(query);
-    printResult(res);
-  }
-
-  @Test
-  public void testCountToDirectScan() throws Exception {
-    String query = "select count(1) from hive.kv_push"; // hive scan was chosen
-    // native reader was chosen only if cost was extremely high on logical stage
-    // work perfectly fine with convert on physical scan
-
-    String plan = PlanTestBase.getPlanInString("explain plan for " + query, PlanTestBase.OPTIQ_FORMAT);
-    System.out.println(plan);
-    List<QueryDataBatch> res = testSqlWithResults(query);
-    printResult(res);
-  }
-
-  @Test
-  public void testItemStar() throws Exception {
+  public void testSimpleItemStarSubqueryFilterPushDown() throws Exception {
     //String query = "select * from (select * from hive.kv_push) where key > 1";
     //String query = "select * from (select *, sub_key as sk from hive.kv_push) where key > 1";
     String query = "select * from (select * from (select * from hive.kv_push)) where key > 1";
@@ -149,27 +127,54 @@ public class TestHiveDrillNativeReader extends HiveTestBase {
     printResult(res);
   }
 
+  // project push down
+
   @Test
   public void testPhysicalPlanSubmission() throws Exception {
     // checks only group scan
-    PlanTestBase.testPhysicalPlanExecutionBasedOnQuery("select * from hive.kv_push_ext");
+    PlanTestBase.testPhysicalPlanExecutionBasedOnQuery("select * from hive.kv_native_push");
     //todo need to check row group scan
   }
 
+  @Test
+  public void testLimitPushDown() throws Exception {
+    String query = "select * from hive.kv_native limit 2";
+
+    testPlanMatchingPatterns(query, new String[]{"HiveDrillNativeParquetScan", "numFiles=1"}, new String[]{});
+
+    test
+
+  }
+
+  @Test
+  public void testEmptyTable() throws Exception {
+    String query = "select * from hive.kv_native_empty";
+    // Hive reader should be chosen to output the schema
+    testPlanMatchingPatterns(query, new String[]{"HiveScan"}, new String[]{});
+  }
+
+  @Test
+  public void testConvertCountToDirectScanOptimization() throws Exception {
+    String query = "select count(1) as cnt from hive.kv_native";
+
+    testPlanMatchingPatterns(query, new String[]{"DynamicPojoRecordReader"}, new String[]{});
+
+    testBuilder()
+      .sqlQuery(query)
+      .unOrdered()
+      .baselineColumns("cnt")
+      .baselineValues(8L)
+      .go();
+  }
 
   @Test
   public void testImplicitColumns() throws Exception {
-    // implicit columns do not work with hive....
-    // check if we can postpone this check if native reader is turned on
+    thrown.expect(UserRemoteException.class);
+    thrown.expectMessage(CoreMatchers.allOf(containsString("VALIDATION ERROR"), containsString("not found in any table")));
 
-    // decided that we don't need them since hive is closed system
-    String query = "select *, filename, fqn, filepath, suffix from hive.kv_push where key > 1";
-
-    String plan = PlanTestBase.getPlanInString("explain plan for " + query, PlanTestBase.OPTIQ_FORMAT);
-    System.out.println(plan);
-    List<QueryDataBatch> res = testSqlWithResults(query);
-    printResult(res);
+    test("select *, filename, fqn, filepath, suffix from hive.kv_native_push");
   }
+
 
   /*
 

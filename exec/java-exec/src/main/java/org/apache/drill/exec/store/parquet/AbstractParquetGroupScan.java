@@ -174,9 +174,7 @@ public abstract class AbstractParquetGroupScan extends AbstractFileGroupScan {
   public ScanStats getScanStats() {
     int columnCount = columns == null ? 20 : columns.size();
     long rowCount = parquetGroupScanStatistics.getRowCount();
-    ScanStats scanStats = new ScanStats(ScanStats.GroupScanProperty.EXACT_ROW_COUNT, rowCount, 1, rowCount * columnCount);
-    //System.out.println("DRILL: " + scanStats);
-    return scanStats;
+    return new ScanStats(ScanStats.GroupScanProperty.EXACT_ROW_COUNT, rowCount, 1, rowCount * columnCount);
   }
 
   protected List<RowGroupReadEntry> getReadEntries(int minorFragmentId) {
