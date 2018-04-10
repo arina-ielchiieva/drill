@@ -148,6 +148,7 @@ public class ParquetGroupScan extends AbstractParquetGroupScan {
       this.cacheFileRoot = that.cacheFileRoot;
       this.metaContext = that.metaContext;
     }
+    this.usedMetadataCache = that.usedMetadataCache;
   }
 
   // getters for serialization / deserialization start

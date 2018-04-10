@@ -37,10 +37,9 @@ import java.sql.Timestamp;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 
 @Category({SlowTest.class, HiveStorageTest.class})
-public class TestHiveDrillNativeReader extends HiveTestBase {
+public class TestHiveDrillNativeParquetReader extends HiveTestBase {
 
   //todo Java 8 enhancements, replace for loops with streams...
 
@@ -235,7 +234,7 @@ public class TestHiveDrillNativeReader extends HiveTestBase {
   }
 
   @Test
-  public void readAllSupportedHiveDataTypesNativeParquet() throws Exception {
+  public void testReadAllSupportedHiveDataTypesNativeParquet() throws Exception {
     String query = "select * from hive.readtest_parquet";
 
     testPlanMatchingPatterns(query, new String[] {"HiveDrillNativeParquetScan"}, new String[]{});
