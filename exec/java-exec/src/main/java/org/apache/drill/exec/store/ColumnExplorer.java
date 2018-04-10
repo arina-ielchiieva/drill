@@ -204,7 +204,7 @@ public class ColumnExplorer {
 
     int rootDepth = new Path(root).depth();
     Path path = new Path(filePath);
-    int pathDepth = path.depth();
+    int pathDepth = path.getParent().depth(); //todo add valid explanation
 
     int diffCount = pathDepth - rootDepth;
 
