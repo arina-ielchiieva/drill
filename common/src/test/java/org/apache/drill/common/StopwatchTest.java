@@ -58,10 +58,10 @@ public class StopwatchTest {
     Stopwatch stopwatch = Stopwatch.createStarted(true);
     assertTrue("Stopwatch should be running", stopwatch.isRunning());
     long elapsedTime = stopwatch.elapsed(TimeUnit.NANOSECONDS);
-    assertTrue("Elapsed time should be more then 0",elapsedTime > 0);
+    assertTrue("Elapsed time should be more then 0", elapsedTime > 0);
     stopwatch.stop();
     assertFalse("Stopwatch should be stopped", stopwatch.isRunning());
-    assertTrue("Elapsed time should be more then previous elapsed time",stopwatch.elapsed(TimeUnit.NANOSECONDS) > elapsedTime);
+    assertTrue("Elapsed time should be more then previous elapsed time", stopwatch.elapsed(TimeUnit.NANOSECONDS) > elapsedTime);
   }
 
   @Test
@@ -71,10 +71,10 @@ public class StopwatchTest {
     assertEquals(0, stopwatch.elapsed(TimeUnit.NANOSECONDS));
     stopwatch.start();
     long elapsedTime = stopwatch.elapsed(TimeUnit.NANOSECONDS);
-    assertTrue("Elapsed time should be more then 0",elapsedTime > 0);
+    assertTrue("Elapsed time should be more then 0", elapsedTime > 0);
     stopwatch.stop();
     assertFalse("Stopwatch should be stopped", stopwatch.isRunning());
-    assertTrue("Elapsed time should be more then previous elapsed time",stopwatch.elapsed(TimeUnit.NANOSECONDS) > elapsedTime);
+    assertTrue("Elapsed time should be more then previous elapsed time", stopwatch.elapsed(TimeUnit.NANOSECONDS) > elapsedTime);
   }
 
 }
