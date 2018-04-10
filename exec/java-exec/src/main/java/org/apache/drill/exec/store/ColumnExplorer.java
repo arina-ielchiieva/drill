@@ -20,6 +20,7 @@ package org.apache.drill.exec.store;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -168,7 +169,7 @@ public class ColumnExplorer {
   public Map<String, String> populateImplicitColumns(String filePath,
                                                      List<String> partitionValues,
                                                      boolean includeFileImplicitColumns) {
-    Map<String, String> implicitValues = new HashMap<>();
+    Map<String, String> implicitValues = new LinkedHashMap<>();
 
     for(int i = 0; i < partitionValues.size(); i++) {
       if (isStarQuery || selectedPartitionColumns.contains(i)) {
