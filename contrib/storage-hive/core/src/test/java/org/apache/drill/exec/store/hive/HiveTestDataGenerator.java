@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.Sets;
+import com.google.common.io.Resources;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.drill.test.BaseDirTestWatcher;
@@ -169,11 +170,6 @@ public class HiveTestDataGenerator {
         "ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE");
     executeQuery(hiveDriver, "LOAD DATA LOCAL INPATH '" + testDataFile + "' OVERWRITE INTO TABLE default.kv");
 
-    executeQuery(hiveDriver,
-            "CREATE external table kv_parquet_non(key INT, value STRING) STORED AS PARQUET " +
-                    "LOCATION '/home/arina/files'");
-    //executeQuery(hiveDriver, "insert into default.kv_parquet select * from default.kv");
-
     // Create a (key, value) schema table in non-default database with RegexSerDe which is available in hive-contrib.jar
     // Table with RegExSerde is expected to have columns of STRING type only.
     executeQuery(hiveDriver, "CREATE DATABASE IF NOT EXISTS db1");
@@ -195,10 +191,6 @@ public class HiveTestDataGenerator {
 
     executeQuery(hiveDriver, avroCreateQuery);
     executeQuery(hiveDriver, "INSERT INTO TABLE db1.avro SELECT * FROM default.kv");
-
-
-    executeQuery(hiveDriver,"create external table md4107_hive (a varchar(10), b double) " +
-            "STORED AS PARQUET LOCATION '/tmp/md4107_par'");
 
     executeQuery(hiveDriver, "USE default");
 
@@ -508,22 +500,6 @@ public class HiveTestDataGenerator {
     executeQuery(hiveDriver, "INSERT INTO TABLE kv_parquet PARTITION(part1) SELECT key, value, key FROM default.kv");
     executeQuery(hiveDriver, "ALTER TABLE kv_parquet ADD COLUMNS (newcol string)");
 
-    /*executeQuery(hiveDriver,
-        "CREATE TABLE countStar_Parquet (int_field INT) STORED AS parquet");
-
-    final int numOfRows = 200;
-    final StringBuffer sb = new StringBuffer();
-    sb.append("VALUES ");
-    for(int i = 0; i < numOfRows; ++i) {
-      if(i != 0) {
-        sb.append(",");
-      }
-      sb.append("(").append(i).append(")");
-    }
-
-    executeQuery(hiveDriver, "INSERT INTO TABLE countStar_Parquet \n" +
-        sb.toString());
-
     // Create a StorageHandler based table (DRILL-3739)
     executeQuery(hiveDriver, "CREATE TABLE kv_sh(key INT, value STRING) STORED BY " +
         "'org.apache.hadoop.hive.ql.metadata.DefaultStorageHandler'");
@@ -563,14 +539,14 @@ public class HiveTestDataGenerator {
     executeQuery(hiveDriver, "create table default.simple_json(json string)");
     final String loadData = "load data local inpath '" +
         Resources.getResource("simple.json") + "' into table default.simple_json";
-    executeQuery(hiveDriver, loadData);*/
+    executeQuery(hiveDriver, loadData);
 
-    createTestDataForDrillNativeReaderTests(hiveDriver);
+    createTestDataForDrillNativeParquetReaderTests(hiveDriver);
 
     ss.close();
   }
 
-  private void createTestDataForDrillNativeReaderTests(Driver hiveDriver) {
+  private void createTestDataForDrillNativeParquetReaderTests(Driver hiveDriver) {
     // Hive managed table that has data qualified for Drill native filter push down
     executeQuery(hiveDriver, "create table kv_native(key int, sub_key int) stored as parquet");
     // each insert is created in separate file
@@ -592,6 +568,15 @@ public class HiveTestDataGenerator {
         "stored as parquet location '%s'",
         tableLocation));
 
+    /*
+      DATA:
+      key, part_key
+      1, 1
+      2, 1
+      3, 2
+      4, 2
+     */
+
     // add partitions
 
     // partition in the same location as table
@@ -608,9 +593,6 @@ public class HiveTestDataGenerator {
     String thirdPartition = new File(dirTestWatcher.makeSubDir(Paths.get("empty_part")), "part_key=3").toURI().getPath();
     executeQuery(hiveDriver, String.format("alter table kv_native_ext add partition (part_key = '3') " +
       "location '%s'", thirdPartition));
-
-    // Hive empty table
-    executeQuery(hiveDriver, "create table kv_native_empty(key int, sub_key int) stored as parquet");
   }
 
   private File getTempFile() throws Exception {

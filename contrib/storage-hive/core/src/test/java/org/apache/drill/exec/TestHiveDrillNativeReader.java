@@ -19,11 +19,11 @@ package org.apache.drill.exec;
 import org.apache.drill.PlanTestBase;
 import org.apache.drill.categories.HiveStorageTest;
 import org.apache.drill.categories.SlowTest;
-import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.exceptions.UserRemoteException;
 import org.apache.drill.exec.hive.HiveTestBase;
-import org.apache.drill.exec.rpc.user.QueryDataBatch;
+import org.apache.drill.exec.planner.physical.PlannerSettings;
 import org.hamcrest.CoreMatchers;
+import org.joda.time.DateTime;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -31,126 +31,175 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.ExpectedException;
 
-import java.util.List;
-import java.util.Properties;
+import java.math.BigDecimal;
+import java.sql.Date;
+import java.sql.Timestamp;
 
 import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 @Category({SlowTest.class, HiveStorageTest.class})
 public class TestHiveDrillNativeReader extends HiveTestBase {
 
   //todo Java 8 enhancements, replace for loops with streams...
 
-  //todo check stats calculation in native reader vs current by parquet
-  //todo current impl does not show
-
     /*
   Test cases to check:
-    1. item star operator re-write + (works with simple sub-select)
-    2. partition pruning based on Hive partitions (applied earlier on logical stage): check it was actually applied
-    3. partition pruning via Drill -
+    -- 1. item star operator re-write + (works with simple sub-select)
+    -- 2. partition pruning based on Hive partitions (applied earlier on logical stage): check it was actually applied
+    -- 3. partition pruning via Drill -
     4. ser / de : group scan +, row group scan
-    5. empty hive table + / maybe empty partitions + (empty partition is allowed to be added, but ignored)
-    6. external simple Hive table + statistics --> calculate how many bytes in one row boolean file....
-    7. external partitions in different locations (external) +
-    8. limit push down without filter +
-    9. project push down +
-    10. count to direct scan optimization +
-    11. partitioned table managed (not external) +
-    12. check with nested partitions +
+    -- 5. empty hive table + / maybe empty partitions + (empty partition is allowed to be added, but ignored) +
+    -- 6. external simple Hive table + statistics --> calculate how many bytes in one row boolean file....
+    -- 7. external partitions in different locations (external) +
+    -- 8. limit push down without filter +
+    -- 9. project push down +
+    -- 10. count to direct scan optimization +
+    --11. partitioned table managed (not external) +
+    --12. check with nested partitions +
     13. check parallelization is working fine (need to check on the cluster, that several drillbits can read data)
    */
 
   @BeforeClass
   public static void init() {
     setSessionOption(ExecConstants.HIVE_OPTIMIZE_SCAN_WITH_NATIVE_READERS, true);
+    setSessionOption(PlannerSettings.ENABLE_DECIMAL_DATA_TYPE_KEY, true);
   }
-
 
   @AfterClass
   public static void cleanup() {
     resetSessionOption(ExecConstants.HIVE_OPTIMIZE_SCAN_WITH_NATIVE_READERS);
+    resetSessionOption(PlannerSettings.ENABLE_DECIMAL_DATA_TYPE_KEY);
   }
 
   @Rule
   public ExpectedException thrown = ExpectedException.none();
 
   @Test
-  public void testFilterPushDown() throws Exception {
-    String query = "select `key` from hive.kv_push where key > 1";
+  public void testFilterPushDownForManagedTable() throws Exception {
+    String query = "select * from hive.kv_native where key > 1";
 
-    // work fine on physical and logical convert
+    int actualRowCount = testSql(query);
+    assertEquals("Expected and actual row count should match", 2, actualRowCount);
 
-    String plan = PlanTestBase.getPlanInString("explain plan for " + query, PlanTestBase.OPTIQ_FORMAT);
-    System.out.println(plan);
-    List<QueryDataBatch> res = testSqlWithResults(query);
-    printResult(res);
+    testPlanMatchingPatterns(query,
+        new String[]{"HiveDrillNativeParquetScan", "numFiles=1"}, new String[]{});
   }
 
   @Test
-  public void testPartitionPruning() throws Exception {
-    String query = "select `key` from hive.kv_push where key = 2";
-    //String query = "select * from hive.kv_push where key = 2 limit 2";
-    //String query = "select * from hive.kv_push limit 2"; // work without filter only, which is expected
+  public void testFilterPushDownForExternalTable() throws Exception {
+    String query = "select * from hive.kv_native_ext where key = 1";
 
-    // does not work at all
+    int actualRowCount = testSql(query);
+    assertEquals("Expected and actual row count should match", 1, actualRowCount);
 
-    String plan = PlanTestBase.getPlanInString("explain plan for " + query, PlanTestBase.OPTIQ_FORMAT);
-    System.out.println(plan);
-    List<QueryDataBatch> res = testSqlWithResults(query);
-    printResult(res);
-  }
-
-
-
-  @Test
-  public void testSimpleItemStarSubqueryFilterPushDown() throws Exception {
-    //String query = "select * from (select * from hive.kv_push) where key > 1";
-    //String query = "select * from (select *, sub_key as sk from hive.kv_push) where key > 1";
-    String query = "select * from (select * from (select * from hive.kv_push)) where key > 1";
-
-    // work fine on physical and logical convert
-
-    String plan = PlanTestBase.getPlanInString("explain plan for " + query, PlanTestBase.OPTIQ_FORMAT);
-    System.out.println(plan);
-    List<QueryDataBatch> res = testSqlWithResults(query);
-    printResult(res);
+    testPlanMatchingPatterns(query,
+        new String[]{"HiveDrillNativeParquetScan", "numFiles=1"}, new String[]{});
   }
 
   @Test
-  public void testExternal() throws Exception {
-    String query = "select * from hive.kv_push_ext";
-    String plan = PlanTestBase.getPlanInString("explain plan for " + query, PlanTestBase.OPTIQ_FORMAT);
-    System.out.println(plan);
-    List<QueryDataBatch> res = testSqlWithResults(query);
-    printResult(res);
-  }
+  public void testManagedPartitionPruning() throws Exception {
+    String query = "select * from hive.readtest_parquet where tinyint_part = 64";
 
-  // project push down
+    int actualRowCount = testSql(query);
+    assertEquals("Expected and actual row count should match", 2, actualRowCount);
 
-  @Test
-  public void testPhysicalPlanSubmission() throws Exception {
-    // checks only group scan
-    PlanTestBase.testPhysicalPlanExecutionBasedOnQuery("select * from hive.kv_native_push");
-    //todo need to check row group scan
+    // Hive partition pruning is applied during logical stage
+    // while convert to Drill native parquet reader during physical
+    // thus plan should not contain filter
+    testPlanMatchingPatterns(query,
+        new String[]{"HiveDrillNativeParquetScan", "numFiles=1"}, new String[]{"Filter"});
   }
 
   @Test
-  public void testLimitPushDown() throws Exception {
-    String query = "select * from hive.kv_native limit 2";
+  public void testExternalPartitionPruning() throws Exception {
+    String query = "select `key` from hive.kv_native_ext where part_key = 2";
 
-    testPlanMatchingPatterns(query, new String[]{"HiveDrillNativeParquetScan", "numFiles=1"}, new String[]{});
+    int actualRowCount = testSql(query);
+    assertEquals("Expected and actual row count should match", 2, actualRowCount);
 
-    test
+    // Hive partition pruning is applied during logical stage
+    // while convert to Drill native parquet reader during physical
+    // thus plan should not contain filter
+    testPlanMatchingPatterns(query,
+        new String[]{"HiveDrillNativeParquetScan", "numFiles=1"}, new String[]{"Filter"});
+  }
 
+  @Test
+  public void testSimpleStarSubQueryFilterPushDown() throws Exception {
+    String query = "select * from (select * from (select * from hive.kv_native)) where key > 1";
+
+    int actualRowCount = testSql(query);
+    assertEquals("Expected and actual row count should match", 2, actualRowCount);
+
+    testPlanMatchingPatterns(query,
+        new String[]{"HiveDrillNativeParquetScan", "numFiles=1"}, new String[]{});
+  }
+
+  @Test
+  public void testPartitionedExternalTable() throws Exception {
+    String query = "select * from hive.kv_native_ext";
+
+    testPlanMatchingPatterns(query, new String[]{"HiveDrillNativeParquetScan", "numFiles=2"}, new String[]{});
+
+    testBuilder()
+        .sqlQuery(query)
+        .unOrdered()
+        .baselineColumns("key", "part_key")
+        .baselineValues(1, 1)
+        .baselineValues(2, 1)
+        .baselineValues(3, 2)
+        .baselineValues(4, 2)
+        .go();
   }
 
   @Test
   public void testEmptyTable() throws Exception {
-    String query = "select * from hive.kv_native_empty";
+    String query = "select * from hive.empty_table";
     // Hive reader should be chosen to output the schema
-    testPlanMatchingPatterns(query, new String[]{"HiveScan"}, new String[]{});
+    testPlanMatchingPatterns(query, new String[]{"HiveScan"}, new String[]{"HiveDrillNativeParquetScan"});
+  }
+
+  @Test
+  public void testEmptyPartition() throws Exception {
+    String query = "select * from hive.kv_native_ext where part_key = 3";
+    // Hive reader should be chosen to output the schema
+    testPlanMatchingPatterns(query, new String[]{"HiveScan"}, new String[]{"HiveDrillNativeParquetScan"});
+  }
+
+  @Test
+  public void testPhysicalPlanSubmission() throws Exception {
+    // checks only group scan
+    PlanTestBase.testPhysicalPlanExecutionBasedOnQuery("select * from hive.kv_native");
+    PlanTestBase.testPhysicalPlanExecutionBasedOnQuery("select * from hive.kv_native_ext");
+    //todo need to check row group scan
+  }
+
+  @Test
+  public void testProjectPushDownOptimization() throws Exception {
+    String query = "select boolean_field, int_part from hive.readtest_parquet";
+
+    int actualRowCount = testSql(query);
+    assertEquals("Expected and actual row count should match", 2, actualRowCount);
+
+    testPlanMatchingPatterns(query,
+        // partition column is named during scan as Drill partition columns
+        // it will be renamed to actual value in subsequent project
+        new String[]{"Project\\(boolean_field=\\[\\$0\\], int_part=\\[CAST\\(\\$1\\):INTEGER\\]\\)",
+            "HiveDrillNativeParquetScan",
+            "columns=\\[`boolean_field`, `dir9`\\]"},
+        new String[]{});
+  }
+
+  @Test
+  public void testLimitPushDownOptimization() throws Exception {
+    String query = "select * from hive.kv_native limit 2";
+
+    int actualRowCount = testSql(query);
+    assertEquals("Expected and actual row count should match", 2, actualRowCount);
+
+    testPlanMatchingPatterns(query, new String[]{"HiveDrillNativeParquetScan", "numFiles=1"}, new String[]{});
   }
 
   @Test
@@ -172,50 +221,48 @@ public class TestHiveDrillNativeReader extends HiveTestBase {
     thrown.expect(UserRemoteException.class);
     thrown.expectMessage(CoreMatchers.allOf(containsString("VALIDATION ERROR"), containsString("not found in any table")));
 
-    test("select *, filename, fqn, filepath, suffix from hive.kv_native_push");
+    test("select *, filename, fqn, filepath, suffix from hive.kv_native");
   }
 
+  @Test // DRILL-3739
+  public void testReadingFromStorageHandleBasedTable() throws Exception {
+    testBuilder()
+        .sqlQuery("select * from hive.kv_sh order by key limit 2")
+        .ordered()
+        .baselineColumns("key", "value")
+        .expectsEmptyResultSet()
+        .go();
+  }
 
-  /*
+  @Test
+  public void readAllSupportedHiveDataTypesNativeParquet() throws Exception {
+    String query = "select * from hive.readtest_parquet";
 
-  1. simple item star has worked
-  2. with additional column not
-  3. nested subquery
+    testPlanMatchingPatterns(query, new String[] {"HiveDrillNativeParquetScan"}, new String[]{});
 
-00-00    Screen
-00-01      Project(key=[$0], sub_key=[$1], sub_key0=[$2])
-00-02        SelectionVectorRemover
-00-03          Filter(condition=[>($0, 2)])
-00-04            Project(key=[$0], sub_key=[$1], sub_key0=[$1])
-00-05              Project(key=[$0], sub_key=[$1])
-00-06                Scan(groupscan=[HiveDrillNativeParquetScan [entries=[ReadEntryWithPath [path=/home/arina/git_repo/drill/contrib/storage-hive/core/target/org.apache.drill.exec.TestHiveDrillNativeReader/root/warehouse/kv_push/000000_0], ReadEntryWithPath [path=/home/arina/git_repo/drill/contrib/storage-hive/core/target/org.apache.drill.exec.TestHiveDrillNativeReader/root/warehouse/kv_push/000000_0_copy_1], ReadEntryWithPath [path=/home/arina/git_repo/drill/contrib/storage-hive/core/target/org.apache.drill.exec.TestHiveDrillNativeReader/root/warehouse/kv_push/000000_0_copy_2], ReadEntryWithPath [path=/home/arina/git_repo/drill/contrib/storage-hive/core/target/org.apache.drill.exec.TestHiveDrillNativeReader/root/warehouse/kv_push/000000_0_copy_3]], numFiles=4, numRowGroups=4, columns=[`key`, `sub_key`]]])
+    testBuilder()
+        .sqlQuery(query)
+        .unOrdered()
+        .baselineColumns("binary_field", "boolean_field", "tinyint_field", "decimal0_field", "decimal9_field", "decimal18_field", "decimal28_field", "decimal38_field", "double_field", "float_field", "int_field", "bigint_field", "smallint_field", "string_field", "varchar_field", "timestamp_field", "char_field",
+        // There is a regression in Hive 1.2.1 in binary and boolean partition columns. Disable for now.
+        //"binary_part",
+        "boolean_part", "tinyint_part", "decimal0_part", "decimal9_part", "decimal18_part", "decimal28_part", "decimal38_part", "double_part", "float_part", "int_part", "bigint_part", "smallint_part", "string_part", "varchar_part", "timestamp_part", "date_part", "char_part")
+        .baselineValues("binaryfield".getBytes(), false, 34, new BigDecimal("66"), new BigDecimal("2347.92"), new BigDecimal("2758725827.99990"), new BigDecimal("29375892739852.8"), new BigDecimal("89853749534593985.783"), 8.345d, 4.67f, 123456, 234235L, 3455, "stringfield", "varcharfield", new DateTime(Timestamp.valueOf("2013-07-05 17:01:00").getTime()), "charfield",
+        // There is a regression in Hive 1.2.1 in binary and boolean partition columns. Disable for now.
+        //"binary",
+        true, 64, new BigDecimal("37"), new BigDecimal("36.90"), new BigDecimal("3289379872.94565"), new BigDecimal("39579334534534.4"), new BigDecimal("363945093845093890.900"), 8.345d, 4.67f, 123456, 234235L, 3455, "string", "varchar", new DateTime(Timestamp.valueOf("2013-07-05 17:01:00").getTime()), new DateTime(Date.valueOf("2013-07-05").getTime()), "char").baselineValues( // All fields are null, but partition fields have non-null values
+        null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+        // There is a regression in Hive 1.2.1 in binary and boolean partition columns. Disable for now.
+        //"binary",
+        true, 64, new BigDecimal("37"), new BigDecimal("36.90"), new BigDecimal("3289379872.94565"), new BigDecimal("39579334534534.4"), new BigDecimal("363945093845093890.900"), 8.345d, 4.67f, 123456, 234235L, 3455, "string", "varchar", new DateTime(Timestamp.valueOf("2013-07-05 17:01:00").getTime()), new DateTime(Date.valueOf("2013-07-05").getTime()), "char").go();
+  }
 
-is not working because has two projects...
-and no item star project...
+  @Test // DRILL-3938
+  public void testNativeReaderIsDisabledForAlteredPartitionedTable() throws Exception {
+    String query = "select key, `value`, newcol from hive.kv_parquet order by key limit 1";
 
-Do we have a rule to simplify two projects?
-
-   */
+    // Make sure the HiveScan in plan has no native parquet reader
+    testPlanMatchingPatterns(query, new String[] {"HiveScan"}, new String[]{"HiveDrillNativeParquetScan"});
+  }
 
 }
-
-
-/*
-00-00    Screen
-00-01      Project(key=[$0], sub_key=[$1])
-00-02        SelectionVectorRemover
-00-03          Limit(fetch=[2])
-00-04            Filter(condition=[=($0, 2)])
-00-05              Scan(groupscan=[HiveScan [table=Table(dbName:default, tableName:kv_push), columns=[`**`], numPartitions=0, partitions= null, inputDirectories=[file:/home/arina/git_repo/drill/contrib/storage-hive/core/target/org.apache.drill.exec.TestHiveDrillNativeReader/root/warehouse/kv_push]]])
-
-
-00-00    Screen
-00-01      Project(key=[$0], sub_key=[$1])
-00-02        SelectionVectorRemover
-00-03          Limit(fetch=[2])
-00-04            Filter(condition=[=($0, 2)])
-00-05              Project(key=[$0], sub_key=[$1])
-00-06                Scan(groupscan=[HiveDrillNativeParquetScan [entries=[ReadEntryWithPath [path=/home/arina/git_repo/drill/contrib/storage-hive/core/target/org.apache.drill.exec.TestHiveDrillNativeReader/root/warehouse/kv_push/000000_0_copy_2]], numFiles=1, numRowGroups=1, columns=[`**`]]])
-
-
- */
