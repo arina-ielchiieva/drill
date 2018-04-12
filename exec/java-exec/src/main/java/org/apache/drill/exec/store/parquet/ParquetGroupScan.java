@@ -59,16 +59,18 @@ import org.apache.drill.exec.store.ColumnExplorer;
 import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.apache.drill.exec.store.dfs.DrillFileSystem;
 import org.apache.drill.exec.store.dfs.FileSelection;
+import org.apache.drill.exec.store.parquet.metadata.Metadata;
+import org.apache.drill.exec.store.parquet.metadata.Metadata_V3;
 import org.apache.drill.exec.util.DrillFileSystemUtil;
 import org.apache.drill.exec.store.dfs.MetadataContext;
 import org.apache.drill.exec.store.dfs.MetadataContext.PruneStatus;
 import org.apache.drill.exec.store.dfs.ReadEntryFromHDFS;
 import org.apache.drill.exec.store.dfs.ReadEntryWithPath;
 import org.apache.drill.exec.store.dfs.easy.FileWork;
-import org.apache.drill.exec.store.parquet.Metadata.ColumnMetadata;
-import org.apache.drill.exec.store.parquet.Metadata.ParquetFileMetadata;
-import org.apache.drill.exec.store.parquet.Metadata.ParquetTableMetadataBase;
-import org.apache.drill.exec.store.parquet.Metadata.RowGroupMetadata;
+import org.apache.drill.exec.store.parquet.metadata.MetadataBase.ColumnMetadata;
+import org.apache.drill.exec.store.parquet.metadata.MetadataBase.ParquetFileMetadata;
+import org.apache.drill.exec.store.parquet.metadata.MetadataBase.ParquetTableMetadataBase;
+import org.apache.drill.exec.store.parquet.metadata.MetadataBase.RowGroupMetadata;
 import org.apache.drill.exec.store.parquet.stat.ColumnStatistics;
 import org.apache.drill.exec.store.parquet.stat.ParquetMetaStatCollector;
 import org.apache.drill.exec.store.schedule.AffinityCreator;
@@ -138,7 +140,7 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
    * from a metadata cache file earlier; we can re-use during
    * the ParquetGroupScan and avoid extra loading time.
    */
-  private Metadata.ParquetTableMetadataBase parquetTableMetadata = null;
+  private ParquetTableMetadataBase parquetTableMetadata = null;
   private String cacheFileRoot = null;
 
   /*
@@ -371,8 +373,8 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
     int scale = 0;
     if (this.parquetTableMetadata.hasColumnMetadata()) {
       // only ColumnTypeMetadata_v3 stores information about scale and precision
-      if (parquetTableMetadata instanceof Metadata.ParquetTableMetadata_v3) {
-        Metadata.ColumnTypeMetadata_v3 columnTypeInfo = ((Metadata.ParquetTableMetadata_v3) parquetTableMetadata)
+      if (parquetTableMetadata instanceof Metadata_V3.ParquetTableMetadata_v3) {
+        Metadata_V3.ColumnTypeMetadata_v3 columnTypeInfo = ((Metadata_V3.ParquetTableMetadata_v3) parquetTableMetadata)
                                                                           .getColumnTypeInfo(columnMetadata.getName());
         scale = columnTypeInfo.scale;
         precision = columnTypeInfo.precision;
@@ -837,7 +839,7 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
     final Path first = fileStatuses.get(0).getPath();
     if (fileStatuses.size() == 1 && selection.getSelectionRoot().equals(first.toString())) {
       // we are selecting all files from selection root. Expand the file list from the cache
-      for (Metadata.ParquetFileMetadata file : parquetTableMetadata.getFiles()) {
+      for (ParquetFileMetadata file : parquetTableMetadata.getFiles()) {
         fileSet.add(file.getPath());
       }
 
@@ -850,7 +852,7 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
         // list of files from the metadata cache file that is present in the cacheFileRoot directory and populate
         // the fileSet. However, this is *not* the final list of files that will be scanned in execution since the
         // second phase of partition pruning will apply on the files and modify the file selection appropriately.
-        for (Metadata.ParquetFileMetadata file : this.parquetTableMetadata.getFiles()) {
+        for (ParquetFileMetadata file : this.parquetTableMetadata.getFiles()) {
           fileSet.add(file.getPath());
         }
       }
@@ -861,11 +863,11 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
         if (status.isDirectory()) {
           //TODO [DRILL-4496] read the metadata cache files in parallel
           final Path metaPath = new Path(cacheFileRoot, Metadata.METADATA_FILENAME);
-          final Metadata.ParquetTableMetadataBase metadata = Metadata.readBlockMeta(fs, metaPath, metaContext, formatConfig);
+          final ParquetTableMetadataBase metadata = Metadata.readBlockMeta(fs, metaPath, metaContext, formatConfig);
           if (ignoreExpandingSelection(metadata)) {
             return selection;
           }
-          for (Metadata.ParquetFileMetadata file : metadata.getFiles()) {
+          for (ParquetFileMetadata file : metadata.getFiles()) {
             fileSet.add(file.getPath());
           }
         } else {

@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.store.parquet;
+package org.apache.drill.exec.store.parquet.metadata;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ComparisonChain;
@@ -107,7 +107,7 @@ public class MetadataVersion implements Comparable<MetadataVersion> {
 /**
  * Supported metadata versions.
  * <p>
- * Note: keep them synchronized with {@link Metadata.ParquetTableMetadataBase} versions
+ * Note: keep them synchronized with {@link MetadataBase.ParquetTableMetadataBase} versions
  */
   public static class Constants {
     /**
@@ -135,7 +135,7 @@ public class MetadataVersion implements Comparable<MetadataVersion> {
 
     /**
      * Version 3.2: An array with the components of the field name in
-     * {@link Metadata.ColumnTypeMetadata_v3.Key} class is replaced by the SchemaPath.<br>
+     * {@link Metadata_V3.ColumnTypeMetadata_v3.Key} class is replaced by the SchemaPath.<br>
      * See DRILL-4264
      */
     public static final String V3_2 = "3.2";
