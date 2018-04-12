@@ -22,6 +22,8 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.common.expression.PathSegment;
 import org.apache.drill.common.expression.SchemaPath;
+import org.apache.drill.common.types.TypeProtos;
+import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.expr.holders.NullableTimeStampHolder;
 import org.apache.drill.exec.planner.physical.PlannerSettings;
 import org.apache.drill.exec.server.options.OptionManager;
@@ -366,8 +368,8 @@ public class ParquetReaderUtility {
    * This method only checks the first Row Group, because Drill has only ever written
    * a single Row Group per file.
    *
-   * @param footer
-   * @param columns
+   * @param footer parquet footer
+   * @param columns list of columns schema path
    * @param autoCorrectCorruptDates user setting to allow enabling/disabling of auto-correction
    *                                of corrupt dates. There are some rare cases (storing dates thousands
    *                                of years into the future, with tools other than Drill writing files)
@@ -463,4 +465,66 @@ public class ParquetReaderUtility {
       }
     }
   }
+
+  /**
+   * Builds major type using given {@code OriginalType originalType} or {@code PrimitiveTypeName type}.
+   * For DECIMAL will be returned major type with scale and precision.
+   *
+   * @param type         parquet primitive type
+   * @param originalType parquet original type
+   * @param scale        type scale (used for DECIMAL type)
+   * @param precision    type precision (used for DECIMAL type)
+   * @return major type
+   */
+  public static TypeProtos.MajorType getType(PrimitiveTypeName type, OriginalType originalType, int scale, int precision) {
+    if (originalType != null) {
+      switch (originalType) {
+        case DECIMAL:
+          return Types.withScaleAndPrecision(TypeProtos.MinorType.DECIMAL18, TypeProtos.DataMode.OPTIONAL, scale, precision);
+        case DATE:
+          return Types.optional(TypeProtos.MinorType.DATE);
+        case TIME_MILLIS:
+          return Types.optional(TypeProtos.MinorType.TIME);
+        case TIMESTAMP_MILLIS:
+          return Types.optional(TypeProtos.MinorType.TIMESTAMP);
+        case UTF8:
+          return Types.optional(TypeProtos.MinorType.VARCHAR);
+        case UINT_8:
+          return Types.optional(TypeProtos.MinorType.UINT1);
+        case UINT_16:
+          return Types.optional(TypeProtos.MinorType.UINT2);
+        case UINT_32:
+          return Types.optional(TypeProtos.MinorType.UINT4);
+        case UINT_64:
+          return Types.optional(TypeProtos.MinorType.UINT8);
+        case INT_8:
+          return Types.optional(TypeProtos.MinorType.TINYINT);
+        case INT_16:
+          return Types.optional(TypeProtos.MinorType.SMALLINT);
+        case INTERVAL:
+          return Types.optional(TypeProtos.MinorType.INTERVAL);
+      }
+    }
+
+    switch (type) {
+      case BOOLEAN:
+        return Types.optional(TypeProtos.MinorType.BIT);
+      case INT32:
+        return Types.optional(TypeProtos.MinorType.INT);
+      case INT64:
+        return Types.optional(TypeProtos.MinorType.BIGINT);
+      case FLOAT:
+        return Types.optional(TypeProtos.MinorType.FLOAT4);
+      case DOUBLE:
+        return Types.optional(TypeProtos.MinorType.FLOAT8);
+      case BINARY:
+      case FIXED_LEN_BYTE_ARRAY:
+      case INT96:
+        return Types.optional(TypeProtos.MinorType.VARBINARY);
+      default:
+        // Should never hit this
+        throw new UnsupportedOperationException("Unsupported type:" + type);
+    }
+  }
+
 }

@@ -36,10 +36,7 @@ import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.common.logical.StoragePluginConfig;
-import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.MajorType;
-import org.apache.drill.common.types.TypeProtos.MinorType;
-import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.compile.sig.ConstantExpressionIdentifier;
 import org.apache.drill.exec.expr.ExpressionTreeMaterializer;
 import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
@@ -78,30 +75,9 @@ import org.apache.drill.exec.store.schedule.AssignmentCreator;
 import org.apache.drill.exec.store.schedule.CompleteWork;
 import org.apache.drill.exec.store.schedule.EndpointByteMap;
 import org.apache.drill.exec.store.schedule.EndpointByteMapImpl;
-import org.apache.drill.exec.util.DecimalUtility;
 import org.apache.drill.exec.util.ImpersonationUtil;
-import org.apache.drill.exec.vector.NullableBitVector;
-import org.apache.drill.exec.vector.NullableBigIntVector;
-import org.apache.drill.exec.vector.NullableDateVector;
-import org.apache.drill.exec.vector.NullableDecimal18Vector;
-import org.apache.drill.exec.vector.NullableFloat4Vector;
-import org.apache.drill.exec.vector.NullableFloat8Vector;
-import org.apache.drill.exec.vector.NullableIntVector;
-import org.apache.drill.exec.vector.NullableIntervalVector;
-import org.apache.drill.exec.vector.NullableSmallIntVector;
-import org.apache.drill.exec.vector.NullableTimeStampVector;
-import org.apache.drill.exec.vector.NullableTimeVector;
-import org.apache.drill.exec.vector.NullableTinyIntVector;
-import org.apache.drill.exec.vector.NullableUInt1Vector;
-import org.apache.drill.exec.vector.NullableUInt2Vector;
-import org.apache.drill.exec.vector.NullableUInt4Vector;
-import org.apache.drill.exec.vector.NullableVarBinaryVector;
-import org.apache.drill.exec.vector.NullableVarCharVector;
-import org.apache.drill.exec.vector.ValueVector;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
-import org.joda.time.DateTimeConstants;
-import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
@@ -116,6 +92,8 @@ import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+
+import static org.apache.drill.exec.store.parquet.ParquetReaderUtility.getType;
 
 @JsonTypeName("parquet-scan")
 public class ParquetGroupScan extends AbstractFileGroupScan {
@@ -407,67 +385,6 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
       }
     }
     return true;
-  }
-
-  /**
-   * Builds major type using given {@code OriginalType originalType} or {@code PrimitiveTypeName type}.
-   * For DECIMAL will be returned major type with scale and precision.
-   *
-   * @param type         parquet primitive type
-   * @param originalType parquet original type
-   * @param scale        type scale (used for DECIMAL type)
-   * @param precision    type precision (used for DECIMAL type)
-   * @return major type
-   */
-  public static MajorType getType(PrimitiveTypeName type, OriginalType originalType, int scale, int precision) {
-    if (originalType != null) {
-      switch (originalType) {
-        case DECIMAL:
-          return Types.withScaleAndPrecision(MinorType.DECIMAL18, TypeProtos.DataMode.OPTIONAL, scale, precision);
-        case DATE:
-          return Types.optional(MinorType.DATE);
-        case TIME_MILLIS:
-          return Types.optional(MinorType.TIME);
-        case TIMESTAMP_MILLIS:
-          return Types.optional(MinorType.TIMESTAMP);
-        case UTF8:
-          return Types.optional(MinorType.VARCHAR);
-        case UINT_8:
-          return Types.optional(MinorType.UINT1);
-        case UINT_16:
-          return Types.optional(MinorType.UINT2);
-        case UINT_32:
-          return Types.optional(MinorType.UINT4);
-        case UINT_64:
-          return Types.optional(MinorType.UINT8);
-        case INT_8:
-          return Types.optional(MinorType.TINYINT);
-        case INT_16:
-          return Types.optional(MinorType.SMALLINT);
-        case INTERVAL:
-          return Types.optional(MinorType.INTERVAL);
-      }
-    }
-
-    switch (type) {
-      case BOOLEAN:
-        return Types.optional(MinorType.BIT);
-      case INT32:
-        return Types.optional(MinorType.INT);
-      case INT64:
-        return Types.optional(MinorType.BIGINT);
-      case FLOAT:
-        return Types.optional(MinorType.FLOAT4);
-      case DOUBLE:
-        return Types.optional(MinorType.FLOAT8);
-      case BINARY:
-      case FIXED_LEN_BYTE_ARRAY:
-      case INT96:
-        return Types.optional(MinorType.VARBINARY);
-      default:
-        // Should never hit this
-        throw new UnsupportedOperationException("Unsupported type:" + type);
-    }
   }
 
   /**
