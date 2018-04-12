@@ -720,6 +720,16 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
     return parquetGroupScanStatistics.getPartitionColumns();
   }
 
+
+  protected boolean supportsFileImplicitColumns() {
+    return selectionRoot != null;
+  }
+
+
+  protected List<String> getPartitionValues(RowGroupInfo rowGroupInfo) {
+    return ColumnExplorer.listDiffDirectoryNames(rowGroupInfo.getPath(), selectionRoot);
+  }
+
   public GroupScan applyFilter(LogicalExpression filterExpr, UdfUtilities udfUtilities,
       FunctionImplementationRegistry functionImplementationRegistry, OptionManager optionManager) {
     if (rowGroupInfos.size() == 1 ||
@@ -742,7 +752,8 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
 
     for (RowGroupInfo rowGroup : rowGroupInfos) {
       final ColumnExplorer columnExplorer = new ColumnExplorer(optionManager, this.columns);
-      Map<String, String> implicitColValues = columnExplorer.populateImplicitColumns(rowGroup.getPath(), selectionRoot);
+      List<String> partitionValues = getPartitionValues(rowGroup);
+      Map<String, String> implicitColValues = columnExplorer.populateImplicitColumns(rowGroup.getPath(), partitionValues, supportsFileImplicitColumns());
 
       ParquetMetaStatCollector statCollector = new ParquetMetaStatCollector(
               parquetTableMetadata,

@@ -17,11 +17,16 @@
  */
 package org.apache.drill.exec.store;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.google.common.collect.Maps;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.map.CaseInsensitiveMap;
@@ -34,7 +39,6 @@ import org.apache.drill.exec.util.Utilities;
 import org.apache.hadoop.fs.Path;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.io.Files;
 
 public class ColumnExplorer {
@@ -191,6 +195,75 @@ public class ColumnExplorer {
       }
     }
     return implicitValues;
+  }
+
+  /**
+   * Creates map with implicit columns where key is column name, value is columns actual value.
+   * This map contains partition and implicit file columns (if requested).
+   * Partition columns names are formed based in partition designator and value index.
+   *
+   * @param filePath file path, used to populate file implicit columns
+   * @param partitionValues list of partition values
+   * @param includeFileImplicitColumns if file implicit columns should be included into the result
+   * @return implicit columns map
+   */
+  public Map<String, String> populateImplicitColumns(String filePath,
+                                                     List<String> partitionValues,
+                                                     boolean includeFileImplicitColumns) {
+    Map<String, String> implicitValues = new LinkedHashMap<>();
+
+    for(int i = 0; i < partitionValues.size(); i++) {
+      if (isStarQuery || selectedPartitionColumns.contains(i)) {
+        implicitValues.put(partitionDesignator + i, partitionValues.get(i));
+      }
+    }
+
+    if (includeFileImplicitColumns) {
+      Path path = Path.getPathWithoutSchemeAndAuthority(new Path(filePath));
+      for (Map.Entry<String, ImplicitFileColumns> entry : selectedImplicitColumns.entrySet()) {
+        implicitValues.put(entry.getKey(), entry.getValue().getValue(path));
+      }
+    }
+
+    return implicitValues;
+  }
+
+  /**
+   * Compares root and file path to determine directories
+   * that are present in the file path but absent in root.
+   * Example: root - a/b/c, filePath - a/b/c/d/e, result - d/e.
+   * Stores different directory names in the list in successive order.
+   *
+   *
+   * @param filePath file path
+   * @param root root directory
+   * @return list of directory names
+   */
+  public static List<String> listDiffDirectoryNames(String filePath, String root) {
+    if (filePath == null || root == null) {
+      return Collections.emptyList();
+    }
+
+    int rootDepth = new Path(root).depth();
+    Path path = new Path(filePath);
+    int pathDepth = path.getParent().depth(); //todo add valid explanation
+
+    int diffCount = pathDepth - rootDepth;
+
+    if (diffCount < 0) {
+      return Collections.emptyList();
+    }
+
+    String[] diffDirectoryNames = new String[diffCount];
+
+    // start filling in array from the end
+    for (int i = rootDepth; pathDepth > i; i++) {
+      path = path.getParent();
+      // place in the end of array
+      diffDirectoryNames[pathDepth - i - 1] = path.getName();
+    }
+
+    return Arrays.asList(diffDirectoryNames);
   }
 
   public boolean isStarQuery() {

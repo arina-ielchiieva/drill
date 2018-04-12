@@ -137,7 +137,8 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
           readers.add(new DrillParquetReader(context, footer, e, columnExplorer.getTableColumns(), fs, containsCorruptDates));
         }
 
-        Map<String, String> implicitValues = columnExplorer.populateImplicitColumns(e, rowGroupScan.getSelectionRoot());
+        List<String> partitionValues = ColumnExplorer.listDiffDirectoryNames(e.getPath(), rowGroupScan.getSelectionRoot());
+        Map<String, String> implicitValues = columnExplorer.populateImplicitColumns(e.getPath(), partitionValues, true);
         implicitColumns.add(implicitValues);
         if (implicitValues.size() > mapWithMaxColumns.size()) {
           mapWithMaxColumns = implicitValues;
