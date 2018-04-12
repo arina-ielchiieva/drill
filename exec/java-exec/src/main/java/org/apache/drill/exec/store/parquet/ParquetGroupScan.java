@@ -20,7 +20,6 @@ package org.apache.drill.exec.store.parquet;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -57,14 +56,10 @@ import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.apache.drill.exec.store.dfs.DrillFileSystem;
 import org.apache.drill.exec.store.dfs.FileSelection;
 import org.apache.drill.exec.store.parquet.metadata.Metadata;
-import org.apache.drill.exec.store.parquet.metadata.Metadata_V3;
 import org.apache.drill.exec.util.DrillFileSystemUtil;
 import org.apache.drill.exec.store.dfs.MetadataContext;
 import org.apache.drill.exec.store.dfs.MetadataContext.PruneStatus;
-import org.apache.drill.exec.store.dfs.ReadEntryFromHDFS;
 import org.apache.drill.exec.store.dfs.ReadEntryWithPath;
-import org.apache.drill.exec.store.dfs.easy.FileWork;
-import org.apache.drill.exec.store.parquet.metadata.MetadataBase.ColumnMetadata;
 import org.apache.drill.exec.store.parquet.metadata.MetadataBase.ParquetFileMetadata;
 import org.apache.drill.exec.store.parquet.metadata.MetadataBase.ParquetTableMetadataBase;
 import org.apache.drill.exec.store.parquet.metadata.MetadataBase.RowGroupMetadata;
@@ -72,14 +67,11 @@ import org.apache.drill.exec.store.parquet.stat.ColumnStatistics;
 import org.apache.drill.exec.store.parquet.stat.ParquetMetaStatCollector;
 import org.apache.drill.exec.store.schedule.AffinityCreator;
 import org.apache.drill.exec.store.schedule.AssignmentCreator;
-import org.apache.drill.exec.store.schedule.CompleteWork;
 import org.apache.drill.exec.store.schedule.EndpointByteMap;
 import org.apache.drill.exec.store.schedule.EndpointByteMapImpl;
 import org.apache.drill.exec.util.ImpersonationUtil;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.schema.OriginalType;
-import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 import com.fasterxml.jackson.annotation.JacksonInject;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -93,7 +85,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
-import static org.apache.drill.exec.store.parquet.ParquetReaderUtility.getType;
 
 @JsonTypeName("parquet-scan")
 public class ParquetGroupScan extends AbstractFileGroupScan {
@@ -121,15 +112,8 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
   private ParquetTableMetadataBase parquetTableMetadata = null;
   private String cacheFileRoot = null;
 
-  /*
-   * total number of rows (obtained from parquet footer)
-   */
-  private long rowCount;
 
-  /*
-   * total number of non-null value for each column in parquet files.
-   */
-  private Map<SchemaPath, Long> columnValueCounts;
+  private ParquetGroupScanStatistics parquetGroupScanStatistics;
 
   @JsonCreator public ParquetGroupScan( //
       @JsonProperty("userName") String userName,
@@ -225,12 +209,9 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
     this.formatPlugin = that.formatPlugin;
     this.fs = that.fs;
     this.mappings = that.mappings == null ? null : ArrayListMultimap.create(that.mappings);
-    this.rowCount = that.rowCount;
     this.rowGroupInfos = that.rowGroupInfos == null ? null : Lists.newArrayList(that.rowGroupInfos);
     this.selectionRoot = that.selectionRoot;
-    this.columnValueCounts = that.columnValueCounts == null ? null : new HashMap<>(that.columnValueCounts);
-    this.partitionColTypeMap = that.partitionColTypeMap == null ? null : new HashMap<>(that.partitionColTypeMap);
-    this.partitionValueMap = that.partitionValueMap == null ? null : new HashMap<>(that.partitionValueMap);
+    this.parquetGroupScanStatistics = that.parquetGroupScanStatistics == null ? null : new ParquetGroupScanStatistics(that.parquetGroupScanStatistics);
     this.fileSet = that.fileSet == null ? null : new HashSet<>(that.fileSet);
     this.usedMetadataCache = that.usedMetadataCache;
     this.parquetTableMetadata = that.parquetTableMetadata;
@@ -332,74 +313,6 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
 
   private Set<String> fileSet;
 
-  @JsonIgnore
-  // only for partition columns : value is unique for each partition
-  private Map<SchemaPath, MajorType> partitionColTypeMap = Maps.newHashMap();
-
-  /**
-   * When reading the very first footer, any column is a potential partition column. So for the first footer, we check
-   * every column to see if it is single valued, and if so, add it to the list of potential partition columns. For the
-   * remaining footers, we will not find any new partition columns, but we may discover that what was previously a
-   * potential partition column now no longer qualifies, so it needs to be removed from the list.
-   * @return whether column is a potential partition column
-   */
-  private boolean checkForPartitionColumn(ColumnMetadata columnMetadata, boolean first, long rowCount) {
-    SchemaPath schemaPath = SchemaPath.getCompoundPath(columnMetadata.getName());
-    final PrimitiveTypeName primitiveType;
-    final OriginalType originalType;
-    int precision = 0;
-    int scale = 0;
-    if (this.parquetTableMetadata.hasColumnMetadata()) {
-      // only ColumnTypeMetadata_v3 stores information about scale and precision
-      if (parquetTableMetadata instanceof Metadata_V3.ParquetTableMetadata_v3) {
-        Metadata_V3.ColumnTypeMetadata_v3 columnTypeInfo = ((Metadata_V3.ParquetTableMetadata_v3) parquetTableMetadata)
-                                                                          .getColumnTypeInfo(columnMetadata.getName());
-        scale = columnTypeInfo.scale;
-        precision = columnTypeInfo.precision;
-      }
-      primitiveType = this.parquetTableMetadata.getPrimitiveType(columnMetadata.getName());
-      originalType = this.parquetTableMetadata.getOriginalType(columnMetadata.getName());
-    } else {
-      primitiveType = columnMetadata.getPrimitiveType();
-      originalType = columnMetadata.getOriginalType();
-    }
-    if (first) {
-      if (hasSingleValue(columnMetadata, rowCount)) {
-        partitionColTypeMap.put(schemaPath, getType(primitiveType, originalType, scale, precision));
-        return true;
-      } else {
-        return false;
-      }
-    } else {
-      if (!partitionColTypeMap.keySet().contains(schemaPath)) {
-        return false;
-      } else {
-        if (!hasSingleValue(columnMetadata, rowCount)) {
-          partitionColTypeMap.remove(schemaPath);
-          return false;
-        }
-        if (!getType(primitiveType, originalType, scale, precision).equals(partitionColTypeMap.get(schemaPath))) {
-          partitionColTypeMap.remove(schemaPath);
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-
-  /**
-   * Checks that the column chunk has a single value.
-   *
-   * @param columnChunkMetaData metadata to check
-   * @param rowCount            rows count in column chunk
-   * @return true if column has single value
-   */
-  private boolean hasSingleValue(ColumnMetadata columnChunkMetaData, long rowCount) {
-    // ColumnMetadata will have a non-null value iff the minValue and the maxValue for the
-    // rowgroup are the same
-    return (columnChunkMetaData != null) && (columnChunkMetaData.hasSingleValue(rowCount));
-  }
-
   @Override public void modifyFileSelection(FileSelection selection) {
     entries.clear();
     fileSet = Sets.newHashSet();
@@ -418,77 +331,7 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
   }
 
   public MajorType getTypeForColumn(SchemaPath schemaPath) {
-    return partitionColTypeMap.get(schemaPath);
-  }
-
-  // Map from file names to maps of column name to partition value mappings
-  private Map<String, Map<SchemaPath, Object>> partitionValueMap = Maps.newHashMap();
-
-  public static class RowGroupInfo extends ReadEntryFromHDFS implements CompleteWork, FileWork {
-
-    private EndpointByteMap byteMap;
-    private int rowGroupIndex;
-    private List<? extends ColumnMetadata> columns;
-    private long rowCount;  // rowCount = -1 indicates to include all rows.
-    private long numRecordsToRead;
-
-    @JsonCreator
-    public RowGroupInfo(@JsonProperty("path") String path, @JsonProperty("start") long start,
-        @JsonProperty("length") long length, @JsonProperty("rowGroupIndex") int rowGroupIndex, long rowCount) {
-      super(path, start, length);
-      this.rowGroupIndex = rowGroupIndex;
-      this.rowCount = rowCount;
-      this.numRecordsToRead = rowCount;
-    }
-
-    public RowGroupReadEntry getRowGroupReadEntry() {
-      return new RowGroupReadEntry(this.getPath(), this.getStart(), this.getLength(),
-                                   this.rowGroupIndex, this.getNumRecordsToRead());
-    }
-
-    public int getRowGroupIndex() {
-      return this.rowGroupIndex;
-    }
-
-    @Override
-    public int compareTo(CompleteWork o) {
-      return Long.compare(getTotalBytes(), o.getTotalBytes());
-    }
-
-    @Override
-    public long getTotalBytes() {
-      return this.getLength();
-    }
-
-    @Override
-    public EndpointByteMap getByteMap() {
-      return byteMap;
-    }
-
-    public long getNumRecordsToRead() {
-      return numRecordsToRead;
-    }
-
-    public void setNumRecordsToRead(long numRecords) {
-      numRecordsToRead = numRecords;
-    }
-
-    public void setEndpointByteMap(EndpointByteMap byteMap) {
-      this.byteMap = byteMap;
-    }
-
-    public long getRowCount() {
-      return rowCount;
-    }
-
-    public List<? extends ColumnMetadata> getColumns() {
-      return columns;
-    }
-
-    public void setColumns(List<? extends ColumnMetadata> columns) {
-      this.columns = columns;
-    }
-
+    return parquetGroupScanStatistics.getTypeForColumn(schemaPath);
   }
 
   /**
@@ -668,63 +511,9 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
     }
 
     this.endpointAffinities = AffinityCreator.getAffinityMap(rowGroupInfos);
-    updatePartitionColTypeMap();
+    this.parquetGroupScanStatistics = new ParquetGroupScanStatistics(rowGroupInfos, parquetTableMetadata);
   }
 
-  private void updatePartitionColTypeMap() {
-    columnValueCounts = Maps.newHashMap();
-    this.rowCount = 0;
-    boolean first = true;
-    for (RowGroupInfo rowGroup : this.rowGroupInfos) {
-      long rowCount = rowGroup.getRowCount();
-      for (ColumnMetadata column : rowGroup.getColumns()) {
-        SchemaPath schemaPath = SchemaPath.getCompoundPath(column.getName());
-        Long previousCount = columnValueCounts.get(schemaPath);
-        if (previousCount != null) {
-          if (previousCount != GroupScan.NO_COLUMN_STATS) {
-            if (column.getNulls() != null) {
-              Long newCount = rowCount - column.getNulls();
-              columnValueCounts.put(schemaPath, columnValueCounts.get(schemaPath) + newCount);
-            }
-          }
-        } else {
-          if (column.getNulls() != null) {
-            Long newCount = rowCount - column.getNulls();
-            columnValueCounts.put(schemaPath, newCount);
-          } else {
-            columnValueCounts.put(schemaPath, GroupScan.NO_COLUMN_STATS);
-          }
-        }
-        boolean partitionColumn = checkForPartitionColumn(column, first, rowCount);
-        if (partitionColumn) {
-          Map<SchemaPath, Object> map = partitionValueMap.get(rowGroup.getPath());
-          if (map == null) {
-            map = Maps.newHashMap();
-            partitionValueMap.put(rowGroup.getPath(), map);
-          }
-          Object value = map.get(schemaPath);
-          Object currentValue = column.getMaxValue();
-          if (value != null) {
-            if (value != currentValue) {
-              partitionColTypeMap.remove(schemaPath);
-            }
-          } else {
-            // the value of a column with primitive type can not be null,
-            // so checks that there are really null value and puts it to the map
-            if (rowCount == column.getNulls()) {
-              map.put(schemaPath, null);
-            } else {
-              map.put(schemaPath, currentValue);
-            }
-          }
-        } else {
-          partitionColTypeMap.remove(schemaPath);
-        }
-      }
-      this.rowCount += rowGroup.getRowCount();
-      first = false;
-    }
-  }
   private ParquetTableMetadataBase removeUnneededRowGroups(ParquetTableMetadataBase parquetTableMetadata) {
     List<ParquetFileMetadata> newFileMetadataList = Lists.newArrayList();
     for (ParquetFileMetadata file : parquetTableMetadata.getFiles()) {
@@ -790,6 +579,7 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
   @Override
   public ScanStats getScanStats() {
     int columnCount = columns == null ? 20 : columns.size();
+    long rowCount = parquetGroupScanStatistics.getRowCount();
     return new ScanStats(GroupScanProperty.EXACT_ROW_COUNT, rowCount, 1, rowCount * columnCount);
   }
 
@@ -922,12 +712,12 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
    */
   @Override
   public long getColumnValueCount(SchemaPath column) {
-    return columnValueCounts.containsKey(column) ? columnValueCounts.get(column) : 0;
+    return parquetGroupScanStatistics.getColumnValueCount(column);
   }
 
   @Override
   public List<SchemaPath> getPartitionColumns() {
-    return new ArrayList<>(partitionColTypeMap.keySet());
+    return parquetGroupScanStatistics.getPartitionColumns();
   }
 
   public GroupScan applyFilter(LogicalExpression filterExpr, UdfUtilities udfUtilities,
@@ -1007,7 +797,7 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
       logger.info("applyFilter {} reduce parquet rowgroup # from {} to {}", ExpressionStringBuilder.toString(filterExpr), rowGroupInfos.size(), qualifiedRGs.size());
       ParquetGroupScan clonegroupscan = this.clone(newSelection);
       clonegroupscan.rowGroupInfos = qualifiedRGs;
-      clonegroupscan.updatePartitionColTypeMap();
+      clonegroupscan.parquetGroupScanStatistics.collect(clonegroupscan.rowGroupInfos, clonegroupscan.parquetTableMetadata);
       return clonegroupscan;
 
     } catch (IOException e) {
@@ -1034,7 +824,7 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
 
   @JsonIgnore
   public <T> T getPartitionValue(String path, SchemaPath column, Class<T> clazz) {
-    return clazz.cast(partitionValueMap.get(path).get(column));
+    return clazz.cast(parquetGroupScanStatistics.getPartitionValue(path, column));
   }
 
 }
