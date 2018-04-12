@@ -38,7 +38,7 @@ import org.junit.experimental.categories.Category;
 
 @Category({OperatorTest.class, SlowTest.class})
 public class TestBroadcastExchange extends PopUnitTestBase {
-  //@Test
+  @Test
   public void TestSingleBroadcastExchangeWithTwoScans() throws Exception {
     RemoteServiceSet serviceSet = RemoteServiceSet.getLocalServiceSet();
 

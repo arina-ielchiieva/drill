@@ -643,7 +643,7 @@ public class TestParquetMetadataCache extends PlanTestBase {
     }
   }
 
-  //@Test
+  @Test
   public void testInnerMetadataFilesAreAbsent() throws Exception {
     final String innerMetaCorruptedTable = "inner_meta_corrupted_table";
     File dataDir = dirTestWatcher.copyResourceToRoot(
