@@ -147,11 +147,12 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
     List<RecordReader> readers = new LinkedList<>();
     List<Map<String, String>> implicitColumns = Lists.newArrayList();
     Map<String, String> mapWithMaxColumns = Maps.newLinkedHashMap();
+    boolean supportsFileImplicitColumns = scan.getSelectionRoot() != null;
     for(FileWork work : scan.getWorkUnits()){
       RecordReader recordReader = getRecordReader(context, dfs, work, scan.getColumns(), scan.getUserName());
       readers.add(recordReader);
       List<String> partitionValues = ColumnExplorer.listDiffDirectoryNames(work.getPath(), scan.getSelectionRoot());
-      Map<String, String> implicitValues = columnExplorer.populateImplicitColumns(work.getPath(), partitionValues, true);
+      Map<String, String> implicitValues = columnExplorer.populateImplicitColumns(work.getPath(), partitionValues, supportsFileImplicitColumns);
       implicitColumns.add(implicitValues);
       if (implicitValues.size() > mapWithMaxColumns.size()) {
         mapWithMaxColumns = implicitValues;

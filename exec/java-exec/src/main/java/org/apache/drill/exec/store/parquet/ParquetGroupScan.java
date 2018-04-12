@@ -287,7 +287,7 @@ public class ParquetGroupScan extends AbstractParquetGroupScan {
 
   @Override
   protected boolean supportsFileImplicitColumns() {
-    return true;
+    return selectionRoot != null;
   }
 
   @Override
@@ -399,7 +399,7 @@ public class ParquetGroupScan extends AbstractParquetGroupScan {
           //TODO [DRILL-4496] read the metadata cache files in parallel
           final Path metaPath = new Path(cacheFileRoot, Metadata.METADATA_FILENAME);
           final ParquetTableMetadataBase metadata = Metadata.readBlockMeta(fs, metaPath, metaContext, formatConfig);
-          if (metadata == null || ignoreExpandingSelection(metadata)) {
+          if (ignoreExpandingSelection(metadata)) {
             return selection;
           }
           for (ParquetFileMetadata file : metadata.getFiles()) {

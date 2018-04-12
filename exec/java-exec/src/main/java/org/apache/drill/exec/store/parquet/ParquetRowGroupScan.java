@@ -124,7 +124,7 @@ public class ParquetRowGroupScan extends AbstractParquetRowGroupScan {
 
   @Override
   public boolean supportsFileImplicitColumns() {
-    return true;
+    return selectionRoot != null;
   }
 
   @Override

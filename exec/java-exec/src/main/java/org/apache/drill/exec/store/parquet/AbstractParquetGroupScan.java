@@ -285,7 +285,7 @@ public abstract class AbstractParquetGroupScan extends AbstractFileGroupScan {
     try {
       AbstractParquetGroupScan cloneGroupScan = cloneWithFileSelection(qualifiedFilePath);
       cloneGroupScan.rowGroupInfos = qualifiedRGs;
-      cloneGroupScan.parquetGroupScanStatistics.collect(qualifiedRGs, parquetTableMetadata);
+      cloneGroupScan.parquetGroupScanStatistics.collect(cloneGroupScan.rowGroupInfos, cloneGroupScan.parquetTableMetadata);
       return cloneGroupScan;
 
     } catch (IOException e) {
