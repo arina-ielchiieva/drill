@@ -37,8 +37,6 @@ import org.apache.drill.exec.planner.physical.PrelUtil;
 import org.apache.drill.exec.planner.sql.DrillSqlOperator;
 import org.apache.drill.exec.store.StoragePluginOptimizerRule;
 import org.apache.drill.exec.store.hive.HiveDrillNativeParquetScan;
-import org.apache.drill.exec.store.hive.HiveDrillNativeParquetScan2;
-import org.apache.drill.exec.store.hive.HiveMetadataProvider;
 import org.apache.drill.exec.store.hive.HiveReadEntry;
 import org.apache.drill.exec.store.hive.HiveScan;
 import org.apache.drill.exec.store.hive.HiveTableWithColumnCache;
@@ -86,12 +84,12 @@ public class ConvertHiveParquetScanToDrillParquetScan extends StoragePluginOptim
    *    {@link MapredParquetInputFormat}
    * 4) No error occurred while checking for the above conditions. An error is logged as warning.
    *
-   * @param call rule call
+   * @param call
    * @return True if the rule can be applied. False otherwise
    */
   @Override
   public boolean matches(RelOptRuleCall call) {
-    final DrillScanRel scanRel = call.rel(0);
+    final DrillScanRel scanRel = (DrillScanRel) call.rel(0);
 
     if (!(scanRel.getGroupScan() instanceof HiveScan) || ((HiveScan) scanRel.getGroupScan()).isNativeReader()) {
       return false;
@@ -100,10 +98,6 @@ public class ConvertHiveParquetScanToDrillParquetScan extends StoragePluginOptim
     final HiveScan hiveScan = (HiveScan) scanRel.getGroupScan();
     final HiveConf hiveConf = hiveScan.getHiveConf();
     final HiveTableWithColumnCache hiveTable = hiveScan.getHiveReadEntry().getTable();
-
-    if (containsUnsupportedDataTypes(hiveTable)) {
-      return false;
-    }
 
     final Class<? extends InputFormat<?,?>> tableInputFormat =
         getInputFormatFromSD(HiveUtilities.getTableMetadata(hiveTable), hiveScan.getHiveReadEntry(), hiveTable.getSd(),
@@ -145,9 +139,9 @@ public class ConvertHiveParquetScanToDrillParquetScan extends StoragePluginOptim
 
   /**
    * Get the input format from given {@link StorageDescriptor}
-   * @param properties table properties
-   * @param hiveReadEntry hive read entry
-   * @param sd storage descriptor
+   * @param properties
+   * @param hiveReadEntry
+   * @param sd
    * @return {@link InputFormat} class or null if a failure has occurred. Failure is logged as warning.
    */
   private Class<? extends InputFormat<?, ?>> getInputFormatFromSD(final Properties properties,
@@ -172,27 +166,19 @@ public class ConvertHiveParquetScanToDrillParquetScan extends StoragePluginOptim
   @Override
   public void onMatch(RelOptRuleCall call) {
     try {
-      final DrillScanRel hiveScanRel = call.rel(0);
+      final DrillScanRel hiveScanRel = (DrillScanRel) call.rel(0);
       final HiveScan hiveScan = (HiveScan) hiveScanRel.getGroupScan();
 
       final PlannerSettings settings = PrelUtil.getPlannerSettings(call.getPlanner());
       final String partitionColumnLabel = settings.getFsPartitionColumnLabel();
 
       final Table hiveTable = hiveScan.getHiveReadEntry().getTable();
-      final HiveReadEntry hiveReadEntry = hiveScan.getHiveReadEntry();
-
-      final HiveMetadataProvider hiveMetadataProvider = new HiveMetadataProvider(hiveScan.getUserName(), hiveReadEntry, hiveScan.getStoragePlugin().getHiveConf());
-      final List<HiveMetadataProvider.LogicalInputSplit> logicalInputSplits = hiveMetadataProvider.getInputSplits(hiveReadEntry);
-
-      if (logicalInputSplits.isEmpty()) {
-        // table is empty, use original scan
-        return;
-      }
+      checkForUnsupportedDataTypes(hiveTable);
 
       final Map<String, String> partitionColMapping =
           getPartitionColMapping(hiveTable, partitionColumnLabel);
 
-      final DrillScanRel nativeScanRel = createNativeScanRel(partitionColMapping, hiveScanRel, logicalInputSplits);
+      final DrillScanRel nativeScanRel = createNativeScanRel(partitionColMapping, hiveScanRel);
       if (hiveScanRel.getRowType().getFieldCount() == 0) {
         call.transformTo(nativeScanRel);
       } else {
@@ -222,8 +208,7 @@ public class ConvertHiveParquetScanToDrillParquetScan extends StoragePluginOptim
    * Helper method which creates a DrillScalRel with native HiveScan.
    */
   private DrillScanRel createNativeScanRel(final Map<String, String> partitionColMapping,
-                                           final DrillScanRel hiveScanRel,
-                                           final List<HiveMetadataProvider.LogicalInputSplit> logicalInputSplits) throws Exception {
+      final DrillScanRel hiveScanRel) throws Exception{
 
     final RelDataTypeFactory typeFactory = hiveScanRel.getCluster().getTypeFactory();
     final RelDataType varCharType = typeFactory.createSqlType(SqlTypeName.VARCHAR);
@@ -257,13 +242,6 @@ public class ConvertHiveParquetScanToDrillParquetScan extends StoragePluginOptim
     }
 
     final HiveScan hiveScan = (HiveScan) hiveScanRel.getGroupScan();
-    final HiveDrillNativeParquetScan2 nativeHiveScan =
-        new HiveDrillNativeParquetScan2(
-            hiveScan.getUserName(),
-            nativeScanCols,
-            hiveScan.getStoragePlugin(),
-            logicalInputSplits);
-/*
     final HiveDrillNativeParquetScan nativeHiveScan =
         new HiveDrillNativeParquetScan(
             hiveScan.getUserName(),
@@ -271,8 +249,6 @@ public class ConvertHiveParquetScanToDrillParquetScan extends StoragePluginOptim
             hiveScan.getStoragePlugin(),
             nativeScanCols,
             null);
-*/
-
 
     return new DrillScanRel(
         hiveScanRel.getCluster(),
@@ -345,17 +321,15 @@ public class ConvertHiveParquetScanToDrillParquetScan extends StoragePluginOptim
     return rb.makeCast(outputType, inputRef);
   }
 
-  private boolean containsUnsupportedDataTypes(final Table hiveTable) {
-    for (FieldSchema hiveField : hiveTable.getSd().getCols()) {
+  private void checkForUnsupportedDataTypes(final Table hiveTable) {
+    for(FieldSchema hiveField : hiveTable.getSd().getCols()) {
       final Category category = TypeInfoUtils.getTypeInfoFromTypeString(hiveField.getType()).getCategory();
       if (category == Category.MAP ||
           category == Category.STRUCT ||
           category == Category.UNION ||
           category == Category.LIST) {
-        logger.debug("Hive table contains unsupported data type: {}", category);
-        return true;
+        HiveUtilities.throwUnsupportedHiveDataTypeError(category.toString());
       }
     }
-    return false;
   }
 }
