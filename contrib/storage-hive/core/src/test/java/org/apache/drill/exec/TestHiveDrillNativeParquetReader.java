@@ -264,9 +264,4 @@ public class TestHiveDrillNativeParquetReader extends HiveTestBase {
     testPlanMatchingPatterns(query, new String[] {"HiveScan"}, new String[]{"HiveDrillNativeParquetScan"});
   }
 
-  //@Test
-  public void c() throws Exception {
-    test("select char_length(`if`(`year`(key) > 2000, 'latest', 'old')) from hive.kv_native order by key limit 1");
-  }
-
 }

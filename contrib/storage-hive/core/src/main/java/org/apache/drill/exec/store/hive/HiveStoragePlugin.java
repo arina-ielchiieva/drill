@@ -28,18 +28,12 @@ import com.google.common.collect.ImmutableSet;
 import org.apache.calcite.schema.Schema.TableType;
 import org.apache.calcite.schema.SchemaPlus;
 
-import org.apache.calcite.tools.RuleSet;
 import org.apache.drill.common.JSONOptions;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
-import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.ops.OptimizerRulesContext;
-import org.apache.drill.exec.planner.PlannerPhase;
-import org.apache.drill.exec.planner.logical.DrillPushLimitToScanRule;
-import org.apache.drill.exec.planner.logical.partition.ParquetPruneScanRule;
-import org.apache.drill.exec.planner.logical.partition.PruneScanRule;
 import org.apache.drill.exec.planner.sql.logical.ConvertHiveParquetScanToDrillParquetScan;
 import org.apache.drill.exec.planner.sql.logical.HivePushPartitionFilterIntoScan;
 import org.apache.drill.exec.server.DrillbitContext;
@@ -53,7 +47,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
 import org.apache.hadoop.hive.metastore.api.MetaException;
-import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 
 public class HiveStoragePlugin extends AbstractStoragePlugin {
@@ -70,7 +63,7 @@ public class HiveStoragePlugin extends AbstractStoragePlugin {
     this.config = config;
     this.context = context;
     this.name = name;
-    this.hiveConf = createHiveConf(config.getHiveConfigOverride());
+    this.hiveConf = createHiveConf(config.getConfig());
     this.schemaFactory = new HiveSchemaFactory(this, name, hiveConf);
   }
 

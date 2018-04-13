@@ -103,9 +103,9 @@ public class HiveDrillNativeParquetScan extends HiveScan {
 
   @Override
   public String toString() {
-    final List<HivePartitionWrapper> partitions = getHiveReadEntry().getHivePartitionWrappers();
+    final List<HivePartitionWrapper> partitions = getHiveReadEntry().getPartitionWrappers();
     int numPartitions = partitions == null ? 0 : partitions.size();
-    return "HiveDrillNativeParquetScan [table=" + getHiveReadEntry().getHiveTableWrapper()
+    return "HiveDrillNativeParquetScan [table=" + getHiveReadEntry().getTableWrapper()
         + ", columns=" + getColumns()
         + ", numPartitions=" + numPartitions
         + ", partitions= " + partitions

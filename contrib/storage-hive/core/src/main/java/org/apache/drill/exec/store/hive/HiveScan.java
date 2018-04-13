@@ -276,9 +276,9 @@ public class HiveScan extends AbstractGroupScan {
 
   @Override
   public String toString() {
-    List<HivePartitionWrapper> partitions = hiveReadEntry.getHivePartitionWrappers();
+    List<HivePartitionWrapper> partitions = hiveReadEntry.getPartitionWrappers();
     int numPartitions = partitions == null ? 0 : partitions.size();
-    return "HiveScan [table=" + hiveReadEntry.getHiveTableWrapper()
+    return "HiveScan [table=" + hiveReadEntry.getTableWrapper()
         + ", columns=" + columns
         + ", numPartitions=" + numPartitions
         + ", partitions= " + partitions

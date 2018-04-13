@@ -36,7 +36,6 @@ import org.apache.drill.exec.planner.physical.PlannerSettings;
 import org.apache.drill.exec.planner.physical.PrelUtil;
 import org.apache.drill.exec.planner.sql.DrillSqlOperator;
 import org.apache.drill.exec.store.StoragePluginOptimizerRule;
-import org.apache.drill.exec.store.hive.HiveDrillNativeParquetScan;
 import org.apache.drill.exec.store.hive.HiveDrillNativeParquetScan2;
 import org.apache.drill.exec.store.hive.HiveMetadataProvider;
 import org.apache.drill.exec.store.hive.HiveReadEntry;
@@ -112,7 +111,7 @@ public class ConvertHiveParquetScanToDrillParquetScan extends StoragePluginOptim
       return false;
     }
 
-    final List<HivePartitionWrapper> partitions = hiveScan.getHiveReadEntry().getHivePartitionWrappers();
+    final List<HivePartitionWrapper> partitions = hiveScan.getHiveReadEntry().getPartitionWrappers();
     if (partitions == null) {
       return true;
     }

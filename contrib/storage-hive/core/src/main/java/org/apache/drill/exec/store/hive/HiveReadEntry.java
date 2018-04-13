@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -17,7 +17,9 @@
  */
 package org.apache.drill.exec.store.hive;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.calcite.schema.Schema.TableType;
 
@@ -26,28 +28,34 @@ import org.apache.drill.exec.store.hive.HiveTableWrapper.HivePartitionWrapper;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.collect.Lists;
 
 public class HiveReadEntry {
 
-  @JsonProperty("table")
-  public HiveTableWrapper table;
-  @JsonProperty("partitions")
-  public List<HivePartitionWrapper> partitions;
-
-  @JsonIgnore
-  private List<HivePartition> partitionsUnwrapped = Lists.newArrayList();
+  private final HiveTableWrapper table;
+  private final List<HivePartitionWrapper> partitions;
+  private final List<HivePartition> partitionsUnwrapped;
 
   @JsonCreator
   public HiveReadEntry(@JsonProperty("table") HiveTableWrapper table,
                        @JsonProperty("partitions") List<HivePartitionWrapper> partitions) {
     this.table = table;
     this.partitions = partitions;
+    this.partitionsUnwrapped = new ArrayList<>();
     if (partitions != null) {
-      for(HivePartitionWrapper part : partitions) {
-        partitionsUnwrapped.add(part.getPartition());
-      }
+      partitionsUnwrapped.addAll(partitions.stream()
+          .map(HivePartitionWrapper::getPartition)
+          .collect(Collectors.toList()));
     }
+  }
+
+  @JsonProperty("table")
+  public HiveTableWrapper getTableWrapper() {
+    return table;
+  }
+
+  @JsonProperty("partitions")
+  public List<HivePartitionWrapper> getPartitionWrappers() {
+    return partitions;
   }
 
   @JsonIgnore
@@ -56,23 +64,8 @@ public class HiveReadEntry {
   }
 
   @JsonIgnore
-  public HiveTableWrapper getTableWrapper() {
-    return table;
-  }
-
-  @JsonIgnore
   public List<HivePartition> getPartitions() {
     return partitionsUnwrapped;
-  }
-
-  @JsonIgnore
-  public HiveTableWrapper getHiveTableWrapper() {
-    return table;
-  }
-
-  @JsonIgnore
-  public List<HivePartitionWrapper> getHivePartitionWrappers() {
-    return partitions;
   }
 
   @JsonIgnore
@@ -84,14 +77,5 @@ public class HiveReadEntry {
     return TableType.TABLE;
   }
 
-  public String getPartitionLocation(HivePartitionWrapper partition) {
-    String partitionPath = table.getTable().getSd().getLocation();
-
-    for (String value: partition.values) {
-      partitionPath += "/" + value;
-    }
-
-    return partitionPath;
-  }
 }
 

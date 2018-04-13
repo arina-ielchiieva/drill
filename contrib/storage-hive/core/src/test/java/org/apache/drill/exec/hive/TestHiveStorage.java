@@ -405,6 +405,7 @@ public class TestHiveStorage extends HiveTestBase {
   @Test
   public void testPhysicalPlanSubmission() throws Exception {
     PlanTestBase.testPhysicalPlanExecutionBasedOnQuery("select * from hive.kv");
+    PlanTestBase.testPhysicalPlanExecutionBasedOnQuery("select * from hive.readtest");
   }
 
   private void verifyColumnsMetadata(List<UserProtos.ResultColumnMetadata> columnsList, Map<String, Integer> expectedResult) {
