@@ -65,6 +65,8 @@ import java.util.concurrent.TimeUnit;
 public class HiveMetadataProvider {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(HiveMetadataProvider.class);
 
+  public static final int RECORD_SIZE = 1024;
+
   private final HiveReadEntry hiveReadEntry;
   private final UserGroupInformation ugi;
   private final boolean isPartitionedTable;
@@ -241,14 +243,7 @@ public class HiveMetadataProvider {
       data += split.getLength();
     }
 
-    // Hive statistics for external tables does not contain information about row count.
-    // Approximately very small table with 1 row and 1 record is 18 bytes.
-    // Divide by this number to get number of rows in the table.
-    long numRows = data / 18;
-
-    // if the result of division is zero and data size > 0, estimate to one row
-    numRows = numRows == 0 && data > 0 ? 1 : numRows;
-    return new HiveStats(numRows, data);
+    return new HiveStats(data/RECORD_SIZE, data);
   }
 
   /**
