@@ -63,7 +63,7 @@ public class HiveStoragePlugin extends AbstractStoragePlugin {
     this.config = config;
     this.context = context;
     this.name = name;
-    this.hiveConf = createHiveConf(config.getConfig());
+    this.hiveConf = createHiveConf(config.getHiveConfigOverride());
     this.schemaFactory = new HiveSchemaFactory(this, name, hiveConf);
   }
 

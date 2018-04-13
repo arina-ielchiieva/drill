@@ -114,7 +114,7 @@ public class HiveTestDataGenerator {
     }
 
     HiveStoragePluginConfig newPluginConfig = storagePlugin.getConfig();
-    newPluginConfig.getConfig().putAll(configOverride);
+    newPluginConfig.getHiveConfigOverride().putAll(configOverride);
 
     pluginRegistry.createOrUpdate(HIVE_TEST_PLUGIN_NAME, newPluginConfig, true);
   }

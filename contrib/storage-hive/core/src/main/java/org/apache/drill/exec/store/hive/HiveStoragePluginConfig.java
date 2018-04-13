@@ -22,29 +22,30 @@ import java.util.Map;
 import org.apache.drill.common.logical.StoragePluginConfigBase;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 
 @JsonTypeName(HiveStoragePluginConfig.NAME)
 public class HiveStoragePluginConfig extends StoragePluginConfigBase {
+  @JsonProperty
+  public Map<String, String> configProps;
 
   public static final String NAME = "hive";
 
-  private final Map<String, String> config;
-
-  @JsonCreator
-  public HiveStoragePluginConfig(@JsonProperty("config") Map<String, String> config) {
-    this.config = config;
+  @JsonIgnore
+  public Map<String, String> getHiveConfigOverride() {
+    return configProps;
   }
 
-  @JsonProperty
-  public Map<String, String> getConfig() {
-    return config;
+  @JsonCreator
+  public HiveStoragePluginConfig(@JsonProperty("configProps") Map<String, String> props) {
+    this.configProps = props;
   }
 
   @Override
   public int hashCode() {
-    return config != null ? config.hashCode() : 0;
+    return configProps != null ? configProps.hashCode() : 0;
   }
 
   @Override
@@ -58,7 +59,7 @@ public class HiveStoragePluginConfig extends StoragePluginConfigBase {
 
     HiveStoragePluginConfig that = (HiveStoragePluginConfig) o;
 
-    if (config != null ? !config.equals(that.config) : that.config != null) {
+    if (configProps != null ? !configProps.equals(that.configProps) : that.configProps != null) {
       return false;
     }
 
