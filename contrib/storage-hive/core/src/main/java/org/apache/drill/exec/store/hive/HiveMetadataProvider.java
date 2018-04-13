@@ -244,7 +244,7 @@ public class HiveMetadataProvider {
     }
 
     long numRows = data / 1024;
-    numRows = numRows == 0 && data > 0 ? 1 : numRows
+    numRows = numRows == 0 && data > 0 ? 1 : numRows;
     return new HiveStats(numRows, data);
   }
 
