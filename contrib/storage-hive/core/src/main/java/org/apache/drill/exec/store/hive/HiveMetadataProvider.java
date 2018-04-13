@@ -243,7 +243,9 @@ public class HiveMetadataProvider {
       data += split.getLength();
     }
 
-    return new HiveStats(data/RECORD_SIZE, data);
+    long numRows = data / 1024;
+    numRows = numRows == 0 && data > 0 ? 1 : numRows
+    return new HiveStats(numRows, data);
   }
 
   /**
