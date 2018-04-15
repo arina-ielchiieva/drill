@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -186,15 +186,15 @@ public abstract class TimedRunnable<V> implements Runnable {
       }
     }
 
-    if(logger.isInfoEnabled()){
+    if(logger.isDebugEnabled()){
       double avg = (sum/1000.0/1000.0)/(count*1.0d);
       double avgStart = (totalStart/1000.0)/(count*1.0d);
 
-      logger.info(
+      logger.debug(
           String.format("%s: Executed %d out of %d using %d threads. "
               + "Time: %dms total, %fms avg, %dms max.",
               activity, count, runnables.size(), parallelism, watch.elapsed(TimeUnit.MILLISECONDS), avg, max/1000/1000));
-      logger.info(
+      logger.debug(
               String.format("%s: Executed %d out of %d using %d threads. "
                               + "Earliest start: %f \u03BCs, Latest start: %f \u03BCs, Average start: %f \u03BCs .",
                       activity, count, runnables.size(), parallelism, earliestStart/1000.0, latestStart/1000.0, avgStart));
