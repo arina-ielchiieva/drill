@@ -310,6 +310,11 @@ public class ParquetGroupScan extends AbstractParquetGroupScan {
     return ColumnExplorer.listDiffDirectoryNames(rowGroupInfo.getPath(), selectionRoot);
   }
 
+  @Override
+  protected float getCpuCost() {
+    return 1;
+  }
+
   // overridden protected methods block end
 
   // private methods block start

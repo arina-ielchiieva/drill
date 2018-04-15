@@ -65,8 +65,6 @@ import static org.apache.drill.exec.store.parquet.metadata.MetadataBase.ParquetF
 import static org.apache.drill.exec.store.parquet.metadata.MetadataBase.RowGroupMetadata;
 import static org.apache.drill.exec.store.parquet.metadata.MetadataBase.ParquetTableMetadataBase;
 
-//todo look for all instances of parquet group scan and check where is need to replace with abstract one... + test hive with item star operator
-//todo check what will deserialize when class is fully created ......
 public abstract class AbstractParquetGroupScan extends AbstractFileGroupScan {
 
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(AbstractParquetGroupScan.class);
@@ -174,7 +172,7 @@ public abstract class AbstractParquetGroupScan extends AbstractFileGroupScan {
   public ScanStats getScanStats() {
     int columnCount = columns == null ? 20 : columns.size();
     long rowCount = parquetGroupScanStatistics.getRowCount();
-    return new ScanStats(ScanStats.GroupScanProperty.EXACT_ROW_COUNT, rowCount, 1, rowCount * columnCount);
+    return new ScanStats(ScanStats.GroupScanProperty.EXACT_ROW_COUNT, rowCount, getCpuCost(), rowCount * columnCount);
   }
 
   protected List<RowGroupReadEntry> getReadEntries(int minorFragmentId) {
@@ -432,6 +430,7 @@ public abstract class AbstractParquetGroupScan extends AbstractFileGroupScan {
   protected abstract AbstractParquetGroupScan cloneWithFileSelection(Collection<String> filePaths) throws IOException;
   protected abstract boolean supportsFileImplicitColumns();
   protected abstract List<String> getPartitionValues(RowGroupInfo rowGroupInfo);
+  protected abstract float getCpuCost();
   // abstract methods block end
 
   // private methods block start

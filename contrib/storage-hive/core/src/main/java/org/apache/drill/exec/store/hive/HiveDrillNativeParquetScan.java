@@ -63,6 +63,7 @@ public class HiveDrillNativeParquetScan extends AbstractParquetGroupScan {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(HiveDrillNativeParquetScan.class);
 
   private final HiveStoragePlugin hiveStoragePlugin;
+  private final int serDeOverheadFactor;
   private HivePartitionHolder hivePartitionHolder;
 
   @JsonCreator
@@ -71,29 +72,35 @@ public class HiveDrillNativeParquetScan extends AbstractParquetGroupScan {
                                     @JsonProperty("hiveStoragePluginConfig") HiveStoragePluginConfig hiveStoragePluginConfig,
                                     @JsonProperty("columns") List<SchemaPath> columns,
                                     @JsonProperty("entries") List<ReadEntryWithPath> entries,
+                                    @JsonProperty("serDeOverheadFactor") int serDeOverheadFactor,
                                     @JsonProperty("hivePartitionHolder") HivePartitionHolder hivePartitionHolder,
                                     @JsonProperty("filter") LogicalExpression filter) throws IOException, ExecutionSetupException {
     super(ImpersonationUtil.resolveUserName(userName), columns, entries, filter);
     this.hiveStoragePlugin = (HiveStoragePlugin) engineRegistry.getPlugin(hiveStoragePluginConfig);
+    this.serDeOverheadFactor = serDeOverheadFactor;
     this.hivePartitionHolder = hivePartitionHolder;
+
     init();
   }
 
   public HiveDrillNativeParquetScan(String userName,
                                     List<SchemaPath> columns,
                                     HiveStoragePlugin hiveStoragePlugin,
-                                    List<LogicalInputSplit> logicalInputSplits) throws IOException {
-    this(userName, columns, hiveStoragePlugin, logicalInputSplits, ValueExpressions.BooleanExpression.TRUE);
+                                    List<LogicalInputSplit> logicalInputSplits,
+                                    int serDeOverheadFactor) throws IOException {
+    this(userName, columns, hiveStoragePlugin, logicalInputSplits, serDeOverheadFactor, ValueExpressions.BooleanExpression.TRUE);
   }
 
   public HiveDrillNativeParquetScan(String userName,
                                     List<SchemaPath> columns,
                                     HiveStoragePlugin hiveStoragePlugin,
                                     List<LogicalInputSplit> logicalInputSplits,
+                                    int serDeOverheadFactor,
                                     LogicalExpression filter) throws IOException {
     super(userName, columns, new ArrayList<>(), filter);
 
     this.hiveStoragePlugin = hiveStoragePlugin;
+    this.serDeOverheadFactor = serDeOverheadFactor;
 
     // logical input split contains list of splits by files
     // we need to read only one to get file path
@@ -123,12 +130,18 @@ public class HiveDrillNativeParquetScan extends AbstractParquetGroupScan {
   private HiveDrillNativeParquetScan(HiveDrillNativeParquetScan that) {
     super(that);
     this.hiveStoragePlugin = that.hiveStoragePlugin;
+    this.serDeOverheadFactor = that.serDeOverheadFactor;
     this.hivePartitionHolder = that.hivePartitionHolder;
   }
 
   @JsonProperty
   public HiveStoragePluginConfig getHiveStoragePluginConfig() {
     return hiveStoragePlugin.getConfig();
+  }
+
+  @JsonProperty
+  public int getSerDeOverheadFactor() {
+    return serDeOverheadFactor;
   }
 
   @JsonProperty
@@ -221,5 +234,12 @@ public class HiveDrillNativeParquetScan extends AbstractParquetGroupScan {
   @Override
   protected List<String> getPartitionValues(RowGroupInfo rowGroupInfo) {
     return hivePartitionHolder.get(rowGroupInfo.getPath());
+  }
+
+  @Override
+  protected float getCpuCost() {
+    // As Drill's native parquet record reader is faster and memory efficient. Divide the CPU cost
+    // by a factor to let the planner choose HiveDrillNativeScan over HiveScan with SerDes.
+    return 1 / serDeOverheadFactor;
   }
 }

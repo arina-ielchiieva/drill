@@ -261,7 +261,8 @@ public class ConvertHiveParquetScanToDrillParquetScan extends StoragePluginOptim
             hiveScan.getUserName(),
             nativeScanCols,
             hiveScan.getStoragePlugin(),
-            logicalInputSplits);
+            logicalInputSplits,
+            hiveScan.getSerDeOverheadFactor());
 
     return new DrillScanRel(
         hiveScanRel.getCluster(),

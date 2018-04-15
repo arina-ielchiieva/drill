@@ -243,7 +243,7 @@ public class HiveScan extends AbstractGroupScan {
     }
   }
 
-  protected int getSerDeOverheadFactor() {
+  public int getSerDeOverheadFactor() {
     final int projectedColumnCount;
     if (Utilities.isStarQuery(columns)) {
       Table hiveTable = hiveReadEntry.getTable();
