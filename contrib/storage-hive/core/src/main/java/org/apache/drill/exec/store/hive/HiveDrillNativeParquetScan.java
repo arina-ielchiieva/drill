@@ -196,7 +196,7 @@ public class HiveDrillNativeParquetScan extends AbstractParquetGroupScan {
       Configuration conf = new ProjectionPusher().pushProjectionsAndFilters(
           new JobConf(hiveStoragePlugin.getHiveConf()),
           path.getParent());
-      FileSystem fs = ImpersonationUtil.createFileSystem(ImpersonationUtil.getProcessUserName(), conf);
+      FileSystem fs = path.getFileSystem(conf);
       fileStatusConfMap.put(fs.getFileStatus(Path.getPathWithoutSchemeAndAuthority(path)), fs);
     }
     parquetTableMetadata = Metadata.getParquetTableMetadata(fileStatusConfMap, formatConfig);

@@ -23,17 +23,46 @@ import org.apache.drill.exec.ops.OperatorContext;
 import org.apache.drill.exec.physical.impl.BatchCreator;
 import org.apache.drill.exec.record.CloseableRecordBatch;
 import org.apache.drill.exec.record.RecordBatch;
+import org.apache.drill.exec.store.dfs.DrillFileSystem;
 import org.apache.drill.exec.store.parquet.AbstractParquetScanBatchCreator;
+import org.apache.hadoop.conf.Configuration;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-public class HiveDrillNativeScanBatchCreator extends AbstractParquetScanBatchCreator implements BatchCreator<HiveDrillNativeParquetRowGroupScan> {
+public class HiveDrillNativeParquetScanBatchCreator extends AbstractParquetScanBatchCreator implements BatchCreator<HiveDrillNativeParquetRowGroupScan> {
 
   @Override
   public CloseableRecordBatch getBatch(ExecutorFragmentContext context, HiveDrillNativeParquetRowGroupScan rowGroupScan, List<RecordBatch> children) throws ExecutionSetupException {
     Preconditions.checkArgument(children.isEmpty());
     OperatorContext oContext = context.newOperatorContext(rowGroupScan);
     return getBatch(context, rowGroupScan, oContext);
+  }
+
+  @Override
+  protected AbstractDrillFileSystemCreator getDrillFileSystemCreator(OperatorContext operatorContext, boolean useAsyncPageReader) {
+    return new HiveDrillNativeParquetDrillFileSystemCreator(operatorContext, useAsyncPageReader);
+  }
+
+  private class HiveDrillNativeParquetDrillFileSystemCreator extends AbstractDrillFileSystemCreator {
+
+    private Map<String, DrillFileSystem> fileSystems;
+
+    HiveDrillNativeParquetDrillFileSystemCreator(OperatorContext operatorContext, boolean useAsyncPageReader) {
+      super(operatorContext, useAsyncPageReader);
+      this.fileSystems = new HashMap<>();
+    }
+
+    @Override
+    protected DrillFileSystem getDrillFileSystem(Configuration config, String path) throws ExecutionSetupException {
+      DrillFileSystem fs = fileSystems.get(path);
+      if (fs == null) {
+        fs = createDrillFileSystem(config);
+        fileSystems.put(path, fs);
+      }
+      return fs;
+    }
   }
 
 }

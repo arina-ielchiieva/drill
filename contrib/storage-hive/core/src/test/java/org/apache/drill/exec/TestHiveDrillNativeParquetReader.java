@@ -41,25 +41,6 @@ import static org.junit.Assert.assertEquals;
 @Category({SlowTest.class, HiveStorageTest.class})
 public class TestHiveDrillNativeParquetReader extends HiveTestBase {
 
-  //todo Java 8 enhancements, replace for loops with streams...
-
-    /*
-  Test cases to check:
-    -- 1. item star operator re-write + (works with simple sub-select)
-    -- 2. partition pruning based on Hive partitions (applied earlier on logical stage): check it was actually applied
-    -- 3. partition pruning via Drill -
-    4. ser / de : group scan +, row group scan
-    -- 5. empty hive table + / maybe empty partitions + (empty partition is allowed to be added, but ignored) +
-    -- 6. external simple Hive table + statistics --> calculate how many bytes in one row boolean file....
-    -- 7. external partitions in different locations (external) +
-    -- 8. limit push down without filter +
-    -- 9. project push down +
-    -- 10. count to direct scan optimization +
-    --11. partitioned table managed (not external) +
-    --12. check with nested partitions +
-    13. check parallelization is working fine (need to check on the cluster, that several drillbits can read data)
-   */
-
   @BeforeClass
   public static void init() {
     setSessionOption(ExecConstants.HIVE_OPTIMIZE_SCAN_WITH_NATIVE_READERS, true);

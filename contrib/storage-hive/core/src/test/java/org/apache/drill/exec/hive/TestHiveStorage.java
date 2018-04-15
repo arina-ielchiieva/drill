@@ -31,8 +31,10 @@ import org.apache.hadoop.hive.common.type.HiveVarchar;
 import org.joda.time.DateTime;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.ExpectedException;
 
 import java.math.BigDecimal;
 import java.sql.Date;
@@ -43,15 +45,23 @@ import java.util.Map;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 @Category({SlowTest.class, HiveStorageTest.class})
 public class TestHiveStorage extends HiveTestBase {
+
   @BeforeClass
-  public static void setupOptions() throws Exception {
-    test(String.format("alter session set `%s` = true", PlannerSettings.ENABLE_DECIMAL_DATA_TYPE_KEY));
+  public static void init() {
+    setSessionOption(PlannerSettings.ENABLE_DECIMAL_DATA_TYPE_KEY, true);
   }
+
+  @AfterClass
+  public static void cleanup() {
+    resetSessionOption(PlannerSettings.ENABLE_DECIMAL_DATA_TYPE_KEY);
+  }
+
+  @Rule
+  public ExpectedException thrown = ExpectedException.none();
 
   @Test
   public void hiveReadWithDb() throws Exception {
@@ -325,11 +335,9 @@ public class TestHiveStorage extends HiveTestBase {
     String exceptionMessage = "Hive table property %s value 'A' is non-numeric";
 
     for (Map.Entry<String, String> entry : testData.entrySet()) {
-      try {
-        test(String.format(query, entry.getKey()));
-      } catch (UserRemoteException e) {
-        assertThat(e.getMessage(), containsString(String.format(exceptionMessage, entry.getValue()))); //todo re-write unit test
-      }
+      thrown.expect(UserRemoteException.class);
+      thrown.expectMessage(containsString(String.format(exceptionMessage, entry.getValue())));
+      test(query, entry.getKey());
     }
   }
 
@@ -417,10 +425,5 @@ public class TestHiveStorage extends HiveTestBase {
       assertEquals("Precision should match", expectedSize.intValue(), columnMetadata.getPrecision());
       assertTrue("Column should be nullable", columnMetadata.getIsNullable());
     }
-  }
-
-  @AfterClass
-  public static void shutdownOptions() throws Exception {
-    test(String.format("alter session set `%s` = false", PlannerSettings.ENABLE_DECIMAL_DATA_TYPE_KEY));
   }
 }

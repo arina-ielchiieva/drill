@@ -24,6 +24,8 @@ import org.apache.drill.exec.ops.OperatorContext;
 import org.apache.drill.exec.physical.impl.BatchCreator;
 import org.apache.drill.exec.physical.impl.ScanBatch;
 import org.apache.drill.exec.record.RecordBatch;
+import org.apache.drill.exec.store.dfs.DrillFileSystem;
+import org.apache.hadoop.conf.Configuration;
 
 import java.util.List;
 
@@ -34,6 +36,29 @@ public class ParquetScanBatchCreator extends AbstractParquetScanBatchCreator imp
     Preconditions.checkArgument(children.isEmpty());
     OperatorContext oContext = context.newOperatorContext(rowGroupScan);
     return getBatch(context, rowGroupScan, oContext);
+  }
+
+  @Override
+  protected AbstractDrillFileSystemCreator getDrillFileSystemCreator(OperatorContext operatorContext, boolean useAsyncPageReader) {
+    return new ParquetDrillFileSystemCreator(operatorContext, useAsyncPageReader);
+  }
+
+
+  private class ParquetDrillFileSystemCreator extends AbstractDrillFileSystemCreator {
+
+    private DrillFileSystem fs;
+
+    ParquetDrillFileSystemCreator(OperatorContext operatorContext, boolean useAsyncPageReader) {
+      super(operatorContext, useAsyncPageReader);
+    }
+
+    @Override
+    protected DrillFileSystem getDrillFileSystem(Configuration config, String path) throws ExecutionSetupException {
+      if (fs == null) {
+        fs = createDrillFileSystem(config);
+      }
+      return fs;
+    }
   }
 
 }

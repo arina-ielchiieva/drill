@@ -18,6 +18,8 @@
 package org.apache.drill.exec.ops;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 import org.apache.drill.common.exceptions.UserException;
@@ -27,8 +29,6 @@ import org.apache.drill.exec.store.dfs.DrillFileSystem;
 import org.apache.drill.exec.testing.ControlsInjector;
 import org.apache.drill.exec.testing.ExecutionControls;
 import org.apache.hadoop.conf.Configuration;
-
-import com.google.common.base.Preconditions;
 
 import io.netty.buffer.DrillBuf;
 
@@ -46,7 +46,7 @@ public abstract class BaseOperatorContext implements OperatorContext {
   protected final BufferAllocator allocator;
   protected final PhysicalOperator popConfig;
   protected final BufferManager manager;
-  private DrillFileSystem fs;
+  private List<DrillFileSystem> fileSystems;
   private ControlsInjector injector;
 
   public BaseOperatorContext(FragmentContext context, BufferAllocator allocator,
@@ -55,6 +55,7 @@ public abstract class BaseOperatorContext implements OperatorContext {
     this.allocator = allocator;
     this.popConfig = popConfig;
     this.manager = new BufferManagerImpl(allocator);
+    this.fileSystems = new ArrayList<>();
   }
 
   @Override
@@ -158,16 +159,17 @@ public abstract class BaseOperatorContext implements OperatorContext {
     } catch (RuntimeException e) {
       ex = ex == null ? e : ex;
     }
-    try {
-      if (fs != null) {
+
+    for (DrillFileSystem fs : fileSystems) {
+      try {
         fs.close();
-        fs = null;
-      }
-    } catch (IOException e) {
+      } catch (IOException e) {
       throw UserException.resourceError(e)
-        .addContext("Failed to close the Drill file system for " + getName())
-        .build(logger);
+          .addContext("Failed to close the Drill file system for " + getName())
+          .build(logger);
+      }
     }
+
     if (ex != null) {
       throw ex;
     }
@@ -175,8 +177,8 @@ public abstract class BaseOperatorContext implements OperatorContext {
 
   @Override
   public DrillFileSystem newFileSystem(Configuration conf) throws IOException {
-    Preconditions.checkState(fs == null, "Tried to create a second FileSystem. Can only be called once per OperatorContext");
-    fs = new DrillFileSystem(conf, getStats());
+    DrillFileSystem fs = new DrillFileSystem(conf, getStats());
+    fileSystems.add(fs);
     return fs;
   }
 
@@ -185,8 +187,8 @@ public abstract class BaseOperatorContext implements OperatorContext {
    */
   @Override
   public DrillFileSystem newNonTrackingFileSystem(Configuration conf) throws IOException {
-    Preconditions.checkState(fs == null, "Tried to create a second FileSystem. Can only be called once per OperatorContext");
-    fs = new DrillFileSystem(conf, null);
+    DrillFileSystem fs = new DrillFileSystem(conf, null);
+    fileSystems.add(fs);
     return fs;
   }
 }
