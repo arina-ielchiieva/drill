@@ -18,8 +18,9 @@
 package org.apache.drill.exec.store.parquet;
 
 import com.google.common.base.Functions;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.drill.common.Stopwatch;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ExecConstants;
@@ -42,6 +43,9 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -63,31 +67,15 @@ public abstract class AbstractParquetScanBatchCreator {
       rowGroupScan.setOperatorId(rowGroupScan.getOperatorId());
     }
 
-    DrillFileSystem fs;
-    try {
-      boolean useAsyncPageReader =
-          context.getOptions().getOption(ExecConstants.PARQUET_PAGEREADER_ASYNC).bool_val;
-      if (useAsyncPageReader) {
-        fs = oContext.newNonTrackingFileSystem(rowGroupScan.getFsConf());
-      } else {
-        fs = oContext.newFileSystem(rowGroupScan.getFsConf());
-      }
-    } catch (IOException e) {
-      throw new ExecutionSetupException(
-          String.format("Failed to create DrillFileSystem: %s", e.getMessage()), e);
-    }
-
-    Configuration conf = new Configuration(fs.getConf());
-    conf.setBoolean(ENABLE_BYTES_READ_COUNTER, false);
-    conf.setBoolean(ENABLE_BYTES_TOTAL_COUNTER, false);
-    conf.setBoolean(ENABLE_TIME_READ_COUNTER, false);
+    boolean useAsyncPageReader =
+        context.getOptions().getOption(ExecConstants.PARQUET_PAGEREADER_ASYNC).bool_val;
 
     // keep footers in a map to avoid re-reading them
-    Map<String, ParquetMetadata> footers = Maps.newHashMap();
+    Map<String, Pair<ParquetMetadata, DrillFileSystem>> footers = new HashMap<>();
     List<RecordReader> readers = new LinkedList<>();
-    List<Map<String, String>> implicitColumns = Lists.newArrayList();
-    Map<String, String> mapWithMaxColumns = Maps.newLinkedHashMap();
-    for(RowGroupReadEntry e : rowGroupScan.getRowGroupReadEntries()) {
+    List<Map<String, String>> implicitColumns = new ArrayList<>();
+    Map<String, String> mapWithMaxColumns = new LinkedHashMap<>();
+    for(RowGroupReadEntry rowGroup : rowGroupScan.getRowGroupReadEntries()) {
       /*
       Here we could store a map from file names to footers, to prevent re-reading the footer for each row group in a file
       TODO - to prevent reading the footer again in the parquet record reader (it is read earlier in the ParquetStorageEngine)
@@ -97,36 +85,44 @@ public abstract class AbstractParquetScanBatchCreator {
       */
       try {
         Stopwatch timer = Stopwatch.createUnstarted(logger.isDebugEnabled());
-        if (!footers.containsKey(e.getPath())){
+        if (!footers.containsKey(rowGroup.getPath())) {
           timer.start();
-          ParquetMetadata footer = ParquetFileReader.readFooter(conf, new Path(e.getPath()), ParquetMetadataConverter.NO_FILTER);
+          DrillFileSystem fs = createDrillFileSystem(oContext, useAsyncPageReader, rowGroupScan.getFsConf(rowGroup));
+          ParquetMetadata footer = readerFooter(fs.getConf(), rowGroup.getPath());
           long timeToRead = timer.elapsed(TimeUnit.MICROSECONDS);
-          logger.trace("ParquetTrace,Read Footer,{},{},{},{},{},{},{}", "", e.getPath(), "", 0, 0, 0, timeToRead);
-          footers.put(e.getPath(), footer );
+          logger.trace("ParquetTrace,Read Footer,{},{},{},{},{},{},{}", "", rowGroup.getPath(), "", 0, 0, 0, timeToRead);
+          footers.put(rowGroup.getPath(), new ImmutablePair<>(footer, fs));
         }
+        Pair<ParquetMetadata, DrillFileSystem> pair = footers.get(rowGroup.getPath());
+        ParquetMetadata footer = pair.getKey();
+        DrillFileSystem fs = pair.getValue();
+
         boolean autoCorrectCorruptDates = rowGroupScan.areCorruptDatesAutoCorrected();
-        ParquetReaderUtility.DateCorruptionStatus containsCorruptDates = ParquetReaderUtility.detectCorruptDates(footers.get(e.getPath()), rowGroupScan.getColumns(),
+        ParquetReaderUtility.DateCorruptionStatus containsCorruptDates = ParquetReaderUtility.detectCorruptDates(footer, rowGroupScan.getColumns(),
             autoCorrectCorruptDates);
         logger.debug("Contains corrupt dates: {}", containsCorruptDates);
-        if (!context.getOptions().getBoolean(ExecConstants.PARQUET_NEW_RECORD_READER) && !isComplex(footers.get(e.getPath()))) {
-          readers.add(
-              new ParquetRecordReader(
-                  context, e.getPath(), e.getRowGroupIndex(), e.getNumRecordsToRead(), fs,
-                  CodecFactory.createDirectCodecFactory(
-                      fs.getConf(),
-                      new ParquetDirectByteBufferAllocator(oContext.getAllocator()), 0),
-                  footers.get(e.getPath()),
-                  rowGroupScan.getColumns(),
-                  containsCorruptDates
-              )
-          );
+
+        if (!context.getOptions().getBoolean(ExecConstants.PARQUET_NEW_RECORD_READER) && !isComplex(footer)) {
+          readers.add(new ParquetRecordReader(context,
+              rowGroup.getPath(),
+              rowGroup.getRowGroupIndex(),
+              rowGroup.getNumRecordsToRead(),
+              fs,
+              CodecFactory.createDirectCodecFactory(fs.getConf(), new ParquetDirectByteBufferAllocator(oContext.getAllocator()), 0),
+              footer,
+              rowGroupScan.getColumns(),
+              containsCorruptDates));
         } else {
-          ParquetMetadata footer = footers.get(e.getPath());
-          readers.add(new DrillParquetReader(context, footer, e, columnExplorer.getTableColumns(), fs, containsCorruptDates));
+          readers.add(new DrillParquetReader(context,
+              footer,
+              rowGroup,
+              columnExplorer.getTableColumns(),
+              fs,
+              containsCorruptDates));
         }
 
-        List<String> partitionValues = rowGroupScan.getPartitionValues(e);
-        Map<String, String> implicitValues = columnExplorer.populateImplicitColumns(e.getPath(), partitionValues, rowGroupScan.supportsFileImplicitColumns());
+        List<String> partitionValues = rowGroupScan.getPartitionValues(rowGroup);
+        Map<String, String> implicitValues = columnExplorer.populateImplicitColumns(rowGroup.getPath(), partitionValues, rowGroupScan.supportsFileImplicitColumns());
         implicitColumns.add(implicitValues);
         if (implicitValues.size() > mapWithMaxColumns.size()) {
           mapWithMaxColumns = implicitValues;
@@ -144,6 +140,28 @@ public abstract class AbstractParquetScanBatchCreator {
     }
 
     return new ScanBatch(context, oContext, readers, implicitColumns);
+  }
+
+  private DrillFileSystem createDrillFileSystem(OperatorContext oContext, boolean useAsyncPageReader, Configuration conf) throws ExecutionSetupException {
+    DrillFileSystem fs;
+    try {
+      if (useAsyncPageReader) {
+        fs = oContext.newNonTrackingFileSystem(conf);
+      } else {
+        fs = oContext.newFileSystem(conf);
+      }
+    } catch (IOException e) {
+      throw new ExecutionSetupException(String.format("Failed to create DrillFileSystem: %s", e.getMessage()), e);
+    }
+    return fs;
+  }
+
+  private ParquetMetadata readerFooter(Configuration conf, String path) throws IOException {
+    Configuration newConf = new Configuration(conf);
+    conf.setBoolean(ENABLE_BYTES_READ_COUNTER, false);
+    conf.setBoolean(ENABLE_BYTES_TOTAL_COUNTER, false);
+    conf.setBoolean(ENABLE_TIME_READ_COUNTER, false);
+    return ParquetFileReader.readFooter(newConf, new Path(path), ParquetMetadataConverter.NO_FILTER);
   }
 
   private boolean isComplex(ParquetMetadata footer) {

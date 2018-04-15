@@ -36,7 +36,7 @@ import org.apache.drill.exec.planner.physical.PlannerSettings;
 import org.apache.drill.exec.planner.physical.PrelUtil;
 import org.apache.drill.exec.planner.sql.DrillSqlOperator;
 import org.apache.drill.exec.store.StoragePluginOptimizerRule;
-import org.apache.drill.exec.store.hive.HiveDrillNativeParquetScan2;
+import org.apache.drill.exec.store.hive.HiveDrillNativeParquetScan;
 import org.apache.drill.exec.store.hive.HiveMetadataProvider;
 import org.apache.drill.exec.store.hive.HiveReadEntry;
 import org.apache.drill.exec.store.hive.HiveScan;
@@ -256,22 +256,12 @@ public class ConvertHiveParquetScanToDrillParquetScan extends StoragePluginOptim
     }
 
     final HiveScan hiveScan = (HiveScan) hiveScanRel.getGroupScan();
-    final HiveDrillNativeParquetScan2 nativeHiveScan =
-        new HiveDrillNativeParquetScan2(
+    final HiveDrillNativeParquetScan nativeHiveScan =
+        new HiveDrillNativeParquetScan(
             hiveScan.getUserName(),
             nativeScanCols,
             hiveScan.getStoragePlugin(),
             logicalInputSplits);
-/*
-    final HiveDrillNativeParquetScan nativeHiveScan =
-        new HiveDrillNativeParquetScan(
-            hiveScan.getUserName(),
-            hiveScan.getHiveReadEntry(),
-            hiveScan.getStoragePlugin(),
-            nativeScanCols,
-            null);
-*/
-
 
     return new DrillScanRel(
         hiveScanRel.getCluster(),

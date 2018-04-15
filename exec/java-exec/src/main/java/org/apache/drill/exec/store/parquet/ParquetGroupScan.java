@@ -20,7 +20,11 @@ package org.apache.drill.exec.store.parquet;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.exceptions.UserException;
@@ -45,6 +49,7 @@ import org.apache.drill.exec.store.parquet.metadata.MetadataBase.ParquetFileMeta
 import org.apache.drill.exec.store.parquet.metadata.MetadataBase.ParquetTableMetadataBase;
 import org.apache.drill.exec.util.ImpersonationUtil;
 import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import com.fasterxml.jackson.annotation.JacksonInject;
@@ -52,7 +57,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 @JsonTypeName("parquet-scan")
@@ -232,6 +236,7 @@ public class ParquetGroupScan extends AbstractParquetGroupScan {
   // overridden protected methods block start
   @Override
   protected void initInternal() throws IOException {
+    FileSystem processUserFileSystem = ImpersonationUtil.createFileSystem(ImpersonationUtil.getProcessUserName(), fs.getConf());
     Path metaPath = null;
     if (entries.size() == 1 && parquetTableMetadata == null) {
       Path p = Path.getPathWithoutSchemeAndAuthority(new Path(entries.get(0).getPath()));
@@ -241,13 +246,13 @@ public class ParquetGroupScan extends AbstractParquetGroupScan {
         metaPath = new Path(p, Metadata.METADATA_FILENAME);
       }
       if (!metaContext.isMetadataCacheCorrupted() && metaPath != null && fs.exists(metaPath)) {
-        parquetTableMetadata = Metadata.readBlockMeta(fs, metaPath, metaContext, formatConfig);
+        parquetTableMetadata = Metadata.readBlockMeta(processUserFileSystem, metaPath, metaContext, formatConfig);
         if (parquetTableMetadata != null) {
           usedMetadataCache = true;
         }
       }
       if (!usedMetadataCache) {
-        parquetTableMetadata = Metadata.getParquetTableMetadata(fs, p.toString(), formatConfig);
+        parquetTableMetadata = Metadata.getParquetTableMetadata(processUserFileSystem, p.toString(), formatConfig);
       }
     } else {
       Path p = Path.getPathWithoutSchemeAndAuthority(new Path(selectionRoot));
@@ -255,7 +260,7 @@ public class ParquetGroupScan extends AbstractParquetGroupScan {
       if (!metaContext.isMetadataCacheCorrupted() && fs.isDirectory(new Path(selectionRoot))
           && fs.exists(metaPath)) {
         if (parquetTableMetadata == null) {
-          parquetTableMetadata = Metadata.readBlockMeta(fs, metaPath, metaContext, formatConfig);
+          parquetTableMetadata = Metadata.readBlockMeta(processUserFileSystem, metaPath, metaContext, formatConfig);
         }
         if (parquetTableMetadata != null) {
           usedMetadataCache = true;
@@ -265,11 +270,21 @@ public class ParquetGroupScan extends AbstractParquetGroupScan {
         }
       }
       if (!usedMetadataCache) {
-        final List<FileStatus> fileStatuses = Lists.newArrayList();
+        final List<FileStatus> fileStatuses = new ArrayList<>();
         for (ReadEntryWithPath entry : entries) {
-          fileStatuses.addAll(DrillFileSystemUtil.listFiles(fs, Path.getPathWithoutSchemeAndAuthority(new Path(entry.getPath())), true));
+          fileStatuses.addAll(
+              DrillFileSystemUtil.listFiles(fs, Path.getPathWithoutSchemeAndAuthority(new Path(entry.getPath())), true));
         }
-        parquetTableMetadata = Metadata.getParquetTableMetadata(fs, fileStatuses, formatConfig);
+
+        Map<FileStatus, FileSystem> statusMap = fileStatuses.stream()
+            .collect(
+                Collectors.toMap(
+                    Function.identity(),
+                    s -> processUserFileSystem,
+                    (oldFs, newFs) -> newFs,
+                    LinkedHashMap::new));
+
+        parquetTableMetadata = Metadata.getParquetTableMetadata(statusMap, formatConfig);
       }
     }
   }
@@ -357,7 +372,8 @@ public class ParquetGroupScan extends AbstractParquetGroupScan {
     // we only select the files that are part of selection (by setting fileSet appropriately)
 
     // get (and set internal field) the metadata for the directory by reading the metadata file
-    parquetTableMetadata = Metadata.readBlockMeta(fs, metaFilePath, metaContext, formatConfig);
+    FileSystem processUserFileSystem = ImpersonationUtil.createFileSystem(ImpersonationUtil.getProcessUserName(), fs.getConf());
+    parquetTableMetadata = Metadata.readBlockMeta(processUserFileSystem, metaFilePath, metaContext, formatConfig);
     if (ignoreExpandingSelection(parquetTableMetadata)) {
       return selection;
     }
@@ -398,7 +414,7 @@ public class ParquetGroupScan extends AbstractParquetGroupScan {
         if (status.isDirectory()) {
           //TODO [DRILL-4496] read the metadata cache files in parallel
           final Path metaPath = new Path(cacheFileRoot, Metadata.METADATA_FILENAME);
-          final ParquetTableMetadataBase metadata = Metadata.readBlockMeta(fs, metaPath, metaContext, formatConfig);
+          final ParquetTableMetadataBase metadata = Metadata.readBlockMeta(processUserFileSystem, metaPath, metaContext, formatConfig);
           if (ignoreExpandingSelection(metadata)) {
             return selection;
           }

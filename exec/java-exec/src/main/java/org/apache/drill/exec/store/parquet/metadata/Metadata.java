@@ -59,11 +59,15 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.apache.drill.exec.store.parquet.metadata.MetadataBase.ParquetFileMetadata;
 import static org.apache.drill.exec.store.parquet.metadata.MetadataBase.ParquetTableMetadataBase;
@@ -82,11 +86,15 @@ public class Metadata {
   public static final String METADATA_FILENAME = ".drill.parquet_metadata";
   public static final String METADATA_DIRECTORIES_FILENAME = ".drill.parquet_metadata_directories";
 
-  private final FileSystem fs;
   private final ParquetFormatConfig formatConfig;
 
   private ParquetTableMetadataBase parquetTableMetadata;
   private ParquetTableMetadataDirs parquetTableMetadataDirs;
+
+
+  private Metadata(ParquetFormatConfig formatConfig) {
+    this.formatConfig = formatConfig;
+  }
 
   /**
    * Create the parquet metadata file for the directory at the given path, and for any subdirectories.
@@ -95,8 +103,8 @@ public class Metadata {
    * @param path path
    */
   public static void createMeta(FileSystem fs, String path, ParquetFormatConfig formatConfig) throws IOException {
-    Metadata metadata = new Metadata(fs, formatConfig);
-    metadata.createMetaFilesRecursively(path);
+    Metadata metadata = new Metadata(formatConfig);
+    metadata.createMetaFilesRecursively(path, fs);
   }
 
   /**
@@ -108,21 +116,21 @@ public class Metadata {
    */
   public static ParquetTableMetadata_v3 getParquetTableMetadata(FileSystem fs, String path, ParquetFormatConfig formatConfig)
       throws IOException {
-    Metadata metadata = new Metadata(fs, formatConfig);
-    return metadata.getParquetTableMetadata(path);
+    Metadata metadata = new Metadata(formatConfig);
+    return metadata.getParquetTableMetadata(path, fs);
   }
 
   /**
    * Get the parquet metadata for a list of parquet files.
    *
-   * @param fs file system
-   * @param fileStatuses file statuses
+   * @param fileStatusMap file statuses and corresponding file systems
+   * @param formatConfig parquet format config
    * @return parquet table metadata
    */
-  public static ParquetTableMetadata_v3 getParquetTableMetadata(FileSystem fs,
-      List<FileStatus> fileStatuses, ParquetFormatConfig formatConfig) throws IOException {
-    Metadata metadata = new Metadata(fs, formatConfig);
-    return metadata.getParquetTableMetadata(fileStatuses);
+  public static ParquetTableMetadata_v3 getParquetTableMetadata(Map<FileStatus, FileSystem> fileStatusMap,
+                                                                ParquetFormatConfig formatConfig) throws IOException {
+    Metadata metadata = new Metadata(formatConfig);
+    return metadata.getParquetTableMetadata(fileStatusMap);
   }
 
   /**
@@ -139,8 +147,8 @@ public class Metadata {
     if (ignoreReadingMetadata(metaContext, path)) {
       return null;
     }
-    Metadata metadata = new Metadata(fs, formatConfig);
-    metadata.readBlockMeta(path, false, metaContext);
+    Metadata metadata = new Metadata(formatConfig);
+    metadata.readBlockMeta(path, false, metaContext, fs);
     return metadata.parquetTableMetadata;
   }
 
@@ -158,8 +166,8 @@ public class Metadata {
     if (ignoreReadingMetadata(metaContext, path)) {
       return null;
     }
-    Metadata metadata = new Metadata(fs, formatConfig);
-    metadata.readBlockMeta(path, true, metaContext);
+    Metadata metadata = new Metadata(formatConfig);
+    metadata.readBlockMeta(path, true, metaContext, fs);
     return metadata.parquetTableMetadataDirs;
   }
 
@@ -180,22 +188,18 @@ public class Metadata {
     return false;
   }
 
-  private Metadata(FileSystem fs, ParquetFormatConfig formatConfig) {
-    this.fs = ImpersonationUtil.createFileSystem(ImpersonationUtil.getProcessUserName(), fs.getConf());
-    this.formatConfig = formatConfig;
-  }
-
   /**
    * Create the parquet metadata files for the directory at the given path and for any subdirectories.
    * Metadata cache files written to the disk contain relative paths. Returned Pair of metadata contains absolute paths.
    *
    * @param path to the directory of the parquet table
+   * @param fs file system
    * @return Pair of parquet metadata. The left one is a parquet metadata for the table. The right one of the Pair is
    *         a metadata for all subdirectories (if they are present and there are no any parquet files in the
    *         {@code path} directory).
    * @throws IOException if parquet metadata can't be serialized and written to the json file
    */
-  private Pair<ParquetTableMetadata_v3, ParquetTableMetadataDirs> createMetaFilesRecursively(final String path) throws IOException {
+  private Pair<ParquetTableMetadata_v3, ParquetTableMetadataDirs> createMetaFilesRecursively(final String path, FileSystem fs) throws IOException {
     Stopwatch timer = Stopwatch.createStarted(logger.isDebugEnabled());
 
     List<ParquetFileMetadata_v3> metaDataList = Lists.newArrayList();
@@ -206,11 +210,11 @@ public class Metadata {
     FileStatus fileStatus = fs.getFileStatus(p);
     assert fileStatus.isDirectory() : "Expected directory";
 
-    final List<FileStatus> childFiles = Lists.newArrayList();
+    final Map<FileStatus, FileSystem> childFiles = new LinkedHashMap<>();
 
     for (final FileStatus file : DrillFileSystemUtil.listAll(fs, p, false)) {
       if (file.isDirectory()) {
-        ParquetTableMetadata_v3 subTableMetadata = (createMetaFilesRecursively(file.getPath().toString())).getLeft();
+        ParquetTableMetadata_v3 subTableMetadata = (createMetaFilesRecursively(file.getPath().toString(), fs)).getLeft();
         metaDataList.addAll(subTableMetadata.files);
         directoryList.addAll(subTableMetadata.directories);
         directoryList.add(file.getPath().toString());
@@ -218,14 +222,13 @@ public class Metadata {
         //TODO: We need a merge method that merges two columns with the same name but different types
         columnTypeInfoSet.putAll(subTableMetadata.columnTypeInfo);
       } else {
-        childFiles.add(file);
+        childFiles.put(file, fs);
       }
     }
     ParquetTableMetadata_v3 parquetTableMetadata = new ParquetTableMetadata_v3(SUPPORTED_VERSIONS.last().toString(),
                                                                                 DrillVersionInfo.getVersion());
     if (childFiles.size() > 0) {
-      List<ParquetFileMetadata_v3 > childFilesMetadata =
-          getParquetFileMetadata_v3(parquetTableMetadata, childFiles);
+      List<ParquetFileMetadata_v3 > childFilesMetadata = getParquetFileMetadata_v3(parquetTableMetadata, childFiles);
       metaDataList.addAll(childFilesMetadata);
       // Note that we do not need to merge the columnInfo at this point. The columnInfo is already added
       // to the parquetTableMetadata.
@@ -245,12 +248,12 @@ public class Metadata {
     //  relative paths in the metadata are only necessary for meta cache files.
     ParquetTableMetadata_v3 metadataTableWithRelativePaths =
         MetadataPathUtils.createMetadataWithRelativePaths(parquetTableMetadata, path);
-    writeFile(metadataTableWithRelativePaths, new Path(p, METADATA_FILENAME));
+    writeFile(metadataTableWithRelativePaths, new Path(p, METADATA_FILENAME), fs);
 
     if (directoryList.size() > 0 && childFiles.size() == 0) {
       ParquetTableMetadataDirs parquetTableMetadataDirsRelativePaths =
           new ParquetTableMetadataDirs(metadataTableWithRelativePaths.directories);
-      writeFile(parquetTableMetadataDirsRelativePaths, new Path(p, METADATA_DIRECTORIES_FILENAME));
+      writeFile(parquetTableMetadataDirsRelativePaths, new Path(p, METADATA_DIRECTORIES_FILENAME), fs);
       logger.debug("Creating metadata files recursively took {} ms", timer.elapsed(TimeUnit.MILLISECONDS));
       ParquetTableMetadataDirs parquetTableMetadataDirs = new ParquetTableMetadataDirs(directoryList);
       return Pair.of(parquetTableMetadata, parquetTableMetadataDirs);
@@ -268,7 +271,7 @@ public class Metadata {
    * @return metadata object for an entire parquet directory structure
    * @throws IOException in case of problems during accessing files
    */
-  private ParquetTableMetadata_v3 getParquetTableMetadata(String path) throws IOException {
+  private ParquetTableMetadata_v3 getParquetTableMetadata(String path, FileSystem fs) throws IOException {
     Path p = new Path(path);
     FileStatus fileStatus = fs.getFileStatus(p);
     final Stopwatch watch = Stopwatch.createStarted(logger.isDebugEnabled());
@@ -281,7 +284,16 @@ public class Metadata {
     logger.debug("Took {} ms to get file statuses", watch.elapsed(TimeUnit.MILLISECONDS));
     watch.reset();
     watch.start();
-    ParquetTableMetadata_v3 metadata_v3 = getParquetTableMetadata(fileStatuses);
+
+    Map<FileStatus, FileSystem> fileStatusMap = fileStatuses.stream()
+        .collect(
+            Collectors.toMap(
+                Function.identity(),
+                s -> fs,
+                (oldFs, newFs) -> newFs,
+                LinkedHashMap::new));
+
+    ParquetTableMetadata_v3 metadata_v3 = getParquetTableMetadata(fileStatusMap);
     logger.debug("Took {} ms to read file metadata", watch.elapsed(TimeUnit.MILLISECONDS));
     return metadata_v3;
   }
@@ -289,15 +301,15 @@ public class Metadata {
   /**
    * Get the parquet metadata for a list of parquet files
    *
-   * @param fileStatuses List of file statuses
+   * @param fileStatusMap file statuses and corresponding file systems
    * @return parquet table metadata object
    * @throws IOException if parquet file metadata can't be obtained
    */
-  private ParquetTableMetadata_v3 getParquetTableMetadata(List<FileStatus> fileStatuses)
+  private ParquetTableMetadata_v3 getParquetTableMetadata(Map<FileStatus, FileSystem> fileStatusMap)
       throws IOException {
     ParquetTableMetadata_v3 tableMetadata = new ParquetTableMetadata_v3(SUPPORTED_VERSIONS.last().toString(),
                                                                         DrillVersionInfo.getVersion());
-    tableMetadata.files = getParquetFileMetadata_v3(tableMetadata, fileStatuses);
+    tableMetadata.files = getParquetFileMetadata_v3(tableMetadata, fileStatusMap);
     tableMetadata.directories = new ArrayList<>();
     return tableMetadata;
   }
@@ -306,19 +318,19 @@ public class Metadata {
    * Get a list of file metadata for a list of parquet files
    *
    * @param parquetTableMetadata_v3 can store column schema info from all the files and row groups
-   * @param fileStatuses list of the parquet files statuses
+   * @param fileStatusMap parquet files statuses and corresponding file systems
    *
    * @return list of the parquet file metadata with absolute paths
    * @throws IOException is thrown in case of issues while executing the list of runnables
    */
   private List<ParquetFileMetadata_v3> getParquetFileMetadata_v3(
-      ParquetTableMetadata_v3 parquetTableMetadata_v3, List<FileStatus> fileStatuses) throws IOException {
-    List<TimedRunnable<ParquetFileMetadata_v3>> gatherers = Lists.newArrayList();
-    for (FileStatus file : fileStatuses) {
-      gatherers.add(new MetadataGatherer(parquetTableMetadata_v3, file));
-    }
+      ParquetTableMetadata_v3 parquetTableMetadata_v3, Map<FileStatus, FileSystem> fileStatusMap) throws IOException {
 
-    List<ParquetFileMetadata_v3> metaDataList = Lists.newArrayList();
+    List<TimedRunnable<ParquetFileMetadata_v3>> gatherers = fileStatusMap.entrySet().stream()
+        .map(e -> new MetadataGatherer(parquetTableMetadata_v3, e.getKey(), e.getValue()))
+        .collect(Collectors.toList());
+
+    List<ParquetFileMetadata_v3> metaDataList = new ArrayList<>();
     metaDataList.addAll(TimedRunnable.run("Fetch parquet metadata", logger, gatherers, 16));
     return metaDataList;
   }
@@ -328,17 +340,19 @@ public class Metadata {
    */
   private class MetadataGatherer extends TimedRunnable<ParquetFileMetadata_v3> {
 
-    private FileStatus fileStatus;
-    private ParquetTableMetadata_v3 parquetTableMetadata;
+    private final ParquetTableMetadata_v3 parquetTableMetadata;
+    private final FileStatus fileStatus;
+    private final FileSystem fs;
 
-    MetadataGatherer(ParquetTableMetadata_v3 parquetTableMetadata, FileStatus fileStatus) {
-      this.fileStatus = fileStatus;
+    MetadataGatherer(ParquetTableMetadata_v3 parquetTableMetadata, FileStatus fileStatus, FileSystem fs) {
       this.parquetTableMetadata = parquetTableMetadata;
+      this.fileStatus = fileStatus;
+      this.fs = fs;
     }
 
     @Override
     protected ParquetFileMetadata_v3 runInner() throws Exception {
-      return getParquetFileMetadata_v3(parquetTableMetadata, fileStatus);
+      return getParquetFileMetadata_v3(parquetTableMetadata, fileStatus, fs);
     }
 
     @Override
@@ -349,14 +363,6 @@ public class Metadata {
         return new IOException(e);
       }
     }
-  }
-
-  private OriginalType getOriginalType(Type type, String[] path, int depth) {
-    if (type.isPrimitive()) {
-      return type.getOriginalType();
-    }
-    Type t = ((GroupType) type).getType(path[depth]);
-    return getOriginalType(t, path, depth + 1);
   }
 
   private ColTypeInfo getColTypeInfo(MessageType schema, Type type, String[] path, int depth) {
@@ -398,7 +404,7 @@ public class Metadata {
    * Get the metadata for a single file
    */
   private ParquetFileMetadata_v3 getParquetFileMetadata_v3(ParquetTableMetadata_v3 parquetTableMetadata,
-      final FileStatus file) throws IOException, InterruptedException {
+      final FileStatus file, final FileSystem fs) throws IOException, InterruptedException {
     final ParquetMetadata metadata;
     final UserGroupInformation processUserUgi = ImpersonationUtil.getProcessUserUGI();
     try {
@@ -484,7 +490,7 @@ public class Metadata {
       }
       RowGroupMetadata_v3 rowGroupMeta =
           new RowGroupMetadata_v3(rowGroup.getStartingPos(), length, rowGroup.getRowCount(),
-              getHostAffinity(file, rowGroup.getStartingPos(), length), columnMetadataList);
+              getHostAffinity(file, fs, rowGroup.getStartingPos(), length), columnMetadataList);
 
       rowGroupMetadataList.add(rowGroupMeta);
     }
@@ -501,7 +507,7 @@ public class Metadata {
    * @param length     the length of the row group
    * @return host affinity for the row group
    */
-  private Map<String, Float> getHostAffinity(FileStatus fileStatus, long start, long length)
+  private Map<String, Float> getHostAffinity(FileStatus fileStatus, FileSystem fs, long start, long length)
       throws IOException {
     BlockLocation[] blockLocations = fs.getFileBlockLocations(fileStatus, start, length);
     Map<String, Float> hostAffinityMap = Maps.newHashMap();
@@ -529,7 +535,7 @@ public class Metadata {
    * @param parquetTableMetadata parquet table metadata
    * @param p file path
    */
-  private void writeFile(ParquetTableMetadata_v3 parquetTableMetadata, Path p) throws IOException {
+  private void writeFile(ParquetTableMetadata_v3 parquetTableMetadata, Path p, FileSystem fs) throws IOException {
     JsonFactory jsonFactory = new JsonFactory();
     jsonFactory.configure(Feature.AUTO_CLOSE_TARGET, false);
     jsonFactory.configure(JsonParser.Feature.AUTO_CLOSE_SOURCE, false);
@@ -543,7 +549,7 @@ public class Metadata {
     os.close();
   }
 
-  private void writeFile(ParquetTableMetadataDirs parquetTableMetadataDirs, Path p) throws IOException {
+  private void writeFile(ParquetTableMetadataDirs parquetTableMetadataDirs, Path p, FileSystem fs) throws IOException {
     JsonFactory jsonFactory = new JsonFactory();
     jsonFactory.configure(Feature.AUTO_CLOSE_TARGET, false);
     jsonFactory.configure(JsonParser.Feature.AUTO_CLOSE_SOURCE, false);
@@ -564,7 +570,7 @@ public class Metadata {
    *                 or false for {@link Metadata#METADATA_FILENAME} files reading
    * @param metaContext current metadata context
    */
-  private void readBlockMeta(Path path, boolean dirsOnly, MetadataContext metaContext) {
+  private void readBlockMeta(Path path, boolean dirsOnly, MetadataContext metaContext, FileSystem fs) {
     Stopwatch timer = Stopwatch.createStarted(logger.isDebugEnabled());
     Path metadataParentDir = Path.getPathWithoutSchemeAndAuthority(path.getParent());
     String metadataParentDirPath = metadataParentDir.toUri().getPath();
@@ -582,7 +588,7 @@ public class Metadata {
     mapper.registerModule(module);
     mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     try (FSDataInputStream is = fs.open(path)) {
-      boolean alreadyCheckedModification = false;
+      boolean alreadyCheckedModification;
       boolean newMetadata = false;
       alreadyCheckedModification = metaContext.getStatus(metadataParentDirPath);
 
@@ -591,9 +597,9 @@ public class Metadata {
         logger.debug("Took {} ms to read directories from directory cache file", timer.elapsed(TimeUnit.MILLISECONDS));
         timer.stop();
         parquetTableMetadataDirs.updateRelativePaths(metadataParentDirPath);
-        if (!alreadyCheckedModification && tableModified(parquetTableMetadataDirs.getDirectories(), path, metadataParentDir, metaContext)) {
+        if (!alreadyCheckedModification && tableModified(parquetTableMetadataDirs.getDirectories(), path, metadataParentDir, metaContext, fs)) {
           parquetTableMetadataDirs =
-              (createMetaFilesRecursively(Path.getPathWithoutSchemeAndAuthority(path.getParent()).toString())).getRight();
+              (createMetaFilesRecursively(Path.getPathWithoutSchemeAndAuthority(path.getParent()).toString(), fs)).getRight();
           newMetadata = true;
         }
       } else {
@@ -603,9 +609,9 @@ public class Metadata {
         if (new MetadataVersion(parquetTableMetadata.getMetadataVersion()).compareTo(new MetadataVersion(3, 0)) >= 0) {
           ((ParquetTableMetadata_v3) parquetTableMetadata).updateRelativePaths(metadataParentDirPath);
         }
-        if (!alreadyCheckedModification && tableModified(parquetTableMetadata.getDirectories(), path, metadataParentDir, metaContext)) {
+        if (!alreadyCheckedModification && tableModified(parquetTableMetadata.getDirectories(), path, metadataParentDir, metaContext, fs)) {
           parquetTableMetadata =
-              (createMetaFilesRecursively(Path.getPathWithoutSchemeAndAuthority(path.getParent()).toString())).getLeft();
+              (createMetaFilesRecursively(Path.getPathWithoutSchemeAndAuthority(path.getParent()).toString(), fs)).getLeft();
           newMetadata = true;
         }
 
@@ -641,7 +647,7 @@ public class Metadata {
    * @return true if metadata needs to be updated, false otherwise
    * @throws IOException if some resources are not accessible
    */
-  private boolean tableModified(List<String> directories, Path metaFilePath, Path parentDir, MetadataContext metaContext)
+  private boolean tableModified(List<String> directories, Path metaFilePath, Path parentDir, MetadataContext metaContext, FileSystem fs)
       throws IOException {
 
     Stopwatch timer = Stopwatch.createStarted(logger.isDebugEnabled());

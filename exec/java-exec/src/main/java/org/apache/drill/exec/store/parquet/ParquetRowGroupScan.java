@@ -118,7 +118,7 @@ public class ParquetRowGroupScan extends AbstractParquetRowGroupScan {
   }
 
   @Override
-  public Configuration getFsConf() {
+  public Configuration getFsConf(RowGroupReadEntry rowGroupReadEntry) {
     return formatPlugin.getFsConf();
   }
 

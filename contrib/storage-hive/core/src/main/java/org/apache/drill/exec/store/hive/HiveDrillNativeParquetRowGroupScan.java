@@ -30,7 +30,11 @@ import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.apache.drill.exec.store.parquet.AbstractParquetRowGroupScan;
 import org.apache.drill.exec.store.parquet.RowGroupReadEntry;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.ql.io.parquet.ProjectionPusher;
+import org.apache.hadoop.mapred.JobConf;
 
+import java.io.IOException;
 import java.util.List;
 
 @JsonTypeName("hive-drill-native-parquet-row-group-scan")
@@ -102,11 +106,14 @@ public class HiveDrillNativeParquetRowGroupScan extends AbstractParquetRowGroupS
   @Override
   public boolean areCorruptDatesAutoCorrected() {
     return true;
-  } //todo check prev impl
+  }
 
   @Override
-  public Configuration getFsConf() {
-    return hiveStoragePlugin.getHiveConf();
+  public Configuration getFsConf(RowGroupReadEntry rowGroupReadEntry) throws IOException {
+    Path path = new Path(rowGroupReadEntry.getPath()).getParent();
+    return new ProjectionPusher().pushProjectionsAndFilters(
+        new JobConf(hiveStoragePlugin.getHiveConf()),
+        path.getParent());
   }
 
   @Override

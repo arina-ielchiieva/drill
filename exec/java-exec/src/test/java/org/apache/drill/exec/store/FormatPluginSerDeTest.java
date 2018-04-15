@@ -23,12 +23,12 @@ import org.junit.Test;
 
 import java.nio.file.Paths;
 
+import static org.apache.drill.exec.util.StoragePluginTestUtils.DFS_TMP_SCHEMA;
+
 public class FormatPluginSerDeTest extends PlanTestBase {
 
   @Test
   public void testParquet() throws Exception {
-    //todo add test with parquet metadata ...
-    //todo for hive add test as well with native drill parquet reader turned on (in hive module)
     try {
       setSessionOption(ExecConstants.SLICE_TARGET, 1);
       testPhysicalPlanSubmission(
@@ -37,6 +37,24 @@ public class FormatPluginSerDeTest extends PlanTestBase {
           String.format("select * from table(cp.`%s`(type=>'parquet', autoCorrectCorruptDates=>true))", "parquet/alltypes_required.parquet"));
     } finally {
       resetSessionOption(ExecConstants.SLICE_TARGET);
+    }
+  }
+
+  @Test
+  public void testParquetWithMetadata() throws Exception {
+    String tableName = "alltypes_required_with_metadata";
+    test("use %s", DFS_TMP_SCHEMA);
+    try {
+      test("create table %s as select * from cp.`parquet/alltypes_required.parquet`", tableName);
+      test("refresh table metadata %s", tableName);
+      setSessionOption(ExecConstants.SLICE_TARGET, 1);
+      testPhysicalPlanSubmission(
+          String.format("select * from table(`%s`(type=>'parquet'))", tableName),
+          String.format("select * from table(`%s`(type=>'parquet', autoCorrectCorruptDates=>false))", tableName),
+          String.format("select * from table(`%s`(type=>'parquet', autoCorrectCorruptDates=>true))", tableName));
+    } finally {
+      resetSessionOption(ExecConstants.SLICE_TARGET);
+      test("drop table if exists %s", tableName);
     }
   }
 

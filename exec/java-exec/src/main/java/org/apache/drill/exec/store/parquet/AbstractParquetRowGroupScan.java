@@ -28,6 +28,7 @@ import org.apache.drill.exec.physical.base.PhysicalVisitor;
 import org.apache.drill.exec.physical.base.SubScan;
 import org.apache.hadoop.conf.Configuration;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -81,7 +82,7 @@ public abstract class AbstractParquetRowGroupScan extends AbstractBase implement
   public abstract AbstractParquetRowGroupScan copy(List<SchemaPath> columns);
   public abstract boolean areCorruptDatesAutoCorrected();
   @JsonIgnore
-  public abstract Configuration getFsConf();
+  public abstract Configuration getFsConf(RowGroupReadEntry rowGroupReadEntry) throws IOException;
   public abstract boolean supportsFileImplicitColumns();
   @JsonIgnore
   public abstract List<String> getPartitionValues(RowGroupReadEntry rowGroupReadEntry);
