@@ -3,7 +3,7 @@
     hive : {
       type:"hive",
       enabled: false,
-      configProps : {
+      config : {
         "hive.metastore.uris" : "",
         "javax.jdo.option.ConnectionURL" : "jdbc:derby:;databaseName=../sample-data/drill_hive_db;create=true",
         "hive.metastore.warehouse.dir" : "/tmp/drill_hive_wh",

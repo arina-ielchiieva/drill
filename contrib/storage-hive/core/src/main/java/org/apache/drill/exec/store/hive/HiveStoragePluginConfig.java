@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -39,7 +39,7 @@ public class HiveStoragePluginConfig extends StoragePluginConfigBase {
   }
 
   @JsonCreator
-  public HiveStoragePluginConfig(@JsonProperty("configProps") Map<String, String> props) {
+  public HiveStoragePluginConfig(@JsonProperty("config") Map<String, String> props) {
     this.configProps = props;
   }
 

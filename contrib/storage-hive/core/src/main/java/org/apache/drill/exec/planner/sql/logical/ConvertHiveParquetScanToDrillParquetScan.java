@@ -111,7 +111,7 @@ public class ConvertHiveParquetScanToDrillParquetScan extends StoragePluginOptim
       return false;
     }
 
-    final List<HivePartitionWrapper> partitions = hiveScan.getHiveReadEntry().getPartitionWrappers();
+    final List<HivePartitionWrapper> partitions = hiveScan.getHiveReadEntry().getHivePartitionWrappers();
     if (partitions == null) {
       return true;
     }
