@@ -26,6 +26,7 @@ import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
+import org.apache.drill.exec.proto.UserBitShared.CoreOperatorType;
 import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.apache.drill.exec.store.parquet.AbstractParquetRowGroupScan;
 import org.apache.drill.exec.store.parquet.RowGroupReadEntry;
@@ -95,8 +96,8 @@ public class HiveDrillNativeParquetRowGroupScan extends AbstractParquetRowGroupS
 
   @Override
   public int getOperatorType() {
-    return 0;
-  } //todo should have own operator type....
+    return CoreOperatorType.HIVE_DRILL_NATIVE_PARQUET_ROW_GROUP_SCAN_VALUE;
+  }
 
   @Override
   public AbstractParquetRowGroupScan copy(List<SchemaPath> columns) {
