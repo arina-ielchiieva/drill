@@ -64,7 +64,7 @@ public class TestHiveDrillNativeParquetReader extends HiveTestBase {
     assertEquals("Expected and actual row count should match", 2, actualRowCount);
 
     testPlanMatchingPatterns(query,
-        new String[]{"HiveDrillNativeParquetScan", "numFiles=1"}, new String[]{});
+        new String[]{"HiveDrillNativeParquetGroupScan", "numFiles=1"}, new String[]{});
   }
 
   @Test
@@ -75,7 +75,7 @@ public class TestHiveDrillNativeParquetReader extends HiveTestBase {
     assertEquals("Expected and actual row count should match", 1, actualRowCount);
 
     testPlanMatchingPatterns(query,
-        new String[]{"HiveDrillNativeParquetScan", "numFiles=1"}, new String[]{});
+        new String[]{"HiveDrillNativeParquetGroupScan", "numFiles=1"}, new String[]{});
   }
 
   @Test
@@ -89,7 +89,7 @@ public class TestHiveDrillNativeParquetReader extends HiveTestBase {
     // while convert to Drill native parquet reader during physical
     // thus plan should not contain filter
     testPlanMatchingPatterns(query,
-        new String[]{"HiveDrillNativeParquetScan", "numFiles=1"}, new String[]{"Filter"});
+        new String[]{"HiveDrillNativeParquetGroupScan", "numFiles=1"}, new String[]{"Filter"});
   }
 
   @Test
@@ -103,7 +103,7 @@ public class TestHiveDrillNativeParquetReader extends HiveTestBase {
     // while convert to Drill native parquet reader during physical
     // thus plan should not contain filter
     testPlanMatchingPatterns(query,
-        new String[]{"HiveDrillNativeParquetScan", "numFiles=1"}, new String[]{"Filter"});
+        new String[]{"HiveDrillNativeParquetGroupScan", "numFiles=1"}, new String[]{"Filter"});
   }
 
   @Test
@@ -114,14 +114,14 @@ public class TestHiveDrillNativeParquetReader extends HiveTestBase {
     assertEquals("Expected and actual row count should match", 2, actualRowCount);
 
     testPlanMatchingPatterns(query,
-        new String[]{"HiveDrillNativeParquetScan", "numFiles=1"}, new String[]{});
+        new String[]{"HiveDrillNativeParquetGroupScan", "numFiles=1"}, new String[]{});
   }
 
   @Test
   public void testPartitionedExternalTable() throws Exception {
     String query = "select * from hive.kv_native_ext";
 
-    testPlanMatchingPatterns(query, new String[]{"HiveDrillNativeParquetScan", "numFiles=2"}, new String[]{});
+    testPlanMatchingPatterns(query, new String[]{"HiveDrillNativeParquetGroupScan", "numFiles=2"}, new String[]{});
 
     testBuilder()
         .sqlQuery(query)
@@ -138,14 +138,14 @@ public class TestHiveDrillNativeParquetReader extends HiveTestBase {
   public void testEmptyTable() throws Exception {
     String query = "select * from hive.empty_table";
     // Hive reader should be chosen to output the schema
-    testPlanMatchingPatterns(query, new String[]{"HiveScan"}, new String[]{"HiveDrillNativeParquetScan"});
+    testPlanMatchingPatterns(query, new String[]{"HiveScan"}, new String[]{"HiveDrillNativeParquetGroupScan"});
   }
 
   @Test
   public void testEmptyPartition() throws Exception {
     String query = "select * from hive.kv_native_ext where part_key = 3";
     // Hive reader should be chosen to output the schema
-    testPlanMatchingPatterns(query, new String[]{"HiveScan"}, new String[]{"HiveDrillNativeParquetScan"});
+    testPlanMatchingPatterns(query, new String[]{"HiveScan"}, new String[]{"HiveDrillNativeParquetGroupScan"});
   }
 
   @Test
@@ -153,7 +153,6 @@ public class TestHiveDrillNativeParquetReader extends HiveTestBase {
     // checks only group scan
     PlanTestBase.testPhysicalPlanExecutionBasedOnQuery("select * from hive.kv_native");
     PlanTestBase.testPhysicalPlanExecutionBasedOnQuery("select * from hive.kv_native_ext");
-    //todo need to check row group scan
   }
 
   @Test
@@ -167,7 +166,7 @@ public class TestHiveDrillNativeParquetReader extends HiveTestBase {
         // partition column is named during scan as Drill partition columns
         // it will be renamed to actual value in subsequent project
         new String[]{"Project\\(boolean_field=\\[\\$0\\], int_part=\\[CAST\\(\\$1\\):INTEGER\\]\\)",
-            "HiveDrillNativeParquetScan",
+            "HiveDrillNativeParquetGroupScan",
             "columns=\\[`boolean_field`, `dir9`\\]"},
         new String[]{});
   }
@@ -179,7 +178,7 @@ public class TestHiveDrillNativeParquetReader extends HiveTestBase {
     int actualRowCount = testSql(query);
     assertEquals("Expected and actual row count should match", 2, actualRowCount);
 
-    testPlanMatchingPatterns(query, new String[]{"HiveDrillNativeParquetScan", "numFiles=1"}, new String[]{});
+    testPlanMatchingPatterns(query, new String[]{"HiveDrillNativeParquetGroupScan", "numFiles=1"}, new String[]{});
   }
 
   @Test
@@ -218,7 +217,7 @@ public class TestHiveDrillNativeParquetReader extends HiveTestBase {
   public void testReadAllSupportedHiveDataTypesNativeParquet() throws Exception {
     String query = "select * from hive.readtest_parquet";
 
-    testPlanMatchingPatterns(query, new String[] {"HiveDrillNativeParquetScan"}, new String[]{});
+    testPlanMatchingPatterns(query, new String[] {"HiveDrillNativeParquetGroupScan"}, new String[]{});
 
     testBuilder()
         .sqlQuery(query)
@@ -242,7 +241,7 @@ public class TestHiveDrillNativeParquetReader extends HiveTestBase {
     String query = "select key, `value`, newcol from hive.kv_parquet order by key limit 1";
 
     // Make sure the HiveScan in plan has no native parquet reader
-    testPlanMatchingPatterns(query, new String[] {"HiveScan"}, new String[]{"HiveDrillNativeParquetScan"});
+    testPlanMatchingPatterns(query, new String[] {"HiveScan"}, new String[]{"HiveDrillNativeParquetGroupScan"});
   }
 
 }

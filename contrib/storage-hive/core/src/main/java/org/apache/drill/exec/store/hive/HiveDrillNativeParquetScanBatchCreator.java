@@ -41,24 +41,27 @@ public class HiveDrillNativeParquetScanBatchCreator extends AbstractParquetScanB
   }
 
   @Override
-  protected AbstractDrillFileSystemCreator getDrillFileSystemCreator(OperatorContext operatorContext, boolean useAsyncPageReader) {
-    return new HiveDrillNativeParquetDrillFileSystemCreator(operatorContext, useAsyncPageReader);
+  protected AbstractDrillFileSystemManager getDrillFileSystemCreator(OperatorContext operatorContext, boolean useAsyncPageReader) {
+    return new HiveDrillNativeParquetDrillFileSystemManager(operatorContext, useAsyncPageReader);
   }
 
-  private class HiveDrillNativeParquetDrillFileSystemCreator extends AbstractDrillFileSystemCreator {
+  /**
+   * Caches file system per path and returns file system from cache if it exists there.
+   */
+  private class HiveDrillNativeParquetDrillFileSystemManager extends AbstractDrillFileSystemManager {
 
-    private Map<String, DrillFileSystem> fileSystems;
+    private final Map<String, DrillFileSystem> fileSystems;
 
-    HiveDrillNativeParquetDrillFileSystemCreator(OperatorContext operatorContext, boolean useAsyncPageReader) {
+    HiveDrillNativeParquetDrillFileSystemManager(OperatorContext operatorContext, boolean useAsyncPageReader) {
       super(operatorContext, useAsyncPageReader);
       this.fileSystems = new HashMap<>();
     }
 
     @Override
-    protected DrillFileSystem getDrillFileSystem(Configuration config, String path) throws ExecutionSetupException {
+    protected DrillFileSystem get(Configuration config, String path) throws ExecutionSetupException {
       DrillFileSystem fs = fileSystems.get(path);
       if (fs == null) {
-        fs = createDrillFileSystem(config);
+        fs = create(config);
         fileSystems.put(path, fs);
       }
       return fs;

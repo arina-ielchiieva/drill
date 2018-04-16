@@ -39,23 +39,26 @@ public class ParquetScanBatchCreator extends AbstractParquetScanBatchCreator imp
   }
 
   @Override
-  protected AbstractDrillFileSystemCreator getDrillFileSystemCreator(OperatorContext operatorContext, boolean useAsyncPageReader) {
-    return new ParquetDrillFileSystemCreator(operatorContext, useAsyncPageReader);
+  protected AbstractDrillFileSystemManager getDrillFileSystemCreator(OperatorContext operatorContext, boolean useAsyncPageReader) {
+    return new ParquetDrillFileSystemManager(operatorContext, useAsyncPageReader);
   }
 
 
-  private class ParquetDrillFileSystemCreator extends AbstractDrillFileSystemCreator {
+  /**
+   * Creates file system only if it was not created before, otherwise returns already created instance.
+   */
+  private class ParquetDrillFileSystemManager extends AbstractDrillFileSystemManager {
 
     private DrillFileSystem fs;
 
-    ParquetDrillFileSystemCreator(OperatorContext operatorContext, boolean useAsyncPageReader) {
+    ParquetDrillFileSystemManager(OperatorContext operatorContext, boolean useAsyncPageReader) {
       super(operatorContext, useAsyncPageReader);
     }
 
     @Override
-    protected DrillFileSystem getDrillFileSystem(Configuration config, String path) throws ExecutionSetupException {
+    protected DrillFileSystem get(Configuration config, String path) throws ExecutionSetupException {
       if (fs == null) {
-        fs = createDrillFileSystem(config);
+        fs = create(config);
       }
       return fs;
     }

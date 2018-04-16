@@ -36,7 +36,7 @@ import org.apache.drill.exec.planner.physical.PlannerSettings;
 import org.apache.drill.exec.planner.physical.PrelUtil;
 import org.apache.drill.exec.planner.sql.DrillSqlOperator;
 import org.apache.drill.exec.store.StoragePluginOptimizerRule;
-import org.apache.drill.exec.store.hive.HiveDrillNativeParquetScan;
+import org.apache.drill.exec.store.hive.HiveDrillNativeParquetGroupScan;
 import org.apache.drill.exec.store.hive.HiveMetadataProvider;
 import org.apache.drill.exec.store.hive.HiveReadEntry;
 import org.apache.drill.exec.store.hive.HiveScan;
@@ -200,10 +200,10 @@ public class ConvertHiveParquetScanToDrillParquetScan extends StoragePluginOptim
       }
 
       // Drill native scan should take precedence over Hive,
-      // reduce Hive scan importance to zero to ensure, it would be used again
+      // reduce Hive scan importance to zero to ensure, it would not be used again
       call.getPlanner().setImportance(hiveScanRel, 0.0);
     } catch (final Exception e) {
-      logger.warn("Failed to convert HiveScan to HiveDrillNativeParquetScan", e);
+      logger.warn("Failed to convert HiveScan to HiveDrillNativeParquetGroupScan", e);
     }
   }
 
@@ -260,8 +260,8 @@ public class ConvertHiveParquetScanToDrillParquetScan extends StoragePluginOptim
     }
 
     final HiveScan hiveScan = (HiveScan) hiveScanRel.getGroupScan();
-    final HiveDrillNativeParquetScan nativeHiveScan =
-        new HiveDrillNativeParquetScan(
+    final HiveDrillNativeParquetGroupScan nativeHiveScan =
+        new HiveDrillNativeParquetGroupScan(
             hiveScan.getUserName(),
             nativeScanCols,
             hiveScan.getStoragePlugin(),

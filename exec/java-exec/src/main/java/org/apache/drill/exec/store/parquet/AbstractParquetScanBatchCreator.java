@@ -68,7 +68,7 @@ public abstract class AbstractParquetScanBatchCreator {
     boolean useAsyncPageReader =
         context.getOptions().getOption(ExecConstants.PARQUET_PAGEREADER_ASYNC).bool_val;
 
-    AbstractDrillFileSystemCreator fsCreator = getDrillFileSystemCreator(oContext, useAsyncPageReader);
+    AbstractDrillFileSystemManager fsManager = getDrillFileSystemCreator(oContext, useAsyncPageReader);
 
     // keep footers in a map to avoid re-reading them
     Map<String, ParquetMetadata> footers = new HashMap<>();
@@ -85,7 +85,7 @@ public abstract class AbstractParquetScanBatchCreator {
       */
       try {
         Stopwatch timer = Stopwatch.createUnstarted(logger.isDebugEnabled());
-        DrillFileSystem fs = fsCreator.getDrillFileSystem(rowGroupScan.getFsConf(rowGroup), rowGroup.getPath());
+        DrillFileSystem fs = fsManager.get(rowGroupScan.getFsConf(rowGroup), rowGroup.getPath());
         if (!footers.containsKey(rowGroup.getPath())) {
           timer.start();
 
@@ -127,8 +127,8 @@ public abstract class AbstractParquetScanBatchCreator {
           mapWithMaxColumns = implicitValues;
         }
 
-      } catch (IOException e1) {
-        throw new ExecutionSetupException(e1);
+      } catch (IOException e) {
+        throw new ExecutionSetupException(e);
       }
     }
 
@@ -141,7 +141,7 @@ public abstract class AbstractParquetScanBatchCreator {
     return new ScanBatch(context, oContext, readers, implicitColumns);
   }
 
-  protected abstract AbstractDrillFileSystemCreator getDrillFileSystemCreator(OperatorContext operatorContext, boolean useAsyncPageReader);
+  protected abstract AbstractDrillFileSystemManager getDrillFileSystemCreator(OperatorContext operatorContext, boolean useAsyncPageReader);
 
   private ParquetMetadata readFooter(Configuration conf, String path) throws IOException {
     Configuration newConf = new Configuration(conf);
@@ -167,17 +167,20 @@ public abstract class AbstractParquetScanBatchCreator {
     return false;
   }
 
-  protected abstract class AbstractDrillFileSystemCreator {
+  /**
+   * Helper class responsible for creating and managing DrillFileSystem.
+   */
+  protected abstract class AbstractDrillFileSystemManager {
 
     private final OperatorContext operatorContext;
     private final boolean useAsyncPageReader;
 
-    protected AbstractDrillFileSystemCreator(OperatorContext operatorContext, boolean useAsyncPageReader) {
+    protected AbstractDrillFileSystemManager(OperatorContext operatorContext, boolean useAsyncPageReader) {
       this.operatorContext = operatorContext;
       this.useAsyncPageReader = useAsyncPageReader;
     }
 
-    protected DrillFileSystem createDrillFileSystem(Configuration conf) throws ExecutionSetupException {
+    protected DrillFileSystem create(Configuration conf) throws ExecutionSetupException {
       try {
         return useAsyncPageReader ? operatorContext.newNonTrackingFileSystem(conf) : operatorContext.newFileSystem(conf);
       } catch (IOException e) {
@@ -185,7 +188,7 @@ public abstract class AbstractParquetScanBatchCreator {
       }
     }
 
-    protected abstract DrillFileSystem getDrillFileSystem(Configuration config, String path) throws ExecutionSetupException;
+    protected abstract DrillFileSystem get(Configuration config, String path) throws ExecutionSetupException;
 
   }
 

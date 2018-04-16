@@ -26,6 +26,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Helper class that stores partition values per key.
+ * Key to index mapper contains key and index corresponding to partition values position in partition values list.
+ * Since several keys may have that same partition values, such structure is optimized to save memory usage.
+ * Partition values are stored in list of consecutive values.
+ */
 public class HivePartitionHolder {
 
   private final Map<String, Integer> keyToIndexMapper;
@@ -51,10 +57,6 @@ public class HivePartitionHolder {
   @JsonProperty
   public List<List<String>> getPartitionValues() {
     return partitionValues;
-  }
-
-  public boolean hasPartitions() {
-    return !keyToIndexMapper.isEmpty();
   }
 
   public void add(String path, List<String> values) {
