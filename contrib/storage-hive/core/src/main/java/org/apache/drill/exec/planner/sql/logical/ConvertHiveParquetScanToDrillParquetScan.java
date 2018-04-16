@@ -198,6 +198,10 @@ public class ConvertHiveParquetScanToDrillParquetScan extends StoragePluginOptim
         final DrillProjectRel projectRel = createProjectRel(hiveScanRel, partitionColMapping, nativeScanRel);
         call.transformTo(projectRel);
       }
+
+      // Drill native scan should take precedence over Hive,
+      // reduce Hive scan importance to zero to ensure, it would be used again
+      call.getPlanner().setImportance(hiveScanRel, 0.0);
     } catch (final Exception e) {
       logger.warn("Failed to convert HiveScan to HiveDrillNativeParquetScan", e);
     }
@@ -261,8 +265,7 @@ public class ConvertHiveParquetScanToDrillParquetScan extends StoragePluginOptim
             hiveScan.getUserName(),
             nativeScanCols,
             hiveScan.getStoragePlugin(),
-            logicalInputSplits,
-            hiveScan.getSerDeOverheadFactor());
+            logicalInputSplits);
 
     return new DrillScanRel(
         hiveScanRel.getCluster(),

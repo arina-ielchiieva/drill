@@ -38,6 +38,7 @@ import org.apache.drill.exec.physical.EndpointAffinity;
 import org.apache.drill.exec.physical.base.AbstractFileGroupScan;
 import org.apache.drill.exec.physical.base.GroupScan;
 import org.apache.drill.exec.physical.base.ScanStats;
+import org.apache.drill.exec.physical.base.ScanStats.GroupScanProperty;
 import org.apache.drill.exec.planner.physical.PlannerSettings;
 import org.apache.drill.exec.proto.CoordinationProtos;
 import org.apache.drill.exec.server.options.OptionManager;
@@ -172,7 +173,9 @@ public abstract class AbstractParquetGroupScan extends AbstractFileGroupScan {
   public ScanStats getScanStats() {
     int columnCount = columns == null ? 20 : columns.size();
     long rowCount = parquetGroupScanStatistics.getRowCount();
-    return new ScanStats(ScanStats.GroupScanProperty.EXACT_ROW_COUNT, rowCount, getCpuCost(), rowCount * columnCount);
+    ScanStats scanStats = new ScanStats(GroupScanProperty.EXACT_ROW_COUNT, rowCount, 1, rowCount * columnCount);
+    logger.trace("Drill parquet scan statistics: {}", scanStats);
+    return scanStats;
   }
 
   protected List<RowGroupReadEntry> getReadEntries(int minorFragmentId) {
@@ -430,7 +433,6 @@ public abstract class AbstractParquetGroupScan extends AbstractFileGroupScan {
   protected abstract AbstractParquetGroupScan cloneWithFileSelection(Collection<String> filePaths) throws IOException;
   protected abstract boolean supportsFileImplicitColumns();
   protected abstract List<String> getPartitionValues(RowGroupInfo rowGroupInfo);
-  protected abstract float getCpuCost();
   // abstract methods block end
 
   // private methods block start
