@@ -27,37 +27,38 @@ import org.apache.drill.exec.expr.holders.VarCharHolder;
 import javax.inject.Inject;
 
 @FunctionTemplate(
-    name="abs",
-    scope= FunctionTemplate.FunctionScope.SIMPLE,
+    name="lower",
+    scope = FunctionTemplate.FunctionScope.SIMPLE,
     nulls = FunctionTemplate.NullHandling.NULL_IF_NULL
 )
-public class Abs implements DrillSimpleFunc {
+public class LowerFunction implements DrillSimpleFunc {
 
   @Param
-  VarCharHolder input1;
-
-  @Param
-  VarCharHolder input2;
+  VarCharHolder input;
 
   @Output
-  VarCharHolder out;
+  VarCharHolder output;
 
   @Inject
   DrillBuf buffer;
 
   public void setup() {
-
   }
 
   public void eval() {
-    String inputString1 = org.apache.drill.exec.expr.fn.impl.StringFunctionHelpers.toStringFromUTF8(input1.start, input1.end, input1.buffer);
-    String inputString2 = org.apache.drill.exec.expr.fn.impl.StringFunctionHelpers.toStringFromUTF8(input2.start, input2.end, input2.buffer);
-    String outputValue = String.format("ABS was overloaded. Input: %s, %s", inputString1, inputString2);
 
-    out.buffer = buffer;
-    out.start = 0;
-    out.end = outputValue.getBytes().length;
+    // get value
+    String inputString = org.apache.drill.exec.expr.fn.impl.StringFunctionHelpers.toStringFromUTF8(input.start, input.end, input.buffer);
+
+    // convert to lower case
+    String outputValue = inputString.toLowerCase();
+
+    // put the output value into output buffer
+    output.buffer = buffer;
+    output.start = 0;
+    output.end = outputValue.getBytes().length;
     buffer.setBytes(0, outputValue.getBytes());
+
   }
 }
 

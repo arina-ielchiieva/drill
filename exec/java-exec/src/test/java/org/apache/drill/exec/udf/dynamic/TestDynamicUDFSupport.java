@@ -208,7 +208,7 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
   @Test
   public void testJarWithoutMarkerFile() throws Exception {
     String jarName = "DrillUDF_NoMarkerFile-1.0";
-    Path path = generateJars("udf/dynamic/CustomLowerFunctionTemplate", jarName, jarName, null);
+    Path path = generateJars("drill-udf/src/main/java/org/apache/drill/udf/dynamic/CustomLowerFunction.java", jarName, jarName, null);
     String jarWithNoMarkerFile = jarName + ".jar";
     copyJarsToStagingArea(path, jarWithNoMarkerFile, JarUtil.getSourceName(jarWithNoMarkerFile));
 
@@ -318,8 +318,7 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     test("create function using jar '%s'", DEFAULT_BINARY_JAR);
 
     String jarName = "DrillUDF_Copy-1.0";
-    Path path = generateJars(
-        "udf/dynamic/CustomLowerFunctionTemplate",
+    Path path = generateJars("drill-udf/src/main/java/org/apache/drill/udf/dynamic/CustomLowerFunction.java",
         jarName,
         dirTestWatcher.makeSubDir(Paths.get(workDir.getPath(), jarName)).getPath(),
         CommonConstants.DRILL_JAR_MARKER_FILE_RESOURCE_PATHNAME);
@@ -339,8 +338,7 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
   @Test
   public void testDuplicatedFunctionsInLocalRegistry() throws Exception {
     String jarName = "DrillUDF_DupFunc-1.0";
-    Path path = generateJars(
-        "udf/dynamic/LowerFunctionTemplate",
+    Path path = generateJars("drill-udf/src/main/java/org/apache/drill/udf/dynamic/LowerFunction.java",
         jarName,
         dirTestWatcher.makeSubDir(Paths.get(workDir.getPath(), jarName)).getPath(),
         CommonConstants.DRILL_JAR_MARKER_FILE_RESOURCE_PATHNAME);
@@ -548,8 +546,7 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
   @Test
   public void testOverloadedFunctionPlanningStage() throws Exception {
     String jarName = "DrillUDF-abs-1.0";
-    Path path = generateJars(
-        "udf/dynamic/CustomAbsFunctionTemplate",
+    Path path = generateJars("drill-udf/src/main/java/org/apache/drill/udf/dynamic/CustomAbsFunction.java",
         jarName,
         dirTestWatcher.makeSubDir(Paths.get(workDir.getPath(), jarName)).getPath(),
         CommonConstants.DRILL_JAR_MARKER_FILE_RESOURCE_PATHNAME);
@@ -569,8 +566,7 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
   @Test
   public void testOverloadedFunctionExecutionStage() throws Exception {
     String jarName = "DrillUDF-log-1.0";
-    Path path = generateJars(
-        "udf/dynamic/CustomLogFunctionTemplate",
+    Path path = generateJars("drill-udf/src/main/java/org/apache/drill/udf/dynamic/CustomLogFunction.java",
         jarName,
         dirTestWatcher.makeSubDir(Paths.get(workDir.getPath(), jarName)).getPath(),
         CommonConstants.DRILL_JAR_MARKER_FILE_RESOURCE_PATHNAME);
@@ -646,8 +642,7 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
 
     Thread.sleep(1000);
 
-    Path path = generateJars(
-        "udf/dynamic/CustomLowerFunctionV2Template",
+    Path path = generateJars("drill-udf/src/main/java/org/apache/drill/udf/dynamic/CustomLowerFunctionV2.java",
         DEFAULT_JAR_NAME,
         dirTestWatcher.makeSubDir(Paths.get(workDir.getPath(), DEFAULT_JAR_NAME + "_V2")).getPath(),
         CommonConstants.DRILL_JAR_MARKER_FILE_RESOURCE_PATHNAME);
@@ -782,8 +777,7 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
 
     generateAndCopyDefaultJarsToStagingArea();
 
-    Path path = generateJars(
-        "udf/dynamic/CustomLowerFunctionTemplate",
+    Path path = generateJars("drill-udf/src/main/java/org/apache/drill/udf/dynamic/CustomLowerFunction.java",
         copyJarName,
         dirTestWatcher.makeSubDir(Paths.get(workDir.getPath(), copyJarName)).getPath(),
         CommonConstants.DRILL_JAR_MARKER_FILE_RESOURCE_PATHNAME);
@@ -846,8 +840,7 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
 
     generateAndCopyDefaultJarsToStagingArea();
 
-    Path path = generateJars(
-        "udf/dynamic/CustomUpperFunctionTemplate",
+    Path path = generateJars("drill-udf/src/main/java/org/apache/drill/udf/dynamic/CustomUpperFunction.java",
         upperJarName,
         dirTestWatcher.makeSubDir(Paths.get(workDir.getPath(), upperJarName)).getPath(),
         CommonConstants.DRILL_JAR_MARKER_FILE_RESOURCE_PATHNAME);
@@ -974,8 +967,7 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
   }
 
   private Path generateDefaultJars() throws IOException {
-    return generateJars(
-        "udf/dynamic/CustomLowerFunctionTemplate",
+    return generateJars("drill-udf/src/main/java/org/apache/drill/udf/dynamic/CustomLowerFunction.java",
         DEFAULT_JAR_NAME,
         DEFAULT_JAR_NAME,
         CommonConstants.DRILL_JAR_MARKER_FILE_RESOURCE_PATHNAME);

@@ -20,39 +20,45 @@ package org.apache.drill.udf.dynamic;
 import io.netty.buffer.DrillBuf;
 import org.apache.drill.exec.expr.DrillSimpleFunc;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate;
-import org.apache.drill.exec.expr.annotations.Param;
 import org.apache.drill.exec.expr.annotations.Output;
+import org.apache.drill.exec.expr.annotations.Param;
 import org.apache.drill.exec.expr.holders.VarCharHolder;
+
 import javax.inject.Inject;
 
 @FunctionTemplate(
-    name="log",
-    scope= FunctionTemplate.FunctionScope.SIMPLE,
+    name="custom_lower",
+    scope = FunctionTemplate.FunctionScope.SIMPLE,
     nulls = FunctionTemplate.NullHandling.NULL_IF_NULL
 )
-public class Log implements DrillSimpleFunc {
+public class CustomLowerFunctionV2 implements DrillSimpleFunc {
 
   @Param
   VarCharHolder input;
 
   @Output
-  VarCharHolder out;
+  VarCharHolder output;
 
   @Inject
   DrillBuf buffer;
 
   public void setup() {
-
   }
 
   public void eval() {
-    String inputString = org.apache.drill.exec.expr.fn.impl.StringFunctionHelpers.toStringFromUTF8(input.start, input.end, input.buffer);
-    String outputValue = "LOG was overloaded. Input: " + inputString;
 
-    out.buffer = buffer;
-    out.start = 0;
-    out.end = outputValue.getBytes().length;
+    // get value
+    String inputString = org.apache.drill.exec.expr.fn.impl.StringFunctionHelpers.toStringFromUTF8(input.start, input.end, input.buffer);
+
+    // convert to lower case
+    String outputValue = inputString.toLowerCase() + "_v2";
+
+    // put the output value into output buffer
+    output.buffer = buffer;
+    output.start = 0;
+    output.end = outputValue.getBytes().length;
     buffer.setBytes(0, outputValue.getBytes());
+
   }
 }
 

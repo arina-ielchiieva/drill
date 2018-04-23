@@ -29,6 +29,7 @@
   <name>exec/Java Execution Engine</name>
   <properties>
     <libpam4j.version>1.8-rev2</libpam4j.version>
+    <maven.embedder.version>3.3.9</maven.embedder.version>
   </properties>
 
   <dependencies>
@@ -592,6 +593,12 @@
       <groupId>io.netty</groupId>
       <artifactId>netty-tcnative</artifactId>
       <classifier>${netty.tcnative.classifier}</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-embedder</artifactId>
+      <version>${maven.embedder.version}</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
