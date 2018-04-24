@@ -52,7 +52,6 @@ import org.mockito.runners.MockitoJUnitRunner;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -63,7 +62,6 @@ import static org.apache.drill.test.HadoopUtils.hadoopToJavaPath;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -80,18 +78,20 @@ import static org.mockito.Mockito.verify;
 @RunWith(MockitoJUnitRunner.class)
 @Category({SlowTest.class, SqlFunctionTest.class})
 public class TestDynamicUDFSupport extends BaseTestQuery {
-  private static final String DEFAULT_JAR_NAME = "DrillUDF-1.0";
+  private static final String DEFAULT_JAR_NAME = "drill-custom-lower";
   private static final String DEFAULT_BINARY_JAR = DEFAULT_JAR_NAME + ".jar";
   private static final String DEFAULT_SOURCE_JAR = JarUtil.getSourceName(DEFAULT_BINARY_JAR);
 
   private static URI fsUri;
   private static File udfDir;
-  private static File workDir;
+  private static File projectDir;
+  private static Path projectTargetDir;
 
   @BeforeClass
   public static void setup() throws Exception {
     udfDir = dirTestWatcher.makeSubDir(Paths.get("udf"));
-    workDir = dirTestWatcher.makeSubDir(Paths.get("work"));
+    projectDir = dirTestWatcher.copyResourceToRoot(Paths.get("drill-udf"));
+    projectTargetDir = Paths.get(projectDir.toURI().getPath(), "target");
 
     Properties overrideProps = new Properties();
     overrideProps.setProperty(ExecConstants.UDF_DIRECTORY_ROOT, udfDir.getAbsolutePath());
@@ -120,7 +120,6 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
       try {
         closeClient();
         FileUtils.cleanDirectory(udfDir);
-        FileUtils.cleanDirectory(workDir);
         dirTestWatcher.clear();
         setup();
       } catch (Exception e) {
@@ -191,8 +190,8 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
   public void testAbsentSourceInStaging() throws Exception {
     final Path staging = hadoopToJavaPath(getDrillbitContext().getRemoteFunctionRegistry().getStagingArea());
 
-    Path path = generateDefaultJars();
-    copyJar(path, staging, DEFAULT_BINARY_JAR);
+    generateDefaultJars();
+    copyJar(projectTargetDir, staging, DEFAULT_BINARY_JAR);
 
     String summary = String.format("File %s does not exist on file system %s",
         staging.resolve(DEFAULT_SOURCE_JAR).toUri().getPath(), fsUri);
@@ -207,10 +206,10 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
 
   @Test
   public void testJarWithoutMarkerFile() throws Exception {
-    String jarName = "DrillUDF_NoMarkerFile-1.0";
-    Path path = generateJars("drill-udf/src/main/java/org/apache/drill/udf/dynamic/CustomLowerFunction.java", jarName, jarName, null);
+    String jarName = "drill-no-marker";
+    generateJars(jarName, "**/*.conf", "**/*.java");
     String jarWithNoMarkerFile = jarName + ".jar";
-    copyJarsToStagingArea(path, jarWithNoMarkerFile, JarUtil.getSourceName(jarWithNoMarkerFile));
+    copyJarsToStagingArea(projectTargetDir, jarWithNoMarkerFile, JarUtil.getSourceName(jarWithNoMarkerFile));
 
     String summary = "Marker file %s is missing in %s";
 
@@ -225,15 +224,10 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
 
   @Test
   public void testJarWithoutFunctions() throws Exception {
-    String jarName = "DrillUDF_Empty-1.0";
-    Path path = dirTestWatcher.makeSubDir(Paths.get(workDir.getPath(), jarName)).toPath();
-    JarGenerator.generate(
-        "package org.dummy; public class Dummy { }",
-        jarName,
-        path.toString(),
-        CommonConstants.DRILL_JAR_MARKER_FILE_RESOURCE_PATHNAME);
+    String jarName = "drill-no-functions";
+    generateJars(jarName, null, "**/CustomLowerDummyFunction.java");
     String jarWithNoFunctions = jarName + ".jar";
-    copyJarsToStagingArea(path, jarWithNoFunctions, JarUtil.getSourceName(jarWithNoFunctions));
+    copyJarsToStagingArea(projectTargetDir, jarWithNoFunctions, JarUtil.getSourceName(jarWithNoFunctions));
 
     String summary = "Jar %s does not contain functions";
 
@@ -317,13 +311,10 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     generateAndCopyDefaultJarsToStagingArea();
     test("create function using jar '%s'", DEFAULT_BINARY_JAR);
 
-    String jarName = "DrillUDF_Copy-1.0";
-    Path path = generateJars("drill-udf/src/main/java/org/apache/drill/udf/dynamic/CustomLowerFunction.java",
-        jarName,
-        dirTestWatcher.makeSubDir(Paths.get(workDir.getPath(), jarName)).getPath(),
-        CommonConstants.DRILL_JAR_MARKER_FILE_RESOURCE_PATHNAME);
+    String jarName = "drill-custom-lower-copy";
+    generateJars(jarName, null, "**/CustomLowerFunction.java");
     String jarWithDuplicate = jarName + ".jar";
-    copyJarsToStagingArea(path, jarWithDuplicate, JarUtil.getSourceName(jarWithDuplicate));
+    copyJarsToStagingArea(projectTargetDir, jarWithDuplicate, JarUtil.getSourceName(jarWithDuplicate));
 
     String summary = "Found duplicated function in %s: custom_lower(VARCHAR-REQUIRED)";
 
@@ -337,13 +328,10 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
 
   @Test
   public void testDuplicatedFunctionsInLocalRegistry() throws Exception {
-    String jarName = "DrillUDF_DupFunc-1.0";
-    Path path = generateJars("drill-udf/src/main/java/org/apache/drill/udf/dynamic/LowerFunction.java",
-        jarName,
-        dirTestWatcher.makeSubDir(Paths.get(workDir.getPath(), jarName)).getPath(),
-        CommonConstants.DRILL_JAR_MARKER_FILE_RESOURCE_PATHNAME);
+    String jarName = "drill-lower";
+    generateJars(jarName, null, "**/LowerFunction.java");
     String jarWithDuplicate = jarName + ".jar";
-    copyJarsToStagingArea(path, jarWithDuplicate, JarUtil.getSourceName(jarWithDuplicate));
+    copyJarsToStagingArea(projectTargetDir, jarWithDuplicate, JarUtil.getSourceName(jarWithDuplicate));
 
     String summary = "Found duplicated function in %s: lower(VARCHAR-REQUIRED)";
 
@@ -545,13 +533,10 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
 
   @Test
   public void testOverloadedFunctionPlanningStage() throws Exception {
-    String jarName = "DrillUDF-abs-1.0";
-    Path path = generateJars("drill-udf/src/main/java/org/apache/drill/udf/dynamic/CustomAbsFunction.java",
-        jarName,
-        dirTestWatcher.makeSubDir(Paths.get(workDir.getPath(), jarName)).getPath(),
-        CommonConstants.DRILL_JAR_MARKER_FILE_RESOURCE_PATHNAME);
+    String jarName = "drill-custom-abs";
+    generateJars(jarName, null, "**/CustomAbsFunction.java");
     String jar = jarName + ".jar";
-    copyJarsToStagingArea(path, jar, JarUtil.getSourceName(jar));
+    copyJarsToStagingArea(projectTargetDir, jar, JarUtil.getSourceName(jar));
 
     test("create function using jar '%s'", jar);
 
@@ -565,13 +550,10 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
 
   @Test
   public void testOverloadedFunctionExecutionStage() throws Exception {
-    String jarName = "DrillUDF-log-1.0";
-    Path path = generateJars("drill-udf/src/main/java/org/apache/drill/udf/dynamic/CustomLogFunction.java",
-        jarName,
-        dirTestWatcher.makeSubDir(Paths.get(workDir.getPath(), jarName)).getPath(),
-        CommonConstants.DRILL_JAR_MARKER_FILE_RESOURCE_PATHNAME);
+    String jarName = "drill-custom-log";
+    generateJars(jarName, null, "**/CustomLogFunction.java");
     String jar = jarName + ".jar";
-    copyJarsToStagingArea(path, jar, JarUtil.getSourceName(jar));
+    copyJarsToStagingArea(projectTargetDir, jar, JarUtil.getSourceName(jar));
 
     test("create function using jar '%s'", jar);
 
@@ -642,11 +624,8 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
 
     Thread.sleep(1000);
 
-    Path path = generateJars("drill-udf/src/main/java/org/apache/drill/udf/dynamic/CustomLowerFunctionV2.java",
-        DEFAULT_JAR_NAME,
-        dirTestWatcher.makeSubDir(Paths.get(workDir.getPath(), DEFAULT_JAR_NAME + "_V2")).getPath(),
-        CommonConstants.DRILL_JAR_MARKER_FILE_RESOURCE_PATHNAME);
-    copyJarsToStagingArea(path, DEFAULT_BINARY_JAR, DEFAULT_SOURCE_JAR);
+    generateJars(DEFAULT_JAR_NAME, null, "**/CustomLowerFunctionV2.java");
+    copyJarsToStagingArea(projectTargetDir, DEFAULT_BINARY_JAR, DEFAULT_SOURCE_JAR);
 
     test("create function using jar '%s'", DEFAULT_BINARY_JAR);
     testBuilder()
@@ -771,17 +750,14 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
         .when(remoteFunctionRegistry).updateRegistry(any(Registry.class), any(DataChangeVersion.class));
 
     final String jar1 = DEFAULT_BINARY_JAR;
-    final String copyJarName = "DrillUDF_Copy-1.0";
+    final String copyJarName = "drill-custom-lower-copy";
     final String jar2 = copyJarName + ".jar";
     final String query = "create function using jar '%s'";
 
     generateAndCopyDefaultJarsToStagingArea();
 
-    Path path = generateJars("drill-udf/src/main/java/org/apache/drill/udf/dynamic/CustomLowerFunction.java",
-        copyJarName,
-        dirTestWatcher.makeSubDir(Paths.get(workDir.getPath(), copyJarName)).getPath(),
-        CommonConstants.DRILL_JAR_MARKER_FILE_RESOURCE_PATHNAME);
-    copyJarsToStagingArea(path, jar2, JarUtil.getSourceName(jar2));
+    generateJars(copyJarName, null, "**/CustomLowerFunction.java");
+    copyJarsToStagingArea(projectTargetDir, jar2, JarUtil.getSourceName(jar2));
 
     Thread thread1 = new Thread(new TestBuilderRunner(
         testBuilder()
@@ -834,17 +810,14 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
         .when(remoteFunctionRegistry).updateRegistry(any(Registry.class), any(DataChangeVersion.class));
 
     final String jar1 = DEFAULT_BINARY_JAR;
-    final String upperJarName = "DrillUDF-upper-1.0";
+    final String upperJarName = "drill-custom-upper";
     final String jar2 = upperJarName + ".jar";
     final String query = "create function using jar '%s'";
 
     generateAndCopyDefaultJarsToStagingArea();
 
-    Path path = generateJars("drill-udf/src/main/java/org/apache/drill/udf/dynamic/CustomUpperFunction.java",
-        upperJarName,
-        dirTestWatcher.makeSubDir(Paths.get(workDir.getPath(), upperJarName)).getPath(),
-        CommonConstants.DRILL_JAR_MARKER_FILE_RESOURCE_PATHNAME);
-    copyJarsToStagingArea(path, jar2, JarUtil.getSourceName(jar2));
+    generateJars(upperJarName, null, "**/CustomUpperFunction.java");
+    copyJarsToStagingArea(projectTargetDir, jar2, JarUtil.getSourceName(jar2));
 
     Thread thread1 = new Thread(new TestBuilderRunner(
         testBuilder()
@@ -966,28 +939,17 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     assertEquals("Sync function registry version should match", 1L, localFunctionRegistry.getVersion());
   }
 
-  private Path generateDefaultJars() throws IOException {
-    return generateJars("drill-udf/src/main/java/org/apache/drill/udf/dynamic/CustomLowerFunction.java",
-        DEFAULT_JAR_NAME,
-        DEFAULT_JAR_NAME,
-        CommonConstants.DRILL_JAR_MARKER_FILE_RESOURCE_PATHNAME);
+  private void generateDefaultJars() {
+    generateJars(DEFAULT_JAR_NAME, null, "**/CustomLowerFunction.java");
   }
 
   private void generateAndCopyDefaultJarsToStagingArea() throws IOException {
-    Path path = generateDefaultJars();
-    copyJarsToStagingArea(path, DEFAULT_BINARY_JAR, DEFAULT_SOURCE_JAR);
+    generateDefaultJars();
+    copyJarsToStagingArea(projectTargetDir, DEFAULT_BINARY_JAR, DEFAULT_SOURCE_JAR);
   }
 
-  private Path generateJars(String templateResource, String jarName, String targetDirName, String markerFile) throws IOException {
-    File targetDir = dirTestWatcher.makeSubDir(Paths.get(workDir.getPath(), targetDirName));
-    URL template = ClassLoader.getSystemClassLoader().getResource(templateResource);
-    assertNotNull("Template url should not be null", template);
-    JarGenerator.generate(
-        template,
-        jarName,
-        targetDir.getPath(),
-        markerFile);
-    return targetDir.toPath();
+  private void generateJars(String jarName, String excludeResources, String includeFiles) {
+    JarBuilder.gen(jarName, projectDir.toURI().getPath(), excludeResources, includeFiles);
   }
 
   private void copyJarsToStagingArea(Path src, String binaryName, String sourceName) throws IOException {

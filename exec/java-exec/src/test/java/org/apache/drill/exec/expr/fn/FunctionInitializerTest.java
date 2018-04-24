@@ -17,33 +17,23 @@
  */
 package org.apache.drill.exec.expr.fn;
 
-import ch.qos.logback.classic.LoggerContext;
 import com.google.common.collect.Lists;
 import org.apache.drill.categories.SqlFunctionTest;
+import org.apache.drill.exec.udf.dynamic.JarBuilder;
 import org.apache.drill.exec.util.JarUtil;
 import org.apache.drill.test.BaseDirTestWatcher;
-import org.apache.maven.cli.MavenCli;
-import org.apache.maven.cli.logging.Slf4jLogger;
 import org.codehaus.janino.Java.CompilationUnit;
-import org.codehaus.plexus.DefaultPlexusContainer;
-import org.codehaus.plexus.PlexusContainer;
-import org.codehaus.plexus.logging.BaseLoggerManager;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.runners.MockitoJUnitRunner;
-import org.mockito.stubbing.Answer;
-import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -52,69 +42,24 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.ConsoleAppender;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.spy;
 
-@RunWith(MockitoJUnitRunner.class)
 @Category(SqlFunctionTest.class)
 public class FunctionInitializerTest {
-  //private static final Logger logger = org.slf4j.LoggerFactory.getLogger(FunctionInitializerTest.class);
   private static final String CLASS_NAME = "org.apache.drill.udf.dynamic.CustomLowerFunction";
   private static URLClassLoader classLoader;
 
   @ClassRule
   public static final BaseDirTestWatcher dirTestWatcher = new BaseDirTestWatcher();
 
-  private static Logger createLoggerFor(String string, Level logLevel) {
-    LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
-    ConsoleAppender<ILoggingEvent> consoleAppender = new ConsoleAppender<>();
-    consoleAppender.setContext(lc);
-    Logger logger = (Logger) LoggerFactory.getLogger(string);
-    logger.addAppender(consoleAppender);
-    logger.setLevel(logLevel);
-    return logger;
-  }
-
   @BeforeClass
   public static void init() throws Exception {
 
     String projectDir = dirTestWatcher.copyResourceToRoot(Paths.get("drill-udf")).getPath();
     String binaryName = "drill-custom-lower";
-    System.setProperty("maven.multiModuleProjectDirectory", projectDir);
-    MavenCli cli = new MavenCli() {
-      @Override
-      protected void customizeContainer(PlexusContainer container)
-      {
-        ((DefaultPlexusContainer)container).setLoggerManager(
-            new BaseLoggerManager()
-            {
-              @Override
-              protected org.codehaus.plexus.logging.Logger createLogger(String s)
-              {
-                return new Slf4jLogger(createLoggerFor(FunctionInitializer.class.getName(), Level.INFO));
-              }
-            }
-        );
-      }
-    };
-    MavenCli mavenCli = new MavenCli();
-    final List<String> params = new LinkedList<>();
-    params.add("clean");
-    params.add("package");
-    params.add("-DskipTests");
-    params.add("-Djar.finalName=" + binaryName);
-    //params.add("-Dexclude.resources=**/*.conf");
-    params.add("-Dinclude.files=**/CustomLowerFunction.java");
-    int buildResult = cli.doMain(params.toArray(new String[params.size()]), projectDir, System.out, System.err);
-    assertEquals("There should be no errors during build", 0, buildResult);
+
+    JarBuilder.gen(binaryName, projectDir, null, "**/CustomLowerFunction.java");
 
     String binaryJar = binaryName + ".jar";
     String sourceJar = JarUtil.getSourceName(binaryJar);
@@ -150,27 +95,22 @@ public class FunctionInitializerTest {
 
   @Test
   public void testConcurrentFunctionBodyLoad() throws Exception {
-    final FunctionInitializer spyFunctionInitializer = spy(new FunctionInitializer(CLASS_NAME, classLoader));
     final AtomicInteger counter = new AtomicInteger();
-
-    doAnswer(new Answer<CompilationUnit>() {
+    final FunctionInitializer spyFunctionInitializer = new FunctionInitializer(CLASS_NAME, classLoader){
       @Override
-      public CompilationUnit answer(InvocationOnMock invocation) throws Throwable {
+      CompilationUnit convertToCompilationUnit(Class<?> clazz) throws IOException {
         counter.incrementAndGet();
-        return (CompilationUnit) invocation.callRealMethod();
+        return super.convertToCompilationUnit(clazz);
       }
-    }).when(spyFunctionInitializer).convertToCompilationUnit(any(Class.class));
+    };
 
     int threadsNumber = 5;
     ExecutorService executor = Executors.newFixedThreadPool(threadsNumber);
 
     try {
-      List<Future<String>> results = executor.invokeAll(Collections.nCopies(threadsNumber, new Callable<String>() {
-        @Override
-        public String call() {
-          return spyFunctionInitializer.getMethod("eval");
-        }
-      }));
+      List<Future<String>> results = executor.invokeAll(
+          Collections.nCopies(threadsNumber,
+              (Callable<String>) () -> spyFunctionInitializer.getMethod("eval")));
 
       final Set<String> uniqueResults = new HashSet<>();
       for (Future<String> result : results) {
