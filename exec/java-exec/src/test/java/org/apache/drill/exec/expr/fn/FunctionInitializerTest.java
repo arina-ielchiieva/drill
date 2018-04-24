@@ -18,21 +18,22 @@
 package org.apache.drill.exec.expr.fn;
 
 import com.google.common.collect.Lists;
+import org.apache.commons.io.FileUtils;
 import org.apache.drill.categories.SqlFunctionTest;
-import org.apache.drill.test.TestTools;
+import org.apache.drill.exec.udf.dynamic.JarBuilder;
+import org.apache.drill.test.BaseDirTestWatcher;
 import org.apache.drill.exec.util.JarUtil;
 import org.codehaus.janino.Java.CompilationUnit;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.runners.MockitoJUnitRunner;
-import org.mockito.stubbing.Answer;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -43,27 +44,32 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.apache.drill.test.TestTools.getResourceFile;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.spy;
 
-@RunWith(MockitoJUnitRunner.class)
 @Category(SqlFunctionTest.class)
 public class FunctionInitializerTest {
 
-  private static final String CLASS_NAME = "com.drill.udf.CustomLowerFunction";
+  @ClassRule
+  public static final BaseDirTestWatcher dirTestWatcher = new BaseDirTestWatcher();
+
+  private static final String CLASS_NAME = "org.apache.drill.udf.dynamic.CustomLowerFunction";
   private static URLClassLoader classLoader;
 
   @BeforeClass
   public static void init() throws Exception {
-    Path jars = TestTools.WORKING_PATH
-      .resolve(TestTools.TEST_RESOURCES)
-      .resolve("jars");
-    String binaryName = "DrillUDF-1.0.jar";
-    String sourceName = JarUtil.getSourceName(binaryName);
-    URL[] urls = {jars.resolve(binaryName).toUri().toURL(), jars.resolve(sourceName).toUri().toURL()};
+    File projectDir = dirTestWatcher.makeSubDir(Paths.get("drill-udf"));
+    FileUtils.copyDirectory(getResourceFile(Paths.get(projectDir.getName())), projectDir);
+    String binaryName = "drill-custom-lower";
+
+    JarBuilder jarBuilder = new JarBuilder();
+    int result = jarBuilder.build(binaryName, projectDir.getPath(), "**/CustomLowerFunction.java", null);
+    assertEquals("Build should be successful.", 0, result);
+
+    String binaryJar = binaryName + ".jar";
+    String jarsDir = Paths.get(projectDir.getPath(), "target").toString();
+    URL[] urls = {Paths.get(jarsDir, binaryJar).toUri().toURL(), Paths.get(jarsDir, JarUtil.getSourceName(binaryJar)).toUri().toURL()};
     classLoader = new URLClassLoader(urls);
   }
 
@@ -94,27 +100,21 @@ public class FunctionInitializerTest {
 
   @Test
   public void testConcurrentFunctionBodyLoad() throws Exception {
-    final FunctionInitializer spyFunctionInitializer = spy(new FunctionInitializer(CLASS_NAME, classLoader));
     final AtomicInteger counter = new AtomicInteger();
-
-    doAnswer(new Answer<CompilationUnit>() {
+    final FunctionInitializer functionInitializer = new FunctionInitializer(CLASS_NAME, classLoader) {
       @Override
-      public CompilationUnit answer(InvocationOnMock invocation) throws Throwable {
+      CompilationUnit convertToCompilationUnit(Class<?> clazz) throws IOException {
         counter.incrementAndGet();
-        return (CompilationUnit) invocation.callRealMethod();
+        return super.convertToCompilationUnit(clazz);
       }
-    }).when(spyFunctionInitializer).convertToCompilationUnit(any(Class.class));
+    };
 
     int threadsNumber = 5;
     ExecutorService executor = Executors.newFixedThreadPool(threadsNumber);
 
     try {
-      List<Future<String>> results = executor.invokeAll(Collections.nCopies(threadsNumber, new Callable<String>() {
-        @Override
-        public String call() {
-          return spyFunctionInitializer.getMethod("eval");
-        }
-      }));
+      List<Future<String>> results = executor.invokeAll(Collections.nCopies(threadsNumber,
+        (Callable<String>) () -> functionInitializer.getMethod("eval")));
 
       final Set<String> uniqueResults = new HashSet<>();
       for (Future<String> result : results) {
