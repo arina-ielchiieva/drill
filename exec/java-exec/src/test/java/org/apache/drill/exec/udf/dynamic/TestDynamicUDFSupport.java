@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill;
+package org.apache.drill.exec.udf.dynamic;
 
 import com.google.common.collect.Lists;
 import org.apache.commons.io.FileUtils;
@@ -26,7 +26,6 @@ import org.apache.drill.categories.SqlFunctionTest;
 import org.apache.drill.common.config.CommonConstants;
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.exceptions.UserRemoteException;
-import org.apache.drill.test.TestTools;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.exception.VersionMismatchException;
 import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
@@ -44,12 +43,9 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.ExpectedException;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
-import org.junit.runner.RunWith;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.runners.MockitoJUnitRunner;
-import org.mockito.stubbing.Answer;
 
 import java.io.File;
 import java.io.IOException;
@@ -61,11 +57,13 @@ import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 
 import static org.apache.drill.test.HadoopUtils.hadoopToJavaPath;
+import static org.apache.drill.test.TestTools.getResourceFile;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
@@ -76,23 +74,36 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-@RunWith(MockitoJUnitRunner.class)
 @Category({SlowTest.class, SqlFunctionTest.class})
 public class TestDynamicUDFSupport extends BaseTestQuery {
+  private static final String DEFAULT_JAR_NAME = "drill-custom-lower";
+  private static final String DEFAULT_BINARY_JAR = DEFAULT_JAR_NAME + ".jar";
+  private static final String DEFAULT_SOURCE_JAR = JarUtil.getSourceName(DEFAULT_BINARY_JAR);
 
-  private static final Path jars = TestTools.WORKING_PATH
-    .resolve(TestTools.TEST_RESOURCES)
-    .resolve("jars");
-  private static final String default_binary_name = "DrillUDF-1.0.jar";
-  private static final String UDF_SUB_DIR = "udf";
-  private static final String default_source_name = JarUtil.getSourceName(default_binary_name);
   private static URI fsUri;
   private static File udfDir;
+  private static File jarsDir;
+  private static File projectDir;
+  private static Path projectTargetDir;
+  private static JarBuilder jarBuilder;
 
   @BeforeClass
-  public static void setup() throws IOException {
-    udfDir = dirTestWatcher.makeSubDir(Paths.get(UDF_SUB_DIR));
+  public static void buildAndStoreDefaultJars() throws IOException {
+    jarsDir = dirTestWatcher.makeSubDir(Paths.get("jars"));
+    projectDir = dirTestWatcher.makeSubDir(Paths.get("drill-udf"));
+    FileUtils.copyDirectory(getResourceFile(Paths.get(projectDir.getName())), projectDir);
+    projectTargetDir = Paths.get(projectDir.getAbsolutePath(), "target");
 
+    jarBuilder = new JarBuilder();
+    buildJars(DEFAULT_JAR_NAME, "**/CustomLowerFunction.java", null);
+
+    FileUtils.copyFileToDirectory(new File(projectTargetDir.toString(), DEFAULT_BINARY_JAR), jarsDir);
+    FileUtils.copyFileToDirectory(new File(projectTargetDir.toString(), DEFAULT_SOURCE_JAR), jarsDir);
+  }
+
+  @BeforeClass
+  public static void setupNewDrillbit() throws Exception {
+    udfDir = dirTestWatcher.makeSubDir(Paths.get("udf"));
     Properties overrideProps = new Properties();
     overrideProps.setProperty(ExecConstants.UDF_DIRECTORY_ROOT, udfDir.getAbsolutePath());
     overrideProps.setProperty(ExecConstants.UDF_DIRECTORY_FS, FileSystem.DEFAULT_FS);
@@ -100,6 +111,9 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
 
     fsUri = getLocalFileSystem().getUri();
   }
+
+  @Rule
+  public ExpectedException thrown = ExpectedException.none();
 
   @Rule
   public final TestWatcher clearDirs = new TestWatcher() {
@@ -118,7 +132,7 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
         closeClient();
         FileUtils.cleanDirectory(udfDir);
         dirTestWatcher.clear();
-        setup();
+        setupNewDrillbit();
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
@@ -143,18 +157,26 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
   }
 
   @Test
-  public void testDisableDynamicSupport() throws Exception {
+  public void testDisableDynamicSupportCreate() throws Exception {
     try {
       test("alter system set `exec.udf.enable_dynamic_support` = false");
-      String[] actions = new String[] {"create", "drop"};
-      String query = "%s function using jar 'jar_name.jar'";
-      for (String action : actions) {
-        try {
-          test(query, action);
-        } catch (UserRemoteException e) {
-          assertThat(e.getMessage(), containsString("Dynamic UDFs support is disabled."));
-        }
-      }
+      String query = "create function using jar 'jar_name.jar'";
+      thrown.expect(UserRemoteException.class);
+      thrown.expectMessage(containsString("Dynamic UDFs support is disabled."));
+      test(query);
+    } finally {
+      test("alter system reset `exec.udf.enable_dynamic_support`");
+    }
+  }
+
+  @Test
+  public void testDisableDynamicSupportDrop() throws Exception {
+    try {
+      test("alter system set `exec.udf.enable_dynamic_support` = false");
+      String query = "drop function using jar 'jar_name.jar'";
+      thrown.expect(UserRemoteException.class);
+      thrown.expectMessage(containsString("Dynamic UDFs support is disabled."));
+      test(query);
     } finally {
       test("alter system reset `exec.udf.enable_dynamic_support`");
     }
@@ -162,13 +184,13 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
 
   @Test
   public void testAbsentBinaryInStaging() throws Exception {
-    final Path staging = hadoopToJavaPath(getDrillbitContext().getRemoteFunctionRegistry().getStagingArea());
+    Path staging = hadoopToJavaPath(getDrillbitContext().getRemoteFunctionRegistry().getStagingArea());
 
     String summary = String.format("File %s does not exist on file system %s",
-        staging.resolve(default_binary_name).toUri().getPath(), fsUri);
+        staging.resolve(DEFAULT_BINARY_JAR).toUri().getPath(), fsUri);
 
     testBuilder()
-        .sqlQuery("create function using jar '%s'", default_binary_name)
+        .sqlQuery("create function using jar '%s'", DEFAULT_BINARY_JAR)
         .unOrdered()
         .baselineColumns("ok", "summary")
         .baselineValues(false, summary)
@@ -177,15 +199,14 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
 
   @Test
   public void testAbsentSourceInStaging() throws Exception {
-    final Path staging = hadoopToJavaPath(getDrillbitContext().getRemoteFunctionRegistry().getStagingArea());
-
-    copyJar(jars, staging, default_binary_name);
+    Path staging = hadoopToJavaPath(getDrillbitContext().getRemoteFunctionRegistry().getStagingArea());
+    copyJar(jarsDir.toPath(), staging, DEFAULT_BINARY_JAR);
 
     String summary = String.format("File %s does not exist on file system %s",
-        staging.resolve(default_source_name).toUri().getPath(), fsUri);
+        staging.resolve(DEFAULT_SOURCE_JAR).toUri().getPath(), fsUri);
 
     testBuilder()
-        .sqlQuery("create function using jar '%s'", default_binary_name)
+        .sqlQuery("create function using jar '%s'", DEFAULT_BINARY_JAR)
         .unOrdered()
         .baselineColumns("ok", "summary")
         .baselineValues(false, summary)
@@ -194,32 +215,34 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
 
   @Test
   public void testJarWithoutMarkerFile() throws Exception {
-    String jarWithNoMarkerFile = "DrillUDF_NoMarkerFile-1.0.jar";
-    copyJarsToStagingArea(jarWithNoMarkerFile, JarUtil.getSourceName(jarWithNoMarkerFile));
+    String jarName = "drill-no-marker";
+    buildAndCopyJarsToStagingArea(jarName, null, "**/dummy.conf");
 
+    String jar = jarName + ".jar";
     String summary = "Marker file %s is missing in %s";
 
     testBuilder()
-        .sqlQuery("create function using jar '%s'", jarWithNoMarkerFile)
+        .sqlQuery("create function using jar '%s'", jar)
         .unOrdered()
         .baselineColumns("ok", "summary")
         .baselineValues(false, String.format(summary,
-            CommonConstants.DRILL_JAR_MARKER_FILE_RESOURCE_PATHNAME, jarWithNoMarkerFile))
+            CommonConstants.DRILL_JAR_MARKER_FILE_RESOURCE_PATHNAME, jar))
         .go();
   }
 
   @Test
   public void testJarWithoutFunctions() throws Exception {
-    String jarWithNoFunctions = "DrillUDF_Empty-1.0.jar";
-    copyJarsToStagingArea(jarWithNoFunctions, JarUtil.getSourceName(jarWithNoFunctions));
+    String jarName = "drill-no-functions";
+    buildAndCopyJarsToStagingArea(jarName, "**/CustomLowerDummyFunction.java", null);
 
+    String jar = jarName + ".jar";
     String summary = "Jar %s does not contain functions";
 
     testBuilder()
-        .sqlQuery("create function using jar '%s'", jarWithNoFunctions)
+        .sqlQuery("create function using jar '%s'", jar)
         .unOrdered()
         .baselineColumns("ok", "summary")
-        .baselineValues(false, String.format(summary, jarWithNoFunctions))
+        .baselineValues(false, String.format(summary, jar))
         .go();
   }
 
@@ -231,10 +254,10 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
         "[custom_lower(VARCHAR-REQUIRED)]";
 
     testBuilder()
-        .sqlQuery("create function using jar '%s'", default_binary_name)
+        .sqlQuery("create function using jar '%s'", DEFAULT_BINARY_JAR)
         .unOrdered()
         .baselineColumns("ok", "summary")
-        .baselineValues(true, String.format(summary, default_binary_name))
+        .baselineValues(true, String.format(summary, DEFAULT_BINARY_JAR))
         .go();
 
     RemoteFunctionRegistry remoteFunctionRegistry = getDrillbitContext().getRemoteFunctionRegistry();
@@ -243,79 +266,84 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     assertFalse("Staging area should be empty", fs.listFiles(remoteFunctionRegistry.getStagingArea(), false).hasNext());
     assertFalse("Temporary area should be empty", fs.listFiles(remoteFunctionRegistry.getTmpArea(), false).hasNext());
 
-    final Path path = hadoopToJavaPath(remoteFunctionRegistry.getRegistryArea());
+    Path path = hadoopToJavaPath(remoteFunctionRegistry.getRegistryArea());
 
     assertTrue("Binary should be present in registry area",
-      path.resolve(default_binary_name).toFile().exists());
+      path.resolve(DEFAULT_BINARY_JAR).toFile().exists());
     assertTrue("Source should be present in registry area",
-      path.resolve(default_source_name).toFile().exists());
+      path.resolve(DEFAULT_BINARY_JAR).toFile().exists());
 
     Registry registry = remoteFunctionRegistry.getRegistry(new DataChangeVersion());
     assertEquals("Registry should contain one jar", registry.getJarList().size(), 1);
-    assertEquals(registry.getJar(0).getName(), default_binary_name);
+    assertEquals(registry.getJar(0).getName(), DEFAULT_BINARY_JAR);
   }
 
   @Test
   public void testDuplicatedJarInRemoteRegistry() throws Exception {
     copyDefaultJarsToStagingArea();
-    test("create function using jar '%s'", default_binary_name);
+    test("create function using jar '%s'", DEFAULT_BINARY_JAR);
     copyDefaultJarsToStagingArea();
 
     String summary = "Jar with %s name has been already registered";
 
     testBuilder()
-        .sqlQuery("create function using jar '%s'", default_binary_name)
+        .sqlQuery("create function using jar '%s'", DEFAULT_BINARY_JAR)
         .unOrdered()
         .baselineColumns("ok", "summary")
-        .baselineValues(false, String.format(summary, default_binary_name))
+        .baselineValues(false, String.format(summary, DEFAULT_BINARY_JAR))
         .go();
   }
 
   @Test
   public void testDuplicatedJarInLocalRegistry() throws Exception {
-    copyDefaultJarsToStagingArea();
+    String jarName = "drill-custom-upper";
+    buildAndCopyJarsToStagingArea(jarName, "**/CustomUpperFunction.java", null);
+    String jar = jarName + ".jar";
 
-    test("create function using jar '%s'", default_binary_name);
-    test("select custom_lower('A') from (values(1))");
+    test("create function using jar '%s'", jar);
+    test("select custom_upper('A') from (values(1))");
 
-    copyDefaultJarsToStagingArea();
+    copyJarsToStagingArea(projectTargetDir, jar,JarUtil.getSourceName(jar));
 
     String summary = "Jar with %s name has been already registered";
 
     testBuilder()
-        .sqlQuery("create function using jar '%s'", default_binary_name)
+        .sqlQuery("create function using jar '%s'", jar)
         .unOrdered()
         .baselineColumns("ok", "summary")
-        .baselineValues(false, String.format(summary, default_binary_name))
+        .baselineValues(false, String.format(summary, jar))
         .go();
   }
 
   @Test
   public void testDuplicatedFunctionsInRemoteRegistry() throws Exception {
-    String jarWithDuplicate = "DrillUDF_Copy-1.0.jar";
     copyDefaultJarsToStagingArea();
-    test("create function using jar '%s'", default_binary_name);
-    copyJarsToStagingArea(jarWithDuplicate, JarUtil.getSourceName(jarWithDuplicate));
+    test("create function using jar '%s'", DEFAULT_BINARY_JAR);
+
+    String jarName = "drill-custom-lower-copy";
+    buildAndCopyJarsToStagingArea(jarName, "**/CustomLowerFunction.java", null);
+    String jar = jarName + ".jar";
 
     String summary = "Found duplicated function in %s: custom_lower(VARCHAR-REQUIRED)";
 
     testBuilder()
-        .sqlQuery("create function using jar '%s'", jarWithDuplicate)
+        .sqlQuery("create function using jar '%s'", jar)
         .unOrdered()
         .baselineColumns("ok", "summary")
-        .baselineValues(false, String.format(summary, default_binary_name))
+        .baselineValues(false, String.format(summary, DEFAULT_BINARY_JAR))
         .go();
   }
 
   @Test
   public void testDuplicatedFunctionsInLocalRegistry() throws Exception {
-    String jarWithDuplicate = "DrillUDF_DupFunc-1.0.jar";
-    copyJarsToStagingArea(jarWithDuplicate, JarUtil.getSourceName(jarWithDuplicate));
+    String jarName = "drill-lower";
+    buildAndCopyJarsToStagingArea(jarName, "**/LowerFunction.java", null);
+    String jar = jarName + ".jar";
 
     String summary = "Found duplicated function in %s: lower(VARCHAR-REQUIRED)";
 
     testBuilder()
-        .sqlQuery("create function using jar '%s'", jarWithDuplicate)
+        .sqlQuery("create function using jar '%s'", jar)
         .unOrdered()
         .baselineColumns("ok", "summary")
         .baselineValues(false, String.format(summary, LocalFunctionRegistry.BUILT_IN))
@@ -324,10 +352,10 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
 
   @Test
   public void testSuccessfulRegistrationAfterSeveralRetryAttempts() throws Exception {
-    final RemoteFunctionRegistry remoteFunctionRegistry = spyRemoteFunctionRegistry();
-    final Path registryPath = hadoopToJavaPath(remoteFunctionRegistry.getRegistryArea());
-    final Path stagingPath = hadoopToJavaPath(remoteFunctionRegistry.getStagingArea());
-    final Path tmpPath = hadoopToJavaPath(remoteFunctionRegistry.getTmpArea());
+    RemoteFunctionRegistry remoteFunctionRegistry = spyRemoteFunctionRegistry();
+    Path registryPath = hadoopToJavaPath(remoteFunctionRegistry.getRegistryArea());
+    Path stagingPath = hadoopToJavaPath(remoteFunctionRegistry.getStagingArea());
+    Path tmpPath = hadoopToJavaPath(remoteFunctionRegistry.getTmpArea());
 
     copyDefaultJarsToStagingArea();
 
@@ -340,10 +368,10 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
             "[custom_lower(VARCHAR-REQUIRED)]";
 
     testBuilder()
-            .sqlQuery("create function using jar '%s'", default_binary_name)
+            .sqlQuery("create function using jar '%s'", DEFAULT_BINARY_JAR)
             .unOrdered()
             .baselineColumns("ok", "summary")
-            .baselineValues(true, String.format(summary, default_binary_name))
+            .baselineValues(true, String.format(summary, DEFAULT_BINARY_JAR))
             .go();
 
     verify(remoteFunctionRegistry, times(3))
@@ -353,20 +381,20 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     assertTrue("Temporary area should be empty", ArrayUtils.isEmpty(tmpPath.toFile().listFiles()));
 
     assertTrue("Binary should be present in registry area",
-      registryPath.resolve(default_binary_name).toFile().exists());
+      registryPath.resolve(DEFAULT_BINARY_JAR).toFile().exists());
     assertTrue("Source should be present in registry area",
-      registryPath.resolve(default_source_name).toFile().exists());
+      registryPath.resolve(DEFAULT_SOURCE_JAR).toFile().exists());
 
     Registry registry = remoteFunctionRegistry.getRegistry(new DataChangeVersion());
     assertEquals("Registry should contain one jar", registry.getJarList().size(), 1);
-    assertEquals(registry.getJar(0).getName(), default_binary_name);
+    assertEquals(registry.getJar(0).getName(), DEFAULT_BINARY_JAR);
   }
 
   @Test
   public void testSuccessfulUnregistrationAfterSeveralRetryAttempts() throws Exception {
     RemoteFunctionRegistry remoteFunctionRegistry = spyRemoteFunctionRegistry();
     copyDefaultJarsToStagingArea();
-    test("create function using jar '%s'", default_binary_name);
+    test("create function using jar '%s'", DEFAULT_BINARY_JAR);
 
     reset(remoteFunctionRegistry);
     doThrow(new VersionMismatchException("Version mismatch detected", 1))
@@ -378,10 +406,10 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
             "[custom_lower(VARCHAR-REQUIRED)]";
 
     testBuilder()
-            .sqlQuery("drop function using jar '%s'", default_binary_name)
+            .sqlQuery("drop function using jar '%s'", DEFAULT_BINARY_JAR)
             .unOrdered()
             .baselineColumns("ok", "summary")
-            .baselineValues(true, String.format(summary, default_binary_name))
+            .baselineValues(true, String.format(summary, DEFAULT_BINARY_JAR))
             .go();
 
     verify(remoteFunctionRegistry, times(3))
@@ -396,10 +424,10 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
 
   @Test
   public void testExceedRetryAttemptsDuringRegistration() throws Exception {
-    final RemoteFunctionRegistry remoteFunctionRegistry = spyRemoteFunctionRegistry();
-    final Path registryPath = hadoopToJavaPath(remoteFunctionRegistry.getRegistryArea());
-    final Path stagingPath = hadoopToJavaPath(remoteFunctionRegistry.getStagingArea());
-    final Path tmpPath = hadoopToJavaPath(remoteFunctionRegistry.getTmpArea());
+    RemoteFunctionRegistry remoteFunctionRegistry = spyRemoteFunctionRegistry();
+    Path registryPath = hadoopToJavaPath(remoteFunctionRegistry.getRegistryArea());
+    Path stagingPath = hadoopToJavaPath(remoteFunctionRegistry.getStagingArea());
+    Path tmpPath = hadoopToJavaPath(remoteFunctionRegistry.getTmpArea());
 
     copyDefaultJarsToStagingArea();
 
@@ -409,7 +437,7 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     String summary = "Failed to update remote function registry. Exceeded retry attempts limit.";
 
     testBuilder()
-        .sqlQuery("create function using jar '%s'", default_binary_name)
+        .sqlQuery("create function using jar '%s'", DEFAULT_BINARY_JAR)
         .unOrdered()
         .baselineColumns("ok", "summary")
         .baselineValues(false, summary)
@@ -419,9 +447,9 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
         .updateRegistry(any(Registry.class), any(DataChangeVersion.class));
 
     assertTrue("Binary should be present in staging area",
-            stagingPath.resolve(default_binary_name).toFile().exists());
+            stagingPath.resolve(DEFAULT_BINARY_JAR).toFile().exists());
     assertTrue("Source should be present in staging area",
-            stagingPath.resolve(default_source_name).toFile().exists());
+            stagingPath.resolve(DEFAULT_SOURCE_JAR).toFile().exists());
 
     assertTrue("Registry area should be empty", ArrayUtils.isEmpty(registryPath.toFile().listFiles()));
     assertTrue("Temporary area should be empty", ArrayUtils.isEmpty(tmpPath.toFile().listFiles()));
@@ -432,11 +460,11 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
 
   @Test
   public void testExceedRetryAttemptsDuringUnregistration() throws Exception {
-    final RemoteFunctionRegistry remoteFunctionRegistry = spyRemoteFunctionRegistry();
-    final Path registryPath = hadoopToJavaPath(remoteFunctionRegistry.getRegistryArea());
+    RemoteFunctionRegistry remoteFunctionRegistry = spyRemoteFunctionRegistry();
+    Path registryPath = hadoopToJavaPath(remoteFunctionRegistry.getRegistryArea());
 
     copyDefaultJarsToStagingArea();
-    test("create function using jar '%s'", default_binary_name);
+    test("create function using jar '%s'", DEFAULT_BINARY_JAR);
 
     reset(remoteFunctionRegistry);
     doThrow(new VersionMismatchException("Version mismatch detected", 1))
@@ -445,7 +473,7 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     String summary = "Failed to update remote function registry. Exceeded retry attempts limit.";
 
     testBuilder()
-        .sqlQuery("drop function using jar '%s'", default_binary_name)
+        .sqlQuery("drop function using jar '%s'", DEFAULT_BINARY_JAR)
         .unOrdered()
         .baselineColumns("ok", "summary")
         .baselineValues(false, summary)
@@ -455,25 +483,23 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
         .updateRegistry(any(Registry.class), any(DataChangeVersion.class));
 
     assertTrue("Binary should be present in registry area",
-      registryPath.resolve(default_binary_name).toFile().exists());
+      registryPath.resolve(DEFAULT_BINARY_JAR).toFile().exists());
     assertTrue("Source should be present in registry area",
-      registryPath.resolve(default_source_name).toFile().exists());
+      registryPath.resolve(DEFAULT_SOURCE_JAR).toFile().exists());
 
     Registry registry = remoteFunctionRegistry.getRegistry(new DataChangeVersion());
     assertEquals("Registry should contain one jar", registry.getJarList().size(), 1);
-    assertEquals(registry.getJar(0).getName(), default_binary_name);
+    assertEquals(registry.getJar(0).getName(), DEFAULT_BINARY_JAR);
   }
 
   @Test
   public void testLazyInit() throws Exception {
-    try {
-      test("select custom_lower('A') from (values(1))");
-    } catch (UserRemoteException e){
-      assertThat(e.getMessage(), containsString("No match found for function signature custom_lower(<CHARACTER>)"));
-    }
+    thrown.expect(UserRemoteException.class);
+    thrown.expectMessage(containsString("No match found for function signature custom_lower(<CHARACTER>)"));
+    test("select custom_lower('A') from (values(1))");
 
     copyDefaultJarsToStagingArea();
-    test("create function using jar '%s'", default_binary_name);
+    test("create function using jar '%s'", DEFAULT_BINARY_JAR);
     testBuilder()
         .sqlQuery("select custom_lower('A') as res from (values(1))")
         .unOrdered()
@@ -485,21 +511,19 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
       getDrillbitContext().getFunctionImplementationRegistry(), "localUdfDir", true));
 
     assertTrue("Binary should exist in local udf directory",
-      localUdfDirPath.resolve(default_binary_name).toFile().exists());
+      localUdfDirPath.resolve(DEFAULT_BINARY_JAR).toFile().exists());
     assertTrue("Source should exist in local udf directory",
-      localUdfDirPath.resolve(default_source_name).toFile().exists());
+      localUdfDirPath.resolve(DEFAULT_SOURCE_JAR).toFile().exists());
   }
 
   @Test
   public void testLazyInitWhenDynamicUdfSupportIsDisabled() throws Exception {
-    try {
-      test("select custom_lower('A') from (values(1))");
-    } catch (UserRemoteException e){
-      assertThat(e.getMessage(), containsString("No match found for function signature custom_lower(<CHARACTER>)"));
-    }
+    thrown.expect(UserRemoteException.class);
+    thrown.expectMessage(containsString("No match found for function signature custom_lower(<CHARACTER>)"));
+    test("select custom_lower('A') from (values(1))");
 
     copyDefaultJarsToStagingArea();
-    test("create function using jar '%s'", default_binary_name);
+    test("create function using jar '%s'", DEFAULT_BINARY_JAR);
 
     try {
       testBuilder()
@@ -516,9 +540,11 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
 
   @Test
   public void testOverloadedFunctionPlanningStage() throws Exception {
-    String jarName = "DrillUDF-overloading-1.0.jar";
-    copyJarsToStagingArea(jarName, JarUtil.getSourceName(jarName));
-    test("create function using jar '%s'", jarName);
+    String jarName = "drill-custom-abs";
+    buildAndCopyJarsToStagingArea(jarName, "**/CustomAbsFunction.java", null);
+    String jar = jarName + ".jar";
+
+    test("create function using jar '%s'", jar);
 
     testBuilder()
         .sqlQuery("select abs('A', 'A') as res from (values(1))")
@@ -530,9 +556,11 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
 
   @Test
   public void testOverloadedFunctionExecutionStage() throws Exception {
-    String jarName = "DrillUDF-overloading-1.0.jar";
-    copyJarsToStagingArea(jarName, JarUtil.getSourceName(jarName));
-    test("create function using jar '%s'", jarName);
+    String jarName = "drill-custom-log";
+    buildAndCopyJarsToStagingArea(jarName, "**/CustomLogFunction.java", null);
+    String jar = jarName + ".jar";
+
+    test("create function using jar '%s'", jar);
 
     testBuilder()
         .sqlQuery("select log('A') as res from (values(1))")
@@ -545,67 +573,65 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
   @Test
   public void testDropFunction() throws Exception {
     copyDefaultJarsToStagingArea();
-    test("create function using jar '%s'", default_binary_name);
+    test("create function using jar '%s'", DEFAULT_BINARY_JAR);
     test("select custom_lower('A') from (values(1))");
 
     Path localUdfDirPath = hadoopToJavaPath((org.apache.hadoop.fs.Path)FieldUtils.readField(
         getDrillbitContext().getFunctionImplementationRegistry(), "localUdfDir", true));
 
     assertTrue("Binary should exist in local udf directory",
-      localUdfDirPath.resolve(default_binary_name).toFile().exists());
+      localUdfDirPath.resolve(DEFAULT_BINARY_JAR).toFile().exists());
     assertTrue("Source should exist in local udf directory",
-      localUdfDirPath.resolve(default_source_name).toFile().exists());
+      localUdfDirPath.resolve(DEFAULT_SOURCE_JAR).toFile().exists());
 
     String summary = "The following UDFs in jar %s have been unregistered:\n" +
         "[custom_lower(VARCHAR-REQUIRED)]";
 
     testBuilder()
-        .sqlQuery("drop function using jar '%s'", default_binary_name)
+        .sqlQuery("drop function using jar '%s'", DEFAULT_BINARY_JAR)
         .unOrdered()
         .baselineColumns("ok", "summary")
-        .baselineValues(true, String.format(summary, default_binary_name))
+        .baselineValues(true, String.format(summary, DEFAULT_BINARY_JAR))
         .go();
 
-    try {
-      test("select custom_lower('A') from (values(1))");
-    } catch (UserRemoteException e){
-      assertThat(e.getMessage(), containsString("No match found for function signature custom_lower(<CHARACTER>)"));
-    }
+    thrown.expect(UserRemoteException.class);
+    thrown.expectMessage(containsString("No match found for function signature custom_lower(<CHARACTER>)"));
+    test("select custom_lower('A') from (values(1))");
 
-    final RemoteFunctionRegistry remoteFunctionRegistry = getDrillbitContext().getRemoteFunctionRegistry();
-    final Path registryPath = hadoopToJavaPath(remoteFunctionRegistry.getRegistryArea());
+    RemoteFunctionRegistry remoteFunctionRegistry = getDrillbitContext().getRemoteFunctionRegistry();
+    Path registryPath = hadoopToJavaPath(remoteFunctionRegistry.getRegistryArea());
 
     assertEquals("Remote registry should be empty",
         remoteFunctionRegistry.getRegistry(new DataChangeVersion()).getJarList().size(), 0);
 
     assertFalse("Binary should not be present in registry area",
-      registryPath.resolve(default_binary_name).toFile().exists());
+      registryPath.resolve(DEFAULT_BINARY_JAR).toFile().exists());
     assertFalse("Source should not be present in registry area",
-      registryPath.resolve(default_source_name).toFile().exists());
+      registryPath.resolve(DEFAULT_SOURCE_JAR).toFile().exists());
 
     assertFalse("Binary should not be present in local udf directory",
-      localUdfDirPath.resolve(default_binary_name).toFile().exists());
+      localUdfDirPath.resolve(DEFAULT_BINARY_JAR).toFile().exists());
     assertFalse("Source should not be present in local udf directory",
-      localUdfDirPath.resolve(default_source_name).toFile().exists());
+      localUdfDirPath.resolve(DEFAULT_SOURCE_JAR).toFile().exists());
   }
 
   @Test
   public void testReRegisterTheSameJarWithDifferentContent() throws Exception {
     copyDefaultJarsToStagingArea();
-    test("create function using jar '%s'", default_binary_name);
+    test("create function using jar '%s'", DEFAULT_BINARY_JAR);
     testBuilder()
         .sqlQuery("select custom_lower('A') as res from (values(1))")
         .unOrdered()
         .baselineColumns("res")
         .baselineValues("a")
         .go();
-    test("drop function using jar '%s'", default_binary_name);
+    test("drop function using jar '%s'", DEFAULT_BINARY_JAR);
 
     Thread.sleep(1000);
 
-    Path src = jars.resolve("v2");
-    copyJarsToStagingArea(src, default_binary_name, default_source_name);
-    test("create function using jar '%s'", default_binary_name);
+    buildAndCopyJarsToStagingArea(DEFAULT_JAR_NAME, "**/CustomLowerFunctionV2.java", null);
+
+    test("create function using jar '%s'", DEFAULT_BINARY_JAR);
     testBuilder()
         .sqlQuery("select custom_lower('A') as res from (values(1))")
         .unOrdered()
@@ -619,36 +645,33 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     String summary = "Jar %s is not registered in remote registry";
 
     testBuilder()
-        .sqlQuery("drop function using jar '%s'", default_binary_name)
+        .sqlQuery("drop function using jar '%s'", DEFAULT_BINARY_JAR)
         .unOrdered()
         .baselineColumns("ok", "summary")
-        .baselineValues(false, String.format(summary, default_binary_name))
+        .baselineValues(false, String.format(summary, DEFAULT_BINARY_JAR))
         .go();
   }
 
   @Test
   public void testRegistrationFailDuringRegistryUpdate() throws Exception {
-    final RemoteFunctionRegistry remoteFunctionRegistry = spyRemoteFunctionRegistry();
-    final Path registryPath = hadoopToJavaPath(remoteFunctionRegistry.getRegistryArea());
-    final Path stagingPath = hadoopToJavaPath(remoteFunctionRegistry.getStagingArea());
-    final Path tmpPath = hadoopToJavaPath(remoteFunctionRegistry.getTmpArea());
+    RemoteFunctionRegistry remoteFunctionRegistry = spyRemoteFunctionRegistry();
+    Path registryPath = hadoopToJavaPath(remoteFunctionRegistry.getRegistryArea());
+    Path stagingPath = hadoopToJavaPath(remoteFunctionRegistry.getStagingArea());
+    Path tmpPath = hadoopToJavaPath(remoteFunctionRegistry.getTmpArea());
 
     final String errorMessage = "Failure during remote registry update.";
-    doAnswer(new Answer<Void>() {
-      @Override
-      public Void answer(InvocationOnMock invocation) throws Throwable {
-        assertTrue("Binary should be present in registry area",
-            registryPath.resolve(default_binary_name).toFile().exists());
-        assertTrue("Source should be present in registry area",
-            registryPath.resolve(default_source_name).toFile().exists());
-        throw new RuntimeException(errorMessage);
-      }
+    doAnswer(invocation -> {
+      assertTrue("Binary should be present in registry area",
+          registryPath.resolve(DEFAULT_BINARY_JAR).toFile().exists());
+      assertTrue("Source should be present in registry area",
+          registryPath.resolve(DEFAULT_SOURCE_JAR).toFile().exists());
+      throw new RuntimeException(errorMessage);
     }).when(remoteFunctionRegistry).updateRegistry(any(Registry.class), any(DataChangeVersion.class));
 
     copyDefaultJarsToStagingArea();
 
     testBuilder()
-        .sqlQuery("create function using jar '%s'", default_binary_name)
+        .sqlQuery("create function using jar '%s'", DEFAULT_BINARY_JAR)
         .unOrdered()
         .baselineColumns("ok", "summary")
         .baselineValues(false, errorMessage)
@@ -657,8 +680,8 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     assertTrue("Registry area should be empty", ArrayUtils.isEmpty(registryPath.toFile().listFiles()));
     assertTrue("Temporary area should be empty", ArrayUtils.isEmpty(tmpPath.toFile().listFiles()));
 
-    assertTrue("Binary should be present in staging area", stagingPath.resolve(default_binary_name).toFile().exists());
-    assertTrue("Source should be present in staging area", stagingPath.resolve(default_source_name).toFile().exists());
+    assertTrue("Binary should be present in staging area", stagingPath.resolve(DEFAULT_BINARY_JAR).toFile().exists());
+    assertTrue("Source should be present in staging area", stagingPath.resolve(DEFAULT_SOURCE_JAR).toFile().exists());
   }
 
   @Test
@@ -668,21 +691,18 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     final CountDownLatch latch1 = new CountDownLatch(1);
     final CountDownLatch latch2 = new CountDownLatch(1);
 
-    doAnswer(new Answer<String>() {
-      @Override
-      public String answer(InvocationOnMock invocation) throws Throwable {
-        String result = (String) invocation.callRealMethod();
-        latch2.countDown();
-        latch1.await();
-        return result;
-      }
+    doAnswer(invocation -> {
+      String result = (String) invocation.callRealMethod();
+      latch2.countDown();
+      latch1.await();
+      return result;
     })
         .doCallRealMethod()
         .doCallRealMethod()
         .when(remoteFunctionRegistry).addToJars(anyString(), any(RemoteFunctionRegistry.Action.class));
 
 
-    final String query = String.format("create function using jar '%s'", default_binary_name);
+    final String query = String.format("create function using jar '%s'", DEFAULT_BINARY_JAR);
 
     Thread thread = new Thread(new SimpleQueryRunner(query));
     thread.start();
@@ -695,14 +715,14 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
           .sqlQuery(query)
           .unOrdered()
           .baselineColumns("ok", "summary")
-          .baselineValues(false, String.format(summary, default_binary_name))
+          .baselineValues(false, String.format(summary, DEFAULT_BINARY_JAR))
           .go();
 
       testBuilder()
-          .sqlQuery("drop function using jar '%s'", default_binary_name)
+          .sqlQuery("drop function using jar '%s'", DEFAULT_BINARY_JAR)
           .unOrdered()
           .baselineColumns("ok", "summary")
-          .baselineValues(false, String.format(summary, default_binary_name))
+          .baselineValues(false, String.format(summary, DEFAULT_BINARY_JAR))
           .go();
 
     } finally {
@@ -719,51 +739,46 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     final CountDownLatch latch2 = new CountDownLatch(1);
     final CountDownLatch latch3 = new CountDownLatch(1);
 
-    doAnswer(new Answer<Void>() {
-      @Override
-      public Void answer(InvocationOnMock invocation) throws Throwable {
-        latch3.countDown();
-        latch1.await();
-        invocation.callRealMethod();
-        latch2.countDown();
-        return null;
-      }
-    }).doAnswer(new Answer<Void>() {
-      @Override
-      public Void answer(InvocationOnMock invocation) throws Throwable {
-        latch1.countDown();
-        latch2.await();
-        invocation.callRealMethod();
-        return null;
-      }
+    doAnswer(invocation -> {
+      latch3.countDown();
+      latch1.await();
+      invocation.callRealMethod();
+      latch2.countDown();
+      return null;
+    }).doAnswer(invocation -> {
+      latch1.countDown();
+      latch2.await();
+      invocation.callRealMethod();
+      return null;
     })
         .when(remoteFunctionRegistry).updateRegistry(any(Registry.class), any(DataChangeVersion.class));
 
-
-    final String jarName1 = default_binary_name;
-    final String jarName2 = "DrillUDF_Copy-1.0.jar";
+    final String jar1 = DEFAULT_BINARY_JAR;
+    final String copyJarName = "drill-custom-lower-copy";
+    final String jar2 = copyJarName + ".jar";
     final String query = "create function using jar '%s'";
 
     copyDefaultJarsToStagingArea();
-    copyJarsToStagingArea(jarName2, JarUtil.getSourceName(jarName2));
+
+    buildAndCopyJarsToStagingArea(copyJarName, "**/CustomLowerFunction.java", null);
 
     Thread thread1 = new Thread(new TestBuilderRunner(
         testBuilder()
-        .sqlQuery(query, jarName1)
+        .sqlQuery(query, jar1)
         .unOrdered()
         .baselineColumns("ok", "summary")
         .baselineValues(true,
             String.format("The following UDFs in jar %s have been registered:\n" +
-            "[custom_lower(VARCHAR-REQUIRED)]", jarName1))
+            "[custom_lower(VARCHAR-REQUIRED)]", jar1))
     ));
 
     Thread thread2 = new Thread(new TestBuilderRunner(
         testBuilder()
-            .sqlQuery(query, jarName2)
+            .sqlQuery(query, jar2)
             .unOrdered()
             .baselineColumns("ok", "summary")
             .baselineValues(false,
-                String.format("Found duplicated function in %s: custom_lower(VARCHAR-REQUIRED)", jarName1))
+                String.format("Found duplicated function in %s: custom_lower(VARCHAR-REQUIRED)", jar1))
     ));
 
     thread1.start();
@@ -778,7 +793,7 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     assertEquals("Remote registry version should match", 1, version.getVersion());
     List<Jar> jarList = registry.getJarList();
     assertEquals("Only one jar should be registered", 1, jarList.size());
-    assertEquals("Jar name should match", jarName1, jarList.get(0).getName());
+    assertEquals("Jar name should match", jar1, jarList.get(0).getName());
 
     verify(remoteFunctionRegistry, times(2)).updateRegistry(any(Registry.class), any(DataChangeVersion.class));
   }
@@ -789,43 +804,41 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     final CountDownLatch latch1 = new CountDownLatch(1);
     final CountDownLatch latch2 = new CountDownLatch(2);
 
-    doAnswer(new Answer<Void>() {
-      @Override
-      public Void answer(InvocationOnMock invocation) throws Throwable {
-        latch2.countDown();
-        latch1.await();
-        invocation.callRealMethod();
-        return null;
-      }
+    doAnswer(invocation -> {
+      latch2.countDown();
+      latch1.await();
+      invocation.callRealMethod();
+      return null;
     })
         .when(remoteFunctionRegistry).updateRegistry(any(Registry.class), any(DataChangeVersion.class));
 
-    final String jarName1 = default_binary_name;
-    final String jarName2 = "DrillUDF-2.0.jar";
+    final String jar1 = DEFAULT_BINARY_JAR;
+    final String upperJarName = "drill-custom-upper";
+    final String jar2 = upperJarName + ".jar";
     final String query = "create function using jar '%s'";
 
     copyDefaultJarsToStagingArea();
-    copyJarsToStagingArea(jarName2, JarUtil.getSourceName(jarName2));
 
+    buildAndCopyJarsToStagingArea(upperJarName, "**/CustomUpperFunction.java", null);
 
     Thread thread1 = new Thread(new TestBuilderRunner(
         testBuilder()
-            .sqlQuery(query, jarName1)
+            .sqlQuery(query, jar1)
             .unOrdered()
             .baselineColumns("ok", "summary")
             .baselineValues(true,
                 String.format("The following UDFs in jar %s have been registered:\n" +
-                    "[custom_lower(VARCHAR-REQUIRED)]", jarName1))
+                    "[custom_lower(VARCHAR-REQUIRED)]", jar1))
     ));
 
 
     Thread thread2 = new Thread(new TestBuilderRunner(
         testBuilder()
-            .sqlQuery(query, jarName2)
+            .sqlQuery(query, jar2)
             .unOrdered()
             .baselineColumns("ok", "summary")
             .baselineValues(true, String.format("The following UDFs in jar %s have been registered:\n" +
-                "[custom_upper(VARCHAR-REQUIRED)]", jarName2))
+                "[custom_upper(VARCHAR-REQUIRED)]", jar2))
     ));
 
     thread1.start();
@@ -842,7 +855,7 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     assertEquals("Remote registry version should match", 2, version.getVersion());
 
     List<Jar> actualJars = registry.getJarList();
-    List<String> expectedJars = Lists.newArrayList(jarName1, jarName2);
+    List<String> expectedJars = Lists.newArrayList(jar1, jar2);
 
     assertEquals("Only one jar should be registered", 2, actualJars.size());
     for (Jar jar : actualJars) {
@@ -856,32 +869,26 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
   public void testLazyInitConcurrent() throws Exception {
     FunctionImplementationRegistry functionImplementationRegistry = spyFunctionImplementationRegistry();
     copyDefaultJarsToStagingArea();
-    test("create function using jar '%s'", default_binary_name);
+    test("create function using jar '%s'", DEFAULT_BINARY_JAR);
 
     final CountDownLatch latch1 = new CountDownLatch(1);
     final CountDownLatch latch2 = new CountDownLatch(1);
 
     final String query = "select custom_lower('A') from (values(1))";
 
-    doAnswer(new Answer<Boolean>() {
-      @Override
-      public Boolean answer(InvocationOnMock invocation) throws Throwable {
-        latch1.await();
-        boolean result = (boolean) invocation.callRealMethod();
-        assertTrue("syncWithRemoteRegistry() should return true", result);
-        latch2.countDown();
-        return true;
-      }
+    doAnswer(invocation -> {
+      latch1.await();
+      boolean result = (boolean) invocation.callRealMethod();
+      assertTrue("syncWithRemoteRegistry() should return true", result);
+      latch2.countDown();
+      return true;
     })
-        .doAnswer(new Answer() {
-          @Override
-          public Boolean answer(InvocationOnMock invocation) throws Throwable {
-            latch1.countDown();
-            latch2.await();
-            boolean result = (boolean) invocation.callRealMethod();
-            assertTrue("syncWithRemoteRegistry() should return true", result);
-            return true;
-          }
+        .doAnswer(invocation -> {
+          latch1.countDown();
+          latch2.await();
+          boolean result = (boolean) invocation.callRealMethod();
+          assertTrue("syncWithRemoteRegistry() should return true", result);
+          return true;
         })
         .when(functionImplementationRegistry).syncWithRemoteRegistry(anyLong());
 
@@ -905,23 +912,17 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
   public void testLazyInitNoReload() throws Exception {
     FunctionImplementationRegistry functionImplementationRegistry = spyFunctionImplementationRegistry();
     copyDefaultJarsToStagingArea();
-    test("create function using jar '%s'", default_binary_name);
+    test("create function using jar '%s'", DEFAULT_BINARY_JAR);
 
-    doAnswer(new Answer<Boolean>() {
-      @Override
-      public Boolean answer(InvocationOnMock invocation) throws Throwable {
-        boolean result = (boolean) invocation.callRealMethod();
-        assertTrue("syncWithRemoteRegistry() should return true", result);
-        return true;
-      }
+    doAnswer(invocation -> {
+      boolean result = (boolean) invocation.callRealMethod();
+      assertTrue("syncWithRemoteRegistry() should return true", result);
+      return true;
     })
-        .doAnswer(new Answer() {
-          @Override
-          public Boolean answer(InvocationOnMock invocation) throws Throwable {
-            boolean result = (boolean) invocation.callRealMethod();
-            assertFalse("syncWithRemoteRegistry() should return false", result);
-            return false;
-          }
+        .doAnswer(invocation -> {
+          boolean result = (boolean) invocation.callRealMethod();
+          assertFalse("syncWithRemoteRegistry() should return false", result);
+          return false;
         })
         .when(functionImplementationRegistry).syncWithRemoteRegistry(anyLong());
 
@@ -929,6 +930,7 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
 
     try {
       test("select unknown_lower('A') from (values(1))");
+      fail();
     } catch (UserRemoteException e){
       assertThat(e.getMessage(), containsString("No match found for function signature unknown_lower(<CHARACTER>)"));
     }
@@ -939,12 +941,19 @@ public class TestDynamicUDFSupport extends BaseTestQuery {
     assertEquals("Sync function registry version should match", 1L, localFunctionRegistry.getVersion());
   }
 
-  private void copyDefaultJarsToStagingArea() throws IOException {
-    copyJarsToStagingArea(jars, default_binary_name, default_source_name);
+  private static void buildJars(String jarName, String includeFiles, String includeResources) {
+    int result = jarBuilder.build(jarName, projectDir.toURI().getPath(), includeFiles, includeResources);
+    assertEquals("Build should be successful.", 0, result);
   }
 
-  private void copyJarsToStagingArea(String binaryName, String sourceName) throws IOException  {
-    copyJarsToStagingArea(jars, binaryName, sourceName);
+  private void copyDefaultJarsToStagingArea() throws IOException {
+    copyJarsToStagingArea(jarsDir.toPath(), DEFAULT_BINARY_JAR, DEFAULT_SOURCE_JAR);
+  }
+
+  private void buildAndCopyJarsToStagingArea(String jarName, String includeFiles, String includeResources) throws IOException {
+    buildJars(jarName, includeFiles, includeResources);
+    String binaryJar = jarName + ".jar";
+    copyJarsToStagingArea(projectTargetDir, binaryJar, JarUtil.getSourceName(binaryJar));
   }
 
   private void copyJarsToStagingArea(Path src, String binaryName, String sourceName) throws IOException {
