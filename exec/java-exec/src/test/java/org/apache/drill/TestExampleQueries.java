@@ -22,6 +22,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.math.BigDecimal;
 import java.nio.file.Paths;
+import java.util.List;
 
 import org.apache.drill.categories.OperatorTest;
 import org.apache.drill.categories.PlannerTest;
@@ -29,6 +30,7 @@ import org.apache.drill.categories.SqlFunctionTest;
 import org.apache.drill.categories.UnlikelyTest;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.exec.ExecConstants;
+import org.apache.drill.exec.rpc.user.QueryDataBatch;
 import org.apache.drill.test.BaseTestQuery;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -1165,4 +1167,15 @@ public class TestExampleQueries extends BaseTestQuery {
         .build()
         .run();
   }
+
+  @Test
+  public void testPaged() throws Exception {
+    dirTestWatcher.copyResourceToRoot(Paths.get("parquet", "paged.parquet"));
+    String query = "select * from dfs.`parquet/paged.parquet` where int_field > 258";
+    setColumnWidths(new int[] {40});
+    List<QueryDataBatch> res = testSqlWithResults(query);
+    printResult(res);
+
+  }
+
 }

@@ -427,6 +427,7 @@ class AsyncPageReader extends PageReader {
       timer.reset();
       try {
         PageHeader pageHeader = Util.readPageHeader(parent.dataReader);
+        System.out.println("Reading header");
         int compressedSize = pageHeader.getCompressed_page_size();
         if ( parent.parentColumnReader.isShuttingDown ) { return null; } //Opportunity to skip expensive Parquet processing
         pageData = parent.dataReader.getNext(compressedSize);
