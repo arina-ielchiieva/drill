@@ -19,20 +19,26 @@ package org.apache.drill.exec.rpc.user;
 
 import mockit.Mock;
 import mockit.MockUp;
+import org.apache.drill.exec.store.StorageStrategy;
 import org.apache.drill.test.BaseTestQuery;
 import org.apache.drill.common.config.DrillConfig;
-import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.apache.drill.exec.util.StoragePluginTestUtils;
 import org.apache.drill.test.DirTestWatcher;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocatedFileStatus;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
+import org.apache.hadoop.fs.permission.FsPermission;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
-import java.util.Properties;
 import java.util.UUID;
 
 import static org.apache.drill.exec.util.StoragePluginTestUtils.DFS_TMP_SCHEMA;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -40,18 +46,26 @@ public class TemporaryTablesAutomaticDropTest extends BaseTestQuery {
 
   private static final String session_id = "sessionId";
 
+  private static FileSystem fs;
+  private static FsPermission expectedFolderPermission;
+  private static FsPermission expectedFilePermission;
+
+  @BeforeClass
+  public static void init() throws Exception {
+    fs = getLocalFileSystem();
+    expectedFolderPermission = new FsPermission(StorageStrategy.TEMPORARY.getFolderPermission());
+    expectedFilePermission = new FsPermission(StorageStrategy.TEMPORARY.getFilePermission());
+  }
+
   @Before
-  public void setup() throws Exception {
+  public void setup() {
     new MockUp<UUID>() {
       @Mock
       public UUID randomUUID() {
         return UUID.nameUUIDFromBytes(session_id.getBytes());
       }
     };
-
-    Properties testConfigurations = cloneDefaultTestConfigProperties();
-    testConfigurations.put(ExecConstants.DEFAULT_TEMPORARY_WORKSPACE, DFS_TMP_SCHEMA);
-    updateTestCluster(1, DrillConfig.create(testConfigurations));
+    updateTestCluster(1, DrillConfig.create(cloneDefaultTestConfigProperties()));
   }
 
   @Test
@@ -91,13 +105,26 @@ public class TemporaryTablesAutomaticDropTest extends BaseTestQuery {
 
   private File createAndCheckSessionTemporaryLocation(String suffix, File schemaLocation) throws Exception {
     final String temporaryTableName = "temporary_table_automatic_drop_" + suffix;
+    String uuid = UUID.nameUUIDFromBytes(session_id.getBytes()).toString();
     final File sessionTemporaryLocation = schemaLocation
       .toPath()
-      .resolve(UUID.nameUUIDFromBytes(session_id.getBytes()).toString())
+      .resolve(uuid)
       .toFile();
 
     test("create TEMPORARY table %s.%s as select 'A' as c1 from (values(1))", DFS_TMP_SCHEMA, temporaryTableName);
-    assertTrue("Session temporary location should exist", sessionTemporaryLocation.exists());
+
+    Path sessionPath = new Path(sessionTemporaryLocation.getAbsolutePath());
+    assertTrue("Session temporary location should exist", fs.exists(sessionPath));
+    assertEquals("Directory permission should match", expectedFolderPermission, fs.getFileStatus(sessionPath).getPermission());
+    Path tempTablePath = new Path(sessionPath, uuid);
+    assertTrue("Temporary table location should exist", fs.exists(tempTablePath));
+    assertEquals("Directory permission should match", expectedFolderPermission, fs.getFileStatus(tempTablePath).getPermission());
+    RemoteIterator<LocatedFileStatus> fileIterator = fs.listFiles(tempTablePath, false);
+    while (fileIterator.hasNext()) {
+      LocatedFileStatus file = fileIterator.next();
+      assertEquals("File permission should match", expectedFilePermission, file.getPermission());
+    }
+
     return sessionTemporaryLocation;
   }
 }
