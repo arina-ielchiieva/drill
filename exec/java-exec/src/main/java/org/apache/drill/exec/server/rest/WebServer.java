@@ -70,6 +70,7 @@ import org.glassfish.jersey.servlet.ServletContainer;
 import org.joda.time.DateTime;
 
 import javax.servlet.DispatcherType;
+import javax.servlet.SessionCookieConfig;
 import javax.servlet.http.HttpSession;
 import javax.servlet.http.HttpSessionEvent;
 import javax.servlet.http.HttpSessionListener;
@@ -217,6 +218,8 @@ public class WebServer implements AutoCloseable {
       //DrillSecurityHandler is used to support SPNEGO and FORM authentication together
       servletContextHandler.setSecurityHandler(new DrillHttpSecurityHandlerProvider(config, workManager.getContext()));
       servletContextHandler.setSessionHandler(createSessionHandler(servletContextHandler.getSecurityHandler()));
+      SessionCookieConfig sessionCookieConfig = servletContextHandler.getServletContext().getSessionCookieConfig();
+      sessionCookieConfig.setHttpOnly(true);
     }
 
     if (isImpersonationOnlyEnabled(workManager.getContext().getConfig())) {
