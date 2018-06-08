@@ -52,14 +52,16 @@ public class TestHBaseFilterPushDown extends BaseHBaseTest {
         + "FROM\n"
         + "  hbase.`[TABLE_NAME]` tableName\n"
         + "WHERE\n"
-        + "  row_key = 'b4'";
+       // + "  row_key = 'b4'";
+        + "  tableName.f.c1 = '1'";
 
-    runHBaseSQLVerifyCount(sql, 1);
+    //runHBaseSQLVerifyCount(sql, 1);
 
     final String[] expectedPlan = {".*startRow=b4, stopRow=b4\\\\x00, filter=null.*"};
     final String[] excludedPlan ={".*startRow=null, stopRow=null.*"};
     final String sqlHBase = canonizeHBaseSQL(sql);
-    PlanTestBase.testPlanMatchingPatterns(sqlHBase, expectedPlan, excludedPlan);
+    System.out.println(PlanTestBase.getPlanInString("explain plan for " + sqlHBase, "text"));
+    //PlanTestBase.testPlanMatchingPatterns(sqlHBase, expectedPlan, excludedPlan);
   }
 
 
@@ -75,6 +77,44 @@ public class TestHBaseFilterPushDown extends BaseHBaseTest {
         + " CONVERT_FROM(BYTE_SUBSTR(row_key, 1, 8), 'date_epoch_be') < DATE '2015-06-18' AND\n"
         + " CONVERT_FROM(BYTE_SUBSTR(row_key, 1, 8), 'date_epoch_be') > DATE '2015-06-13'"
         , 12);
+  }
+
+  @Test
+  public void t() throws Exception {
+    System.out.println("Start");
+    String sql = "SELECT \n"
+      + " CONVERT_FROM(BYTE_SUBSTR(row_key, 1, 8), 'date_epoch_be') d\n"
+      + ", CONVERT_FROM(BYTE_SUBSTR(row_key, 9, 8), 'bigint_be') id\n"
+      + ", CONVERT_FROM(tableName.f.c, 'UTF8') fc \n"
+      + " FROM hbase.`TestTableCompositeDate` tableName\n"
+      + " WHERE\n"
+     // + " CONVERT_FROM(BYTE_SUBSTR(row_key, 1, 8), 'date_epoch_be') < DATE '2015-06-18' AND\n"
+     // + " CONVERT_FROM(BYTE_SUBSTR(row_key, 1, 8), 'date_epoch_be') > DATE '2015-06-13'";
+    //+ "CONVERT_FROM(BYTE_SUBSTR(row_key, 1, 4), 'bigint_be') = 2015";
+    //+ "CONVERT_FROM(tableName.f.c, 'UTF8') = 'hello'";
+    //+ "CONVERT_FROM(tableName.f.c, 'UTF8') = 'hello'";
+   // + "CONVERT_FROM(BYTE_SUBSTR(tableName.f.c, 1, 8), 'UTF8') = 'hello'";
+    + "CONVERT_FROM(BYTE_SUBSTR(tableName.f.c, 1, 8), 'date_epoch_be') = 'hello'";
+
+    // plan for the select
+    System.out.println("Plan without view");
+    System.out.println(PlanTestBase.getPlanInString("explain plan for " + sql, "text"));
+
+    // create view
+    String view = "CREATE OR REPLACE VIEW dfs.tmp.v_test as select "
+      + " CONVERT_FROM(BYTE_SUBSTR(row_key, 1, 8), 'date_epoch_be') d\n"
+      + ", CONVERT_FROM(BYTE_SUBSTR(row_key, 9, 8), 'bigint_be') id\n"
+      + ", CONVERT_FROM(BYTE_SUBSTR(row_key, 1, 4), 'bigint_be') y\n"
+      + ", CONVERT_FROM(tableName.f.c, 'UTF8') fc \n"
+      //+ ", CONVERT_FROM(BYTE_SUBSTR(tableName.f.c, 1, 8), 'UTF8') fc2 \n"
+      + ", CONVERT_FROM(BYTE_SUBSTR(tableName.f.c, 1, 8), 'DATE_EPOCH_BE') fc2 \n"
+      + " FROM hbase.`TestTableCompositeDate` tableName\n";
+    //test(view);
+
+    System.out.println("Plan with view");
+    //System.out.println(PlanTestBase.getPlanInString("explain plan for select * from dfs.tmp.v_test where d > DATE '2015-06-13'", "text"));
+    //System.out.println(PlanTestBase.getPlanInString("explain plan for select * from dfs.tmp.v_test where id > '10'", "text"));
+    //System.out.println(PlanTestBase.getPlanInString("explain plan for select * from dfs.tmp.v_test where fc2 = 'hello'", "text"));
   }
 
   @Test
@@ -267,6 +307,33 @@ public class TestHBaseFilterPushDown extends BaseHBaseTest {
         + "WHERE\n"
         + "  CONVERT_FROM(row_key, 'DOUBLE_OBD') > cast(95.54 as DOUBLE)"
         , 6);
+  }
+
+  @Test
+  public void t2() throws Exception {
+    String sql = "SELECT\n"
+      + " convert_from(t.row_key, 'DOUBLE_OBD') rk,\n"
+      + " convert_from(t.`f`.`c`, 'UTF8') val\n"
+      + "FROM\n"
+      + "  hbase.`TestTableDoubleOBDesc` t\n"
+      + "WHERE\n"
+      + "  CONVERT_FROM(row_key, 'DOUBLE_OBD') > cast(95.54 as DOUBLE)";
+
+    System.out.println("Plan without view");
+    System.out.println(PlanTestBase.getPlanInString("explain plan for " + sql, "text"));
+
+
+    // create view
+    test("CREATE OR REPLACE VIEW dfs.tmp.v_test as select "
+      + " convert_from(t.row_key, 'DOUBLE_OBD') rk,\n"
+      + " convert_from(t.`f`.`c`, 'UTF8') val\n"
+      + " FROM hbase.`TestTableDoubleOBDesc` t\n"
+    );
+
+    System.out.println("Plan with view");
+    //System.out.println(PlanTestBase.getPlanInString("explain plan for select * from dfs.tmp.v_test where d > DATE '2015-06-13'", "text"));
+    //System.out.println(PlanTestBase.getPlanInString("explain plan for select * from dfs.tmp.v_test where id > '10'", "text"));
+    System.out.println(PlanTestBase.getPlanInString("explain plan for select * from dfs.tmp.v_test where rk > cast(95.54 as DOUBLE)", "text"));
   }
 
   @Test
@@ -650,6 +717,7 @@ public class TestHBaseFilterPushDown extends BaseHBaseTest {
     final String[] expectedPlan = {".*startRow=b4\\\\x00, stopRow=,.*"};
     final String[] excludedPlan ={};
     final String sqlHBase = canonizeHBaseSQL(sql);
+    System.out.println(PlanTestBase.getPlanInString("explain plan for " + sqlHBase, "text"));
     PlanTestBase.testPlanMatchingPatterns(sqlHBase, expectedPlan, excludedPlan);
   }
 

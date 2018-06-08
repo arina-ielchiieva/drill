@@ -111,7 +111,8 @@ public abstract class HBasePushFilterIntoScan extends StoragePluginOptimizerRule
 
   protected void doPushFilterToScan(final RelOptRuleCall call, final FilterPrel filter, final ProjectPrel project, final ScanPrel scan, final HBaseGroupScan groupScan, final RexNode condition) {
 
-    final LogicalExpression conditionExp = DrillOptiq.toDrill(new DrillParseContext(PrelUtil.getPlannerSettings(call.getPlanner())), scan, condition);
+    final LogicalExpression conditionExp = DrillOptiq.toDrill
+      (new DrillParseContext(PrelUtil.getPlannerSettings(call.getPlanner())), scan, condition);
     final HBaseFilterBuilder hbaseFilterBuilder = new HBaseFilterBuilder(groupScan, conditionExp);
     final HBaseScanSpec newScanSpec = hbaseFilterBuilder.parseTree();
     if (newScanSpec == null) {

@@ -53,6 +53,7 @@ public class HBaseFilterBuilder extends AbstractExprVisitor<HBaseScanSpec, Void,
   }
 
   public HBaseScanSpec parseTree() {
+    // which logical expression is used
     HBaseScanSpec parsedSpec = le.accept(this, null);
     if (parsedSpec != null) {
       parsedSpec = mergeScanSpecs("booleanAnd", this.groupScan.getHBaseScanSpec(), parsedSpec);

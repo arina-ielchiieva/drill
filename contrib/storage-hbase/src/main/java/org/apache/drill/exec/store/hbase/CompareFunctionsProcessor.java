@@ -497,6 +497,18 @@ public class CompareFunctionsProcessor extends AbstractExprVisitor<Boolean, Logi
   }
 
   @Override
+  public Boolean visitFunctionCall(FunctionCall call, LogicalExpression valueArg) {
+    String name = call.getName().toLowerCase();
+    if (name.startsWith(ConvertExpression.CONVERT_FROM)) {
+      // convert to convert expression
+      String encodingType = name.replace(ConvertExpression.CONVERT_FROM, "").toUpperCase();
+      ConvertExpression convert = new ConvertExpression(ConvertExpression.CONVERT_FROM, encodingType, call.args.get(0), call.getPosition());
+      return visitConvertExpression(convert, valueArg);
+    }
+    return false;
+  }
+
+  @Override
   public Boolean visitUnknown(LogicalExpression e, LogicalExpression valueArg) throws RuntimeException {
     return false;
   }

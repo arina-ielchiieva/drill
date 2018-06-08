@@ -365,7 +365,7 @@ public class PlanTestBase extends BaseTestQuery {
    * This will submit an "EXPLAIN" statement, and return the column value which
    * contains the plan's string.
    */
-  protected static String getPlanInString(String sql, String columnName)
+  public static String getPlanInString(String sql, String columnName)
       throws Exception {
     final List<QueryDataBatch> results = testSqlWithResults(sql);
     final RecordBatchLoader loader = new RecordBatchLoader(getDrillbitContext().getAllocator());
