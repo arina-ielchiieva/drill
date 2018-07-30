@@ -69,6 +69,7 @@ public class TestInfoSchema extends BaseTestQuery {
     test("select * from INFORMATION_SCHEMA.VIEWS");
     test("select * from INFORMATION_SCHEMA.`TABLES`");
     test("select * from INFORMATION_SCHEMA.COLUMNS");
+    test("select * from INFORMATION_SCHEMA.`FILES`");
   }
 
   @Test
@@ -89,7 +90,8 @@ public class TestInfoSchema extends BaseTestQuery {
             new String[] { "INFORMATION_SCHEMA", "COLUMNS" },
             new String[] { "INFORMATION_SCHEMA", "TABLES" },
             new String[] { "INFORMATION_SCHEMA", "CATALOGS" },
-            new String[] { "INFORMATION_SCHEMA", "SCHEMATA" }
+            new String[] { "INFORMATION_SCHEMA", "SCHEMATA" },
+            new String[] { "INFORMATION_SCHEMA", "FILES" }
         );
 
     final TestBuilder t1 = testBuilder()
