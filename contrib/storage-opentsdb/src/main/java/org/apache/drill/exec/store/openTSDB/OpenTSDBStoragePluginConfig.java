@@ -33,7 +33,7 @@ public class OpenTSDBStoragePluginConfig extends StoragePluginConfigBase {
 
   private static final Logger log = LoggerFactory.getLogger(OpenTSDBStoragePluginConfig.class);
 
-  public static final String NAME = "openTSDB";
+  public static final String NAME = "opentsdb";
 
   private final String connection;
 
