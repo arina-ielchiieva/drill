@@ -1392,6 +1392,14 @@ public class TestStringFunctions extends BaseTestQuery {
         .run();
   }
 
+  @Test // DRILL-XXX
+  public void testSplitWithGroupByOnEmptyResult() throws Exception {
+    testBuilder()
+      .sqlQuery("select split(n_name, ' ') [1] as part from cp.`tpch/nation.parquet` where n_nationkey = -1 group by n_name")
+      .expectsNumRecords(0)
+      .go();
+  }
+
   @Test
   public void testReverse() throws Exception {
     testBuilder()

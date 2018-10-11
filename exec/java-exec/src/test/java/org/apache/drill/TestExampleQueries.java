@@ -22,6 +22,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.math.BigDecimal;
 import java.nio.file.Paths;
+import java.util.List;
 
 import org.apache.drill.categories.OperatorTest;
 import org.apache.drill.categories.PlannerTest;
@@ -29,6 +30,7 @@ import org.apache.drill.categories.SqlFunctionTest;
 import org.apache.drill.categories.UnlikelyTest;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.exec.ExecConstants;
+import org.apache.drill.exec.rpc.user.QueryDataBatch;
 import org.apache.drill.test.BaseTestQuery;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -1198,4 +1200,57 @@ public class TestExampleQueries extends BaseTestQuery {
         .baselineValues("Nowmer", "ARGENTINA")
         .go();
   }
+
+  @Test
+  public void tt() throws Exception {
+    setColumnWidths(new int[] {40});
+    //String sql = "select *, filename from t order by filename, n_name";
+/*    String sql = "select web_method, result_code, vb_split_parts(web_page, '.') [1]\n"
+      + "from cp.`store/text/000793_0`\n"
+      + "where web_page is not null\n"
+      + "and cast(`time` as timestamp) between timestamp '2018-05-30 01:00:00' and  timestamp '2018-05-30 02:00:00'\n"
+      + "and web_method = 'POST'\n"
+      + "and ilike (web_page , '/BADPAGEsiteminderagent%')\n"
+      + "group by web_method, result_code, web_page\n"
+      + "order by 3\n"
+      + "limit 5";*/
+    String sql = "select vb_split_parts(web_page, '.') [1]\n"
+      + "from cp.`store/text/000793_0`\n"
+      + "where web_page is not null\n"
+      + "and cast(`time` as timestamp) between timestamp '2018-05-30 01:00:00' and  timestamp '2018-05-30 02:00:00'\n"
+      + "and web_method = 'POST'\n"
+      + "and ilike (web_page , '/BADPAGEsiteminderagent%')\n"
+      + "group by web_method, result_code, web_page\n"
+      //+ "order by 3\n"
+      //+ "limit 5"
+    ;
+    List<QueryDataBatch> res = testSqlWithResults(sql);
+    printResult(res);
+  }
+
+  @Test
+  public void split() throws Exception {
+    setColumnWidths(new int[] {40});
+    //String sql = "select *, filename from t order by filename, n_name";
+    //String sql = "select split('a,b,c', ',') from (values(1))";
+    //String sql = "select split(n_name, ' ') [1] words from cp.`tpch/nation.parquet` where n_nationkey = -1";
+    // n_nationkey<INT(REQUIRED)>| n_name<VARCHAR(REQUIRED)>| n_regionkey<INT(REQUIRED)>| n_comment<VARCHAR(REQUIRED)>
+    test("alter session set `store.format`='json'");
+   // String sql = "create table dfs.tmp.t as " +
+    String sql = "select split(n_name, ' ') [1] from cp.`tpch/nation.parquet` where n_nationkey = -1 group by n_name" +
+    " union " +
+      //"select row_number() over (partition by split(n_name, ' ') [1]) from cp.`tpch/nation.parquet` where n_nationkey = -1 group by n_name limit 10";
+      "select split(n_name, ' ') [1] from cp.`tpch/nation.parquet` where n_nationkey = -1 group by n_name";
+    List<QueryDataBatch> res = testSqlWithResults(sql);
+    printResult(res);
+    // modeof, typeof, drilltypeof, sqltypeof
+
+/*
+    sql = "select * from dfs.tmp.t";
+    res = testSqlWithResults(sql);
+    printResult(res);
+*/
+
+  }
+
 }

@@ -462,7 +462,7 @@ public class StreamingAggBatch extends AbstractRecordBatch<StreamingAggregate> {
 
     for (int i = 0; i < keyExprs.length; i++) {
       final NamedExpression ne = popConfig.getKeys().get(i);
-      final LogicalExpression expr = ExpressionTreeMaterializer.materialize(ne.getExpr(), incoming, collector,context.getFunctionRegistry() );
+      final LogicalExpression expr = ExpressionTreeMaterializer.materialize(ne.getExpr(), incoming, collector,context.getFunctionRegistry());
       if (expr == null) {
         continue;
       }

@@ -1400,7 +1400,6 @@ public class StringFunctions{
       Object[] tokens = com.google.common.collect.Iterables.toArray(splitter.split(
           org.apache.drill.exec.expr.fn.impl.StringFunctionHelpers.toStringFromUTF8(input.start, input.end, input.buffer)), String.class);
       org.apache.drill.exec.vector.complex.writer.BaseWriter.ListWriter list = writer.rootAsList();
-      list.startList();
       for(int i = 0; i < tokens.length; i++ ) {
         final byte[] strBytes = ((String)tokens[i]).getBytes(com.google.common.base.Charsets.UTF_8);
         buffer = buffer.reallocIfNeeded(strBytes.length);

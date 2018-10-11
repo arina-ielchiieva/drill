@@ -15,36 +15,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.vector;
+package org.apache.drill.exec.vector.complex.impl;
 
-import io.netty.buffer.DrillBuf;
 import org.apache.drill.common.types.TypeProtos;
-import org.apache.drill.common.types.Types;
-import org.apache.drill.exec.expr.holders.ValueHolder;
+import org.apache.drill.exec.vector.UntypedNullHolder;
 
-public class UntypedNullHolder implements ValueHolder {
-  public static final TypeProtos.MajorType TYPE = Types.optional(TypeProtos.MinorType.NULL);
-  public static final int WIDTH = 0;
-  public int isSet = 0;
+public class UntypedHolderReaderImpl extends AbstractFieldReader {
 
-  public int start = 0;
-  public int end = 0;
-  public DrillBuf buffer;
+  private UntypedNullHolder holder;
 
-  public TypeProtos.MajorType getType() {return TYPE;}
-
-  @Deprecated
-  public int hashCode(){
-    throw new UnsupportedOperationException();
+  public UntypedHolderReaderImpl(UntypedNullHolder holder) {
+    this.holder = holder;
   }
 
-  /*
-   * Reason for deprecation is that ValueHolders are potential scalar replacements
-   * and hence we don't want any methods to be invoked on them.
-   */
-  @Deprecated
-  public String toString(){
-    throw new UnsupportedOperationException();
+  @Override
+  public int size() {
+    return 0;
+  }
+
+  @Override
+  public boolean next() {
+    return false;
+  }
+
+  @Override
+  public TypeProtos.MajorType getType() {
+    return holder.getType();
+  }
+
+  @Override
+  public boolean isSet() {
+    return false;
   }
 
 }
