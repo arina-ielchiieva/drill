@@ -109,7 +109,7 @@ public abstract class AbstractStoragePlugin implements StoragePlugin {
 
   @Override
   public AbstractGroupScan getPhysicalScan(String userName, JSONOptions selection, SessionOptionManager options) throws IOException {
-    return getPhysicalScan(userName, selection);
+    return getPhysicalScan(userName, selection, AbstractGroupScan.ALL_COLUMNS, options);
   }
 
   @Override

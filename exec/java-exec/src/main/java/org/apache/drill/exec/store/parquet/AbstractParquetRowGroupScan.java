@@ -37,15 +37,18 @@ public abstract class AbstractParquetRowGroupScan extends AbstractBase implement
 
   protected final List<RowGroupReadEntry> rowGroupReadEntries;
   protected final List<SchemaPath> columns;
+  protected final ParquetReaderConfig readerConfig;
   protected final LogicalExpression filter;
 
   protected AbstractParquetRowGroupScan(String userName,
                                      List<RowGroupReadEntry> rowGroupReadEntries,
                                      List<SchemaPath> columns,
+                                     ParquetReaderConfig readerConfig,
                                      LogicalExpression filter) {
     super(userName);
     this.rowGroupReadEntries = rowGroupReadEntries;
     this.columns = columns == null ? GroupScan.ALL_COLUMNS : columns;
+    this.readerConfig = readerConfig;
     this.filter = filter;
   }
 
@@ -57,6 +60,11 @@ public abstract class AbstractParquetRowGroupScan extends AbstractBase implement
   @JsonProperty
   public List<SchemaPath> getColumns() {
     return columns;
+  }
+
+  @JsonProperty
+  public ParquetReaderConfig getReaderConfig() {
+    return readerConfig;
   }
 
   @JsonProperty
@@ -80,7 +88,6 @@ public abstract class AbstractParquetRowGroupScan extends AbstractBase implement
   }
 
   public abstract AbstractParquetRowGroupScan copy(List<SchemaPath> columns);
-  public abstract boolean areCorruptDatesAutoCorrected();
   @JsonIgnore
   public abstract Configuration getFsConf(RowGroupReadEntry rowGroupReadEntry) throws IOException;
   public abstract boolean supportsFileImplicitColumns();

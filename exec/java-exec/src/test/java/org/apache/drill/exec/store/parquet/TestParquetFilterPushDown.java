@@ -27,6 +27,7 @@ import org.apache.drill.exec.expr.stat.RangeExprEvaluator;
 import org.apache.drill.exec.ops.FragmentContextImpl;
 import org.apache.drill.exec.planner.physical.PlannerSettings;
 import org.apache.drill.exec.proto.BitControl;
+import org.apache.drill.exec.rpc.user.QueryDataBatch;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -47,6 +48,7 @@ import org.mockito.Mockito;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
@@ -576,7 +578,7 @@ public class TestParquetFilterPushDown extends PlanTestBase {
   }
 
   @Test // testing min=false, max=true, min/max set, no nulls
-  public void testMinFalseMaxTrue() throws Exception {
+  public void testMinFalseMaxTrue() {
     LogicalExpression le = Mockito.mock(LogicalExpression.class);
     BooleanStatistics booleanStatistics = Mockito.mock(BooleanStatistics.class);
     Mockito.doReturn(booleanStatistics).when(le).accept(ArgumentMatchers.any(), ArgumentMatchers.any());
@@ -599,7 +601,7 @@ public class TestParquetFilterPushDown extends PlanTestBase {
   }
 
   @Test // testing min=false, max=false, min/max set, no nulls
-  public void testMinFalseMaxFalse() throws Exception {
+  public void testMinFalseMaxFalse() {
     LogicalExpression le = Mockito.mock(LogicalExpression.class);
     BooleanStatistics booleanStatistics = Mockito.mock(BooleanStatistics.class);
     Mockito.doReturn(booleanStatistics).when(le).accept(ArgumentMatchers.any(), ArgumentMatchers.any());
@@ -642,6 +644,42 @@ public class TestParquetFilterPushDown extends PlanTestBase {
     assertEquals(RowsMatch.NONE, isNotTrue.matches(re));
     ParquetIsPredicate isNotFalse = (ParquetIsPredicate)  ParquetIsPredicate.createIsPredicate(FunctionGenerationHelper.IS_NOT_FALSE, le);
     assertEquals(RowsMatch.ALL, isNotFalse.matches(re));
+  }
+
+  @Test
+  public void testVarcharFilterPushDown() throws Exception {
+    //String query = "select * from dfs.`parquetFilterPush/varchar_old`";
+    String query = "select * from dfs.`parquetFilterPush/varchar_old` where n_name = 'ALGERIA'";
+    //String query = "select * from dfs.`parquetFilterPush/varchar_old` where n_key = '0_KEY'";
+    List<QueryDataBatch> res = testSqlWithResults(query);
+    printResult(res);
+
+    String plan = PlanTestBase.getPlanInString("explain plan for " + query, PlanTestBase.OPTIQ_FORMAT);
+    System.out.println(plan);
+
+
+
+    /*
+    Cases:
+      1. new files without metadata
+      2. new files with metadata
+      3. old files with option true
+      4. old files without option true
+      5. varchar null case
+
+      6. check option with the same min / max old file - reads old files perfectly
+     */
+  }
+
+  @Test
+  public void testDecimalFilterPushDown() {
+    /*
+    Cases:
+      1. new decimal int32, int64, fixed, binary without metadata
+      2. new decimal int32, int64, fixed, binary with metadata
+      3. decimal with different scale
+      4. nulls case
+     */
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1198,4 +1198,31 @@ public class TestExampleQueries extends BaseTestQuery {
         .baselineValues("Nowmer", "ARGENTINA")
         .go();
   }
+
+  @Test
+  public void t() throws Exception {
+    test("use dfs.tmp");
+    test("create table t partition by (n_regionkey) as select * from cp.`tpch/nation.parquet`");
+    //String query = "select * from t where n_name = 'ALGERIA'";
+    String query = "select * from t where n_name = cast(12 as bigint)";
+
+    //test("use dfs.tmp");
+    //test("create table t partition by (manager_id) as select manager_id, salary from cp.`parquet/varlenDecimal.parquet`");
+    //String query = "select * from t where salary = 2500.00";
+    //String query = "select * from t where salary = cast(2500 as varchar)"; //'100'
+    //String query = "select * from t where salary = cast(20.3 as double)";
+
+
+    //String plan = PlanTestBase.getPlanInString("explain plan for " + query, PlanTestBase.OPTIQ_FORMAT);
+    String plan = PlanTestBase.getPlanInString("explain plan for " + query, PlanTestBase.JSON_FORMAT);
+    System.out.println(plan);
+
+/*    setColumnWidths(new int[] {40});
+    //String sql = "select *, filename from t order by filename, n_name";
+    String sql = "select min(salary), max(salary), manager_id from cp.`parquet/varlenDecimal.parquet` group by manager_id";
+    List<QueryDataBatch> res = testSqlWithResults(sql);
+    printResult(res);*/
+
+  }
+
 }

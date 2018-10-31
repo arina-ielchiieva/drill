@@ -29,10 +29,12 @@ import org.apache.parquet.column.statistics.FloatStatistics;
 import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.joda.time.DateTimeConstants;
 
+import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -155,34 +157,86 @@ public class ParquetMetaStatCollector implements  ColumnStatCollector {
 
     if (min != null && max != null ) {
       switch (type.getMinorType()) {
-      case INT :
-      case TIME:
-        ((IntStatistics) stat).setMinMax(Integer.parseInt(min.toString()), Integer.parseInt(max.toString()));
-        break;
-      case BIGINT:
-      case TIMESTAMP:
-        ((LongStatistics) stat).setMinMax(Long.parseLong(min.toString()), Long.parseLong(max.toString()));
-        break;
-      case FLOAT4:
-        ((FloatStatistics) stat).setMinMax(Float.parseFloat(min.toString()), Float.parseFloat(max.toString()));
-        break;
-      case FLOAT8:
-        ((DoubleStatistics) stat).setMinMax(Double.parseDouble(min.toString()), Double.parseDouble(max.toString()));
-        break;
-      case DATE:
-        convertedStat = new LongStatistics();
-        convertedStat.setNumNulls(stat.getNumNulls());
-        final long minMS = convertToDrillDateValue(Integer.parseInt(min.toString()));
-        final long maxMS = convertToDrillDateValue(Integer.parseInt(max.toString()));
-        ((LongStatistics) convertedStat ).setMinMax(minMS, maxMS);
-        break;
-      case BIT:
-        ((BooleanStatistics) stat).setMinMax(Boolean.parseBoolean(min.toString()), Boolean.parseBoolean(max.toString()));
-        break;
-      default:
+        case INT :
+        case TIME:
+          ((IntStatistics) stat).setMinMax(Integer.parseInt(min.toString()), Integer.parseInt(max.toString()));
+          break;
+        case BIGINT:
+        case TIMESTAMP:
+          ((LongStatistics) stat).setMinMax(Long.parseLong(min.toString()), Long.parseLong(max.toString()));
+          break;
+        case FLOAT4:
+          ((FloatStatistics) stat).setMinMax(Float.parseFloat(min.toString()), Float.parseFloat(max.toString()));
+          break;
+        case FLOAT8:
+          ((DoubleStatistics) stat).setMinMax(Double.parseDouble(min.toString()), Double.parseDouble(max.toString()));
+          break;
+        case DATE:
+          convertedStat = new LongStatistics();
+          convertedStat.setNumNulls(stat.getNumNulls());
+          long minMS = convertToDrillDateValue(Integer.parseInt(min.toString()));
+          long maxMS = convertToDrillDateValue(Integer.parseInt(max.toString()));
+          ((LongStatistics) convertedStat ).setMinMax(minMS, maxMS);
+          break;
+        case BIT:
+          ((BooleanStatistics) stat).setMinMax(Boolean.parseBoolean(min.toString()), Boolean.parseBoolean(max.toString()));
+          break;
+        case VARCHAR:
+          if (min instanceof Binary && max instanceof Binary) { // when read directly from parquet footer
+            ((BinaryStatistics) stat).setMinMaxFromBytes(((Binary) min).getBytes(), ((Binary) max).getBytes());
+          } else if (min instanceof byte[] && max instanceof byte[]) { // when deserialized from Drill metadata file
+            ((BinaryStatistics) stat).setMinMaxFromBytes((byte[]) min, (byte[]) max);
+          }
+          break;
+        case VARDECIMAL:
+          byte[] minBytes = null;
+          byte[] maxBytes = null;
+          boolean setLength = false;
+
+          switch (primitiveType) {
+            case INT32:
+            case INT64:
+              minBytes = new BigInteger(min.toString()).toByteArray();
+              maxBytes = new BigInteger(max.toString()).toByteArray();
+              break;
+            case FIXED_LEN_BYTE_ARRAY:
+              setLength = true;
+              // fall through
+            case BINARY:
+              // wrap up into BigInteger to avoid PARQUET-1417
+              if (min instanceof Binary && max instanceof Binary) { // when read directly from parquet footer
+                minBytes = new BigInteger(((Binary) min).getBytes()).toByteArray();
+                maxBytes = new BigInteger(((Binary) max).getBytes()).toByteArray();
+              } else if (min instanceof byte[] && max instanceof byte[]) {  // when deserialized from Drill metadata file
+                minBytes = new BigInteger((byte[]) min).toByteArray();
+                maxBytes = new BigInteger((byte[]) max).toByteArray();
+              }
+              break;
+            default:
+          }
+
+          if (minBytes == null || maxBytes == null) {
+            break;
+          }
+
+          int length = setLength ? maxBytes.length : 0;
+
+          PrimitiveType decimalType = org.apache.parquet.schema.Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
+            .as(OriginalType.DECIMAL)
+            .length(length)
+            .precision(precision)
+            .scale(scale)
+            .named("decimal_type");
+
+          convertedStat = Statistics.getBuilderForReading(decimalType)
+              .withMin(minBytes)
+              .withMax(maxBytes)
+              .withNumNulls(numNulls)
+              .build();
+          break;
+        default:
       }
     }
-
     return new ColumnStatistics(convertedStat, type);
   }
 

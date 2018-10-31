@@ -53,7 +53,7 @@ public class TestParquetMetadataCache extends PlanTestBase {
   private static final String TABLE_NAME_2 = "parquetTable2";
 
   @BeforeClass
-  public static void copyData() throws Exception {
+  public static void copyData() {
     dirTestWatcher.copyResourceToRoot(Paths.get("multilevel"));
     dirTestWatcher.copyResourceToRoot(Paths.get("multilevel/parquet"), Paths.get(TABLE_NAME_1));
     dirTestWatcher.copyResourceToRoot(Paths.get("multilevel/parquet2"), Paths.get(TABLE_NAME_2));
@@ -815,25 +815,26 @@ public class TestParquetMetadataCache extends PlanTestBase {
     }
   }
 
-  @Ignore // Statistics for DECIMAL is not available (see PARQUET-1322).
+  //@Ignore // Statistics for DECIMAL is not available (see PARQUET-1341).
   @Test // DRILL-4139
   public void testDecimalPartitionPruning() throws Exception {
     List<String> ctasQueries = Lists.newArrayList();
     // decimal stores as fixed_len_byte_array
     ctasQueries.add("create table %s partition by (manager_id) as " +
-      "select * from cp.`parquet/fixedlenDecimal.parquet`");
+      "select * from cp.`parquet/fixedlenDecimal.parquet` where manager_id is not null");
     // decimal stores as int32
     ctasQueries.add("create table %s partition by (manager_id) as " +
       "select cast(manager_id as decimal(6, 0)) as manager_id, EMPLOYEE_ID, FIRST_NAME, LAST_NAME " +
-      "from cp.`parquet/fixedlenDecimal.parquet`");
+      "from cp.`parquet/fixedlenDecimal.parquet` where manager_id is not null");
     // decimal stores as int64
     ctasQueries.add("create table %s partition by (manager_id) as " +
       "select cast(manager_id as decimal(18, 6)) as manager_id, EMPLOYEE_ID, FIRST_NAME, LAST_NAME " +
-      "from cp.`parquet/fixedlenDecimal.parquet`");
+      "from cp.`parquet/fixedlenDecimal.parquet` where manager_id is not null");
     final String decimalPartitionTable = "dfs.tmp.`decimal_optional_partition`";
     for (String ctasQuery : ctasQueries) {
       try {
         test("alter session set `%s` = true", PlannerSettings.ENABLE_DECIMAL_DATA_TYPE_KEY);
+        System.out.println(ctasQuery);
         test(ctasQuery, decimalPartitionTable);
 
         String query = String.format("select * from %s where manager_id = 148", decimalPartitionTable);
@@ -844,6 +845,7 @@ public class TestParquetMetadataCache extends PlanTestBase {
         PlanTestBase.testPlanMatchingPatterns(query, new String[]{"usedMetadataFile=false"}, new String[]{"Filter"});
 
         test("refresh table metadata %s", decimalPartitionTable);
+        System.out.println("Execute the query");
 
         actualRowCount = testSql(query);
         assertEquals("Row count does not match the expected value", expectedRowCount, actualRowCount);

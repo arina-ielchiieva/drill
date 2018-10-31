@@ -45,7 +45,8 @@
     "format" : {
       "type" : "parquet"
     },
-    "selectionRoot" : "/Users/mbaid/sources/drill/tpch-work/sample-data/nationsMF"
+    "selectionRoot" : "/Users/mbaid/sources/drill/tpch-work/sample-data/nationsMF",
+    "readerConfig" : { }
   }, {
     "pop" : "project",
     "@id" : 2,

@@ -19,7 +19,8 @@
     },
     "format" : {
       "type" : "parquet"
-    }
+    },
+    "readerConfig" : { }
   }, {
     pop : "project",
     @id : 2,
