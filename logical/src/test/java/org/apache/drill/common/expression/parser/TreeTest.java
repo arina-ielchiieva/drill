@@ -19,12 +19,11 @@ package org.apache.drill.common.expression.parser;
 
 import java.io.IOException;
 
-import org.antlr.runtime.ANTLRStringStream;
-import org.antlr.runtime.CommonTokenStream;
-import org.antlr.runtime.RecognitionException;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.CharStreams;
 import org.apache.drill.common.expression.ExpressionStringBuilder;
 import org.apache.drill.common.expression.LogicalExpression;
-import org.apache.drill.common.expression.parser.ExprParser.parse_return;
 import org.apache.drill.test.DrillTest;
 import org.junit.Test;
 
@@ -85,13 +84,12 @@ public class TreeTest extends DrillTest {
 
   private LogicalExpression parseExpression(String expr) throws RecognitionException, IOException{
 
-    ExprLexer lexer = new ExprLexer(new ANTLRStringStream(expr));
+    ExprLexer lexer = new ExprLexer(CharStreams.fromString(expr));
     CommonTokenStream tokens = new CommonTokenStream(lexer);
 
     ExprParser parser = new ExprParser(tokens);
-    parse_return ret = parser.parse();
 
-    return ret.e;
+    return parser.parse().e;
   }
 
   private String serializeExpression(LogicalExpression expr){

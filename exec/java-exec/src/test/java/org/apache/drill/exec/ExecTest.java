@@ -18,12 +18,12 @@
 package org.apache.drill.exec;
 
 import com.codahale.metrics.MetricRegistry;
+import org.antlr.v4.runtime.CharStreams;
 import org.apache.drill.shaded.guava.com.google.common.io.Files;
 import mockit.Mock;
 import mockit.MockUp;
-import org.antlr.runtime.ANTLRStringStream;
-import org.antlr.runtime.CommonTokenStream;
-import org.antlr.runtime.RecognitionException;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.RecognitionException;
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.parser.ExprLexer;
@@ -119,10 +119,10 @@ public class ExecTest extends DrillTest {
   }
 
   protected LogicalExpression parseExpr(String expr) throws RecognitionException {
-    final ExprLexer lexer = new ExprLexer(new ANTLRStringStream(expr));
+    final ExprLexer lexer = new ExprLexer(CharStreams.fromString(expr));
     final CommonTokenStream tokens = new CommonTokenStream(lexer);
     final ExprParser parser = new ExprParser(tokens);
-    final ExprParser.parse_return ret = parser.parse();
+    final ExprParser.ParseContext ret = parser.parse();
     return ret.e;
   }
 

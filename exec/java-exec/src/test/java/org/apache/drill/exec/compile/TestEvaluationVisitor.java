@@ -17,14 +17,13 @@
  */
 package org.apache.drill.exec.compile;
 
-import org.antlr.runtime.ANTLRStringStream;
-import org.antlr.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.expression.parser.ExprLexer;
 import org.apache.drill.common.expression.parser.ExprParser;
-import org.apache.drill.common.expression.parser.ExprParser.parse_return;
 import org.apache.drill.common.types.TypeProtos.MinorType;
 import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.expr.CodeGenerator;
@@ -72,13 +71,11 @@ public class TestEvaluationVisitor {
     logger.debug(g.generateAndGet());
   }
 
-  private LogicalExpression getExpr(String expr) throws Exception{
-    ExprLexer lexer = new ExprLexer(new ANTLRStringStream(expr));
+  private LogicalExpression getExpr(String expr) {
+    ExprLexer lexer = new ExprLexer(CharStreams.fromString(expr));
     CommonTokenStream tokens = new CommonTokenStream(lexer);
     ExprParser parser = new ExprParser(tokens);
-    parse_return ret = parser.parse();
-
+    ExprParser.ParseContext ret = parser.parse();
     return ret.e;
-
   }
 }

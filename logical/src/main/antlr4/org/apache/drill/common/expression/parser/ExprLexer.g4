@@ -22,8 +22,6 @@ options {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-package org.apache.drill.common.expression.parser;
 }
 
 If       : 'if';
@@ -41,6 +39,15 @@ AnyValue : 'any_value' | 'ANY_VALUE';
 Nullable: 'nullable';
 Repeat: 'repeat';
 As: 'as';
+
+T_Not: N O T;
+T_Null: N U L L;
+
+fragment N : 'n' | 'N';
+fragment O : 'o' | 'O';
+fragment T : 't' | 'T';
+fragment U : 'u' | 'U';
+fragment L : 'l' | 'L';
 
 BIT      : 'bit' | 'BIT';
 INT      : 'int' | 'INT';
@@ -99,40 +106,35 @@ Bool
 Number
   :  Int ('.' Digit*)? (('e' | 'E') ('+' | '-')? Digit*)?
   ;
-
-//Float
-//  :  Int ('.' Digit*)? ('e' ('+' | '-')? Digit*)?
-//  ;
-//
-//Integer
-//  :  Digit Digit*
-//  ;
   
 Identifier
   : ('a'..'z' | 'A'..'Z' | '_' | '$') ('a'..'z' | 'A'..'Z' | '_' | '$' | Digit)*
   ;
 
 QuotedIdentifier
-@after {
-  setText(getText().substring(1, getText().length()-1).replaceAll("\\\\(.)", "$1"));
-}
-  :  '`'  (~('`' | '\\')  | '\\' ('\\' | '`'))* '`' 
+  :  '`'  (~('`' | '\\')  | '\\' ('\\' | '`'))* '`'
+  {
+    setText(getText().substring(1, getText().length()-1).replaceAll("\\\\(.)", "$1"));
+  }
   ;
 
 String
-@after {
-  setText(getText().substring(1, getText().length()-1).replaceAll("\\\\(.)", "$1"));
-}
   :  '\'' (~('\'' | '\\') | '\\' ('\\' | '\''))* '\''
+  {
+    setText(getText().substring(1, getText().length()-1).replaceAll("\\\\(.)", "$1"));
+  }
   ;
 
-Comment
-  :  '//' ~('\r' | '\n')* {skip();}
-  |  '/*' .* '*/'         {skip();}
+LineComment
+  :  '//' ~[\r\n]* -> skip
+  ;
+
+BlockComment
+  : '/*' .*? '*/' -> skip
   ;
 
 Space
-  :  (' ' | '\t' | '\r' | '\n' | '\u000C') {skip();}
+  :  [ \n\t\r\u000C]+ -> skip
   ;
 
 fragment Int
@@ -142,15 +144,4 @@ fragment Int
   
 fragment Digit 
   :  '0'..'9'
-  ;
-
-FallThrough
-	@after{
-	  throw new RuntimeException(java.lang.String.format(
-	      "Encountered an illegal char on line \%d, column \%d: '\%s'", 
-	      getLine(), getCharPositionInLine(), getText()
-	    )
-	  );
-	}
-  :
   ;

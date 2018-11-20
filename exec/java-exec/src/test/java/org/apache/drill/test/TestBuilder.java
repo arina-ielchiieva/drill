@@ -30,9 +30,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.antlr.runtime.ANTLRStringStream;
-import org.antlr.runtime.CommonTokenStream;
-import org.antlr.runtime.RecognitionException;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.RecognitionException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.expression.parser.ExprLexer;
@@ -227,11 +227,11 @@ public class TestBuilder {
   // modified code from SchemaPath.De class. This should be used sparingly and only in tests if absolutely needed.
   public static SchemaPath parsePath(String path) {
     try {
-      ExprLexer lexer = new ExprLexer(new ANTLRStringStream(path));
+      ExprLexer lexer = new ExprLexer(CharStreams.fromString(path));
       CommonTokenStream tokens = new CommonTokenStream(lexer);
       ExprParser parser = new ExprParser(tokens);
 
-      ExprParser.parse_return ret = parser.parse();
+      ExprParser.ParseContext ret = parser.parse();
 
       if (ret.e instanceof SchemaPath) {
         return (SchemaPath) ret.e;

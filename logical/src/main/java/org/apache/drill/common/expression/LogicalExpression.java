@@ -19,13 +19,12 @@ package org.apache.drill.common.expression;
 
 import java.io.IOException;
 
-import org.antlr.runtime.ANTLRStringStream;
-import org.antlr.runtime.CommonTokenStream;
-import org.antlr.runtime.RecognitionException;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.RecognitionException;
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.expression.parser.ExprLexer;
 import org.apache.drill.common.expression.parser.ExprParser;
-import org.apache.drill.common.expression.parser.ExprParser.parse_return;
 import org.apache.drill.common.expression.visitors.ExprVisitor;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.slf4j.Logger;
@@ -69,16 +68,17 @@ public interface LogicalExpression extends Iterable<LogicalExpression>{
         return null;
       }
       try {
-        ExprLexer lexer = new ExprLexer(new ANTLRStringStream(expr));
+        ExprLexer lexer = new ExprLexer(CharStreams.fromString(expr));
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         ExprParser parser = new ExprParser(tokens);
 
         //TODO: move functionregistry and error collector to injectables.
         //ctxt.findInjectableValue(valueId, forProperty, beanInstance)
-        parse_return ret = parser.parse();
+        ExprParser.ParseContext parse = parser.parse();
+
 
         // ret.e.resolveAndValidate(expr, errorCollector);
-        return ret.e;
+        return parse.e;
       } catch (RecognitionException e) {
         throw new RuntimeException(e);
       }

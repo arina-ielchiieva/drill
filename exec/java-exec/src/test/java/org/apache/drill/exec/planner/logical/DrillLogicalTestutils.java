@@ -17,10 +17,10 @@
  */
 package org.apache.drill.exec.planner.logical;
 
+import org.antlr.v4.runtime.CharStreams;
 import org.apache.drill.shaded.guava.com.google.common.base.Preconditions;
-import org.antlr.runtime.ANTLRStringStream;
-import org.antlr.runtime.CommonTokenStream;
-import org.antlr.runtime.RecognitionException;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.RecognitionException;
 import org.apache.calcite.rel.RelFieldCollation;
 import org.apache.drill.common.expression.FieldReference;
 import org.apache.drill.common.expression.LogicalExpression;
@@ -58,7 +58,7 @@ public class DrillLogicalTestutils {
   }
 
   public static LogicalExpression parseExpr(String expr) {
-    ExprLexer lexer = new ExprLexer(new ANTLRStringStream(expr));
+    ExprLexer lexer = new ExprLexer(CharStreams.fromString(expr));
     CommonTokenStream tokens = new CommonTokenStream(lexer);
     ExprParser parser = new ExprParser(tokens);
     try {

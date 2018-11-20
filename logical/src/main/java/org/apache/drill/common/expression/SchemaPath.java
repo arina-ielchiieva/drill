@@ -21,14 +21,13 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
 
-import org.antlr.runtime.ANTLRStringStream;
-import org.antlr.runtime.CommonTokenStream;
-import org.antlr.runtime.RecognitionException;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.RecognitionException;
 import org.apache.drill.common.expression.PathSegment.ArraySegment;
 import org.apache.drill.common.expression.PathSegment.NameSegment;
 import org.apache.drill.common.expression.parser.ExprLexer;
 import org.apache.drill.common.expression.parser.ExprParser;
-import org.apache.drill.common.expression.parser.ExprParser.parse_return;
 import org.apache.drill.common.expression.visitors.ExprVisitor;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.Types;
@@ -183,14 +182,14 @@ public class SchemaPath extends LogicalExpressionBase {
       if (SchemaPath.DYNAMIC_STAR.equals(expr)) {
         return SchemaPath.getSimplePath(expr);
       }
-      ExprLexer lexer = new ExprLexer(new ANTLRStringStream(expr));
+      ExprLexer lexer = new ExprLexer(CharStreams.fromString(expr));
       CommonTokenStream tokens = new CommonTokenStream(lexer);
       ExprParser parser = new ExprParser(tokens);
 
-      parse_return ret = parser.parse();
+      ExprParser.ParseContext parse = parser.parse();
 
-      if (ret.e instanceof SchemaPath) {
-        return (SchemaPath) ret.e;
+      if (parse.e instanceof SchemaPath) {
+        return (SchemaPath) parse.e;
       } else {
         throw new IllegalStateException("Schema path is not a valid format.");
       }

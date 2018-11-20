@@ -18,6 +18,7 @@
 
 package org.apache.drill.exec.planner.index;
 
+import org.antlr.v4.runtime.CharStreams;
 import org.apache.drill.shaded.guava.com.google.common.collect.Maps;
 import com.mapr.db.Admin;
 import com.mapr.db.MapRDB;
@@ -25,8 +26,7 @@ import com.mapr.db.exceptions.DBException;
 import com.mapr.db.index.IndexDesc;
 import com.mapr.db.index.IndexDesc.MissingAndNullOrdering;
 import com.mapr.db.index.IndexFieldDesc;
-import org.antlr.runtime.ANTLRStringStream;
-import org.antlr.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.CommonTokenStream;
 import org.apache.calcite.rel.RelFieldCollation;
 import org.apache.calcite.rel.RelFieldCollation.NullDirection;
 import org.apache.calcite.sql.type.SqlTypeName;
@@ -240,10 +240,10 @@ public class MapRDBIndexDiscover extends IndexDiscoverBase implements IndexDisco
     }
     try {
       String castFunc = String.format("cast( %s as %s)", field, castTypeStr);
-      final ExprLexer lexer = new ExprLexer(new ANTLRStringStream(castFunc));
+      final ExprLexer lexer = new ExprLexer(CharStreams.fromString(castFunc));
       final CommonTokenStream tokens = new CommonTokenStream(lexer);
       final ExprParser parser = new ExprParser(tokens);
-      final ExprParser.parse_return ret = parser.parse();
+      final ExprParser.ParseContext ret = parser.parse();
       logger.trace("{}, {}", tokens, ret);
       return ret.e;
     }catch(Exception ex) {
