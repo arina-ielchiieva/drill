@@ -1,14 +1,9 @@
 parser grammar ExprParser;
 
 options{
-  output=AST;
   language=Java;
   tokenVocab=ExprLexer;
-  backtrack=true;
-  memoize=true;
 }
-
-
 
 @header {
 /*
@@ -28,11 +23,8 @@ options{
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-package org.apache.drill.common.expression.parser;
   
 //Explicit import...
-import org.antlr.runtime.BitSet;
 import java.util.*;
 import org.apache.drill.common.expression.*;
 import org.apache.drill.common.expression.PathSegment.NameSegment;
@@ -55,19 +47,12 @@ import org.apache.drill.common.exceptions.ExpressionParsingException;
   public ExpressionPosition pos(Token token){
     return new ExpressionPosition(fullExpression, token.getTokenIndex());
   }
-  
-  @Override    
-  public void displayRecognitionError(String[] tokenNames, RecognitionException e) {
-	String hdr = getErrorHeader(e);
-    String msg = getErrorMessage(e, tokenNames);
-    throw new ExpressionParsingException("Expression has syntax error! " + hdr + ":" + msg);
-  }
 }
 
 parse returns [LogicalExpression e]
   :  expression EOF {
-    $e = $expression.e; 
-    if(fullExpression == null) fullExpression = $expression.text;
+    $e = $expression.e;
+    if (fullExpression == null) fullExpression = $expression.text;
     tokenPos = $expression.start.getTokenIndex();
   }
   ;
@@ -91,7 +76,7 @@ castCall returns [LogicalExpression e]
 	  ExpressionPosition p = null;
 	}  
   :  Cast OParen expression As dataType repeat? CParen 
-      {  if ($repeat.isRep!=null && $repeat.isRep.compareTo(Boolean.TRUE)==0)
+      {  if ($repeat.ctx != null && $repeat.isRep.compareTo(Boolean.TRUE)==0)
            $e = FunctionCallFactory.createCast(TypeProtos.MajorType.newBuilder().mergeFrom($dataType.type).setMode(DataMode.REPEATED).build(), pos($Cast), $expression.e);
          else
            $e = FunctionCallFactory.createCast($dataType.type, pos($Cast), $expression.e);}
@@ -305,14 +290,34 @@ pathSegment returns [NameSegment seg]
   ;
 
 nameSegment returns [NameSegment seg]
-  : QuotedIdentifier ( (Period s1=pathSegment) | s2=arraySegment)? {$seg = new NameSegment($QuotedIdentifier.text, ($s1.seg == null ? $s2.seg : $s1.seg) ); }
-  | Identifier ( (Period s1=pathSegment) | s2=arraySegment)? {$seg = new NameSegment($Identifier.text, ($s1.seg == null ? $s2.seg : $s1.seg) ); }
+  : QuotedIdentifier ( (Period s1=pathSegment) | s2=arraySegment)?
+  {
+    if ($s1.ctx == null && $s2.ctx == null) {
+      $seg = new NameSegment($QuotedIdentifier.text);
+    } else {
+      $seg = new NameSegment($QuotedIdentifier.text, ($s1.ctx == null ? $s2.seg : $s1.seg));
+    }
+  }
+  | Identifier ( (Period s1=pathSegment) | s2=arraySegment)?
+  {
+    if ($s1.ctx == null && $s2.ctx == null) {
+      $seg = new NameSegment($Identifier.text);
+    } else {
+      $seg = new NameSegment($Identifier.text, ($s1.ctx == null ? $s2.seg : $s1.seg));
+    }
+   }
   ;
   
 arraySegment returns [PathSegment seg]
-  :  OBracket Number CBracket ( (Period s1=pathSegment) | s2=arraySegment)? {$seg = new ArraySegment($Number.text, ($s1.seg == null ? $s2.seg : $s1.seg) ); }
+  :  OBracket Number CBracket ( (Period s1=pathSegment) | s2=arraySegment)?
+  {
+    if ($s1.ctx == null && $s2.ctx == null) {
+      $seg = new ArraySegment($Number.text);
+    } else {
+      $seg = new ArraySegment($Number.text, ($s1.ctx == null ? $s2.seg : $s1.seg));
+    }
+  }
   ;
-
 
 lookup returns [LogicalExpression e]
   :  functionCall {$e = $functionCall.e ;}
