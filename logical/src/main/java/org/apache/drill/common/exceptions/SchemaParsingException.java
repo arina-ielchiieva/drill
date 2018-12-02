@@ -15,24 +15,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.common.parser;
+package org.apache.drill.common.exceptions;
 
-import org.antlr.v4.runtime.BaseErrorListener;
-import org.antlr.v4.runtime.RecognitionException;
-import org.antlr.v4.runtime.Recognizer;
-import org.apache.drill.common.exceptions.ExpressionParsingException;
+public class SchemaParsingException extends DrillRuntimeException {
 
-/**
- * Custom error listener that converts all syntax errors into {@link ExpressionParsingException}.
- */
-public class ErrorListener extends BaseErrorListener {
+  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ExpressionParsingException.class);
 
-  public static final ErrorListener INSTANCE = new ErrorListener();
+  public SchemaParsingException() {
+    super();
+  }
 
-  @Override
-  public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line,
-                          int charPositionInLine, String msg, RecognitionException e) {
-    throw new ExpressionParsingException(msg);
+  public SchemaParsingException(String message, Throwable cause, boolean enableSuppression,
+                                    boolean writableStackTrace) {
+    super(message, cause, enableSuppression, writableStackTrace);
+  }
+
+  public SchemaParsingException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  public SchemaParsingException(String message) {
+    super(message);
+  }
+
+  public SchemaParsingException(Throwable cause) {
+    super(cause);
   }
 
 }

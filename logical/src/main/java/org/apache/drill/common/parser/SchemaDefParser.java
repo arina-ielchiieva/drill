@@ -19,45 +19,53 @@ package org.apache.drill.common.parser;
 
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CodePointCharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
-import org.apache.drill.common.exceptions.ExpressionParsingException;
-import org.apache.drill.common.expression.LogicalExpression;
-import org.apache.drill.common.expression.parser.ExprLexer;
-import org.apache.drill.common.expression.parser.ExprParser;
+import org.apache.drill.common.exceptions.SchemaParsingException;
+import org.apache.drill.common.schema.ColumnDef;
+import org.apache.drill.common.schema.SchemaDef;
+import org.apache.drill.common.schema.TypeDef;
+import org.apache.drill.common.schema.parser.SchemaLexer;
+import org.apache.drill.common.schema.parser.SchemaParser;
 
-/**
- * Helper class for parsing logical expression.
- */
-public class LogicalExpressionParser {
+public class SchemaDefParser {
 
-  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(LogicalExpressionParser.class);
+  public static SchemaDef parseSchema(String schema) {
+    SchemaDefVisitor visitor = new SchemaDefVisitor();
+    return visitor.visit(initParser(schema).schema());
+  }
 
-  /**
-   * Initializes logical expression lexer and parser, add error listener that converts all
-   * syntax error into {@link org.apache.drill.common.exceptions.ExpressionParsingException}.
-   * Parses given expression into logical expression instance.
-   *
-   * @param expr expression to be parsed
-   * @return logical expression instance
-   */
-  public static LogicalExpression parse(String expr) {
-    ExprLexer lexer = new ExprLexer(CharStreams.fromString(expr));
-    lexer.removeErrorListeners(); // need to remove since default listener will output warning
+  public static ColumnDef parseColumn(String column) {
+    SchemaDefVisitor.ColumnDefVisitor visitor = new SchemaDefVisitor.ColumnDefVisitor();
+    return visitor.visit(initParser(column).column());
+  }
+
+  public static TypeDef parseType(String type) {
+    SchemaDefVisitor.TypeDefVisitor visitor = new SchemaDefVisitor.TypeDefVisitor();
+    return visitor.visit(initParser(type).type_def());
+  }
+
+  private static SchemaParser initParser(String value) {
+    CodePointCharStream stream = CharStreams.fromString(value);
+    CaseChangingCharStream upperCaseStream = new CaseChangingCharStream(stream, true);
+
+    SchemaLexer lexer = new SchemaLexer(upperCaseStream);
+    lexer.removeErrorListeners();
     lexer.addErrorListener(ErrorListener.INSTANCE);
+
     CommonTokenStream tokens = new CommonTokenStream(lexer);
 
-    ExprParser parser = new ExprParser(tokens);
-    parser.removeErrorListeners(); // need to remove since default listener will output warning
+    SchemaParser parser = new SchemaParser(tokens);
+    parser.removeErrorListeners();
     parser.addErrorListener(ErrorListener.INSTANCE);
-    ExprParser.ParseContext parseContext = parser.parse();
-    logger.trace("Tokens: [{}]. Parsing details: [{}].", tokens.getText(), parseContext.toInfoString(parser));
-    return parseContext.e;
+
+    return parser;
   }
 
   /**
-   * Custom error listener that converts all syntax errors into {@link ExpressionParsingException}.
+   * Custom error listener that converts all syntax errors into {@link SchemaParsingException}.
    */
   private static class ErrorListener extends BaseErrorListener {
 
@@ -66,7 +74,7 @@ public class LogicalExpressionParser {
     @Override
     public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line,
                             int charPositionInLine, String msg, RecognitionException e) {
-      throw new ExpressionParsingException(
+      throw new SchemaParsingException(
         String.format("Line [%s], position [%s]: [%s].", line, charPositionInLine, msg));
     }
 
