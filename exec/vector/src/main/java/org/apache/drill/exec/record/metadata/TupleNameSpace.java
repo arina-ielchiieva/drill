@@ -18,6 +18,7 @@
 package org.apache.drill.exec.record.metadata;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +35,7 @@ import org.apache.drill.shaded.guava.com.google.common.collect.ImmutableList;
  */
 
 public class TupleNameSpace<T> implements Iterable<T> {
-  private final Map<String,Integer> nameSpace = CaseInsensitiveMap.newHashMap();
+  final Map<String,Integer> nameSpace = CaseInsensitiveMap.newHashMap();
   private final List<T> entries = new ArrayList<>();
 
   public int add(String key, T value) {
@@ -45,6 +46,10 @@ public class TupleNameSpace<T> implements Iterable<T> {
     nameSpace.put(key, index);
     entries.add(value);
     return index;
+  }
+
+  public int add(String key, T value, int index) {
+    throw new UnsupportedOperationException("Index should not be provided");
   }
 
   public T get(int index) {
@@ -67,7 +72,7 @@ public class TupleNameSpace<T> implements Iterable<T> {
     return index;
   }
 
-  public int count() { return entries.size(); }
+  public int count() { return nameSpace.size(); }
 
   @Override
   public Iterator<T> iterator() {
@@ -75,7 +80,7 @@ public class TupleNameSpace<T> implements Iterable<T> {
   }
 
   public boolean isEmpty() {
-    return entries.isEmpty();
+    return nameSpace.isEmpty();
   }
 
   public List<T> entries() {
@@ -86,4 +91,38 @@ public class TupleNameSpace<T> implements Iterable<T> {
   public String toString() {
     return entries.toString();
   }
+
+  public static class IndexedTupleNameSpace<T> extends TupleNameSpace<T> {
+    private final Map<Integer, T> entries = new HashMap<>();
+
+    @Override
+    public int add(String key, T value) {
+      throw new UnsupportedOperationException("Index should be provided");
+    }
+
+    public int add(String key, T value, int index) {
+      if (indexOf(key) != -1 || entries.get(index) != null) {
+        throw new IllegalArgumentException(String.format("Duplicate entry: key [%s], index [%s].", key, index));
+      }
+      nameSpace.put(key, index);
+      entries.put(index, value);
+      return index;
+    }
+
+    @Override
+    public T get(int index) {
+      return entries.get(index);
+    }
+
+    @Override
+    public Iterator<T> iterator() {
+      return entries.values().iterator();
+    }
+
+    public List<T> entries() {
+      return ImmutableList.copyOf(entries.values());
+    }
+
+  }
+
 }

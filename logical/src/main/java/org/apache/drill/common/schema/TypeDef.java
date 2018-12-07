@@ -32,7 +32,7 @@ public class TypeDef {
   private final TypeDef subType;
   private final List<ColumnDef> subColumns;
 
-  private TypeDef(TypeProtos.MajorType type,
+  public TypeDef(TypeProtos.MajorType type,
                   TypeDef subType,
                   List<ColumnDef> subColumns) {
     this.type = type;
