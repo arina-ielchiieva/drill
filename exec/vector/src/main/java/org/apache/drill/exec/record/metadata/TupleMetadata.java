@@ -55,9 +55,6 @@ public interface TupleMetadata extends Iterable<ColumnMetadata> {
   ColumnMetadata add(MaterializedField field);
   int addColumn(ColumnMetadata column);
 
-  ColumnMetadata add(MaterializedField field, int index);
-  int addColumn(ColumnMetadata column, int index);
-
   int size();
   boolean isEmpty();
   int index(String name);

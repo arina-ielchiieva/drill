@@ -18,13 +18,11 @@
 package org.apache.drill.exec.record;
 
 import org.apache.drill.common.schema.ColumnDef;
-import org.apache.drill.common.schema.SchemaDef;
 import org.apache.drill.common.schema.TypeDef;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.exec.record.metadata.ColumnMetadata;
 import org.apache.drill.exec.record.metadata.MetadataUtils;
 import org.apache.drill.exec.record.metadata.TupleMetadata;
-import org.apache.drill.exec.record.metadata.TupleSchema;
 import org.apache.drill.test.rowSet.schema.SchemaBuilder;
 import org.junit.Test;
 
@@ -205,47 +203,6 @@ public class TestTupleSchemaTransform {
       }
     );
     return field;
-  }
-
-  @Test
-  public void testIndexedColumn() {
-    ColumnDef columnDef = ColumnDef.Builder.builder()
-      .setName("COLUMNS")
-      .setIndex(0)
-      .setNullability(true)
-      .setTypeDef(TypeDef.createSimpleType(TypeProtos.MinorType.INT))
-      .setAlias("id")
-      .build();
-    ColumnDef columnDef2 = ColumnDef.Builder.builder()
-      .setName("COLUMNS")
-      .setIndex(5)
-      .setNullability(true)
-      .setTypeDef(TypeDef.createSimpleType(TypeProtos.MinorType.VARCHAR))
-      .setAlias("name")
-      .build();
-
-    SchemaDef schemaDef = new SchemaDef(Arrays.asList(columnDef, columnDef2));
-
-    /*
-      Refactor TupleNameSpace to allow custom indexes
-     */
-
-    TupleSchema schema = new TupleSchema(true);
-
-    schemaDef.getColumns().forEach(
-      c -> {
-        String name = c.getAlias() != null ? c.getAlias() :
-          String.format("%s[%s]", c.getName(), c.getIndex());
-        MaterializedField field = MaterializedField.create(name, c.getTypeDef().getType());
-
-        schema.add(field, c.getIndex());
-      }
-    );
-
-    System.out.println(schema);
-    System.out.println(schema.column(0));
-    //System.out.println(schema.column(1)); //throws NPE, need to add check method
-    System.out.println(schema.column(5));
   }
 
 }

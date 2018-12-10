@@ -36,15 +36,7 @@ import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 public class TupleSchema implements TupleMetadata {
 
   private MapColumnMetadata parentMap;
-  private final TupleNameSpace<ColumnMetadata> nameSpace;
-
-  public TupleSchema() {
-    this.nameSpace = new TupleNameSpace<>();
-  }
-
-  public TupleSchema(boolean indexed) {
-    this.nameSpace = indexed ? new TupleNameSpace.IndexedTupleNameSpace<>() : new TupleNameSpace<>();
-  }
+  private final TupleNameSpace<ColumnMetadata> nameSpace = new TupleNameSpace<>();
 
   public void bind(MapColumnMetadata parentMap) {
     this.parentMap = parentMap;
@@ -71,19 +63,6 @@ public class TupleSchema implements TupleMetadata {
     return md;
   }
 
-  @Override
-  public ColumnMetadata add(MaterializedField field, int index) {
-    AbstractColumnMetadata md = MetadataUtils.fromField(field);
-    add(md, index);
-    return md;
-  }
-
-  @Override
-  public int addColumn(ColumnMetadata column, int index) {
-    add((AbstractColumnMetadata) column, index);
-    return index;
-  }
-
   /**
    * Add a column metadata column created by the caller. Used for specialized
    * cases beyond those handled by {@link #add(MaterializedField)}.
@@ -95,11 +74,6 @@ public class TupleSchema implements TupleMetadata {
   public void add(AbstractColumnMetadata md) {
     md.bind(this);
     nameSpace.add(md.name(), md);
-  }
-
-  public void add(AbstractColumnMetadata md, int index) {
-    md.bind(this);
-    nameSpace.add(md.name(), md, index);
   }
 
   @Override
