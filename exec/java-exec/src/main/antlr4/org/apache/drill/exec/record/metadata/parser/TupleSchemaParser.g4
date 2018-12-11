@@ -29,16 +29,20 @@ schema: (columns | LEFT_PAREN columns RIGHT_PAREN) EOF;
 
 columns: column (COMMA column)*;
 
-column: column_id column_attr;
+column: (primitive_column | map_column | repeated_list);
+
+primitive_column: column_id (simple_type | simple_arr) nullability?;
+
+map_column: column_id MAP LEFT_ANGLE_BRACKET columns RIGHT_ANGLE_BRACKET nullability?;
+
+repeated_list: column_id ARRAY LEFT_ANGLE_BRACKET complex_type RIGHT_ANGLE_BRACKET nullability?;
 
 column_id
 : ID # id
 | QUOTED_ID # quoted_id
 ;
 
-column_attr: type_def nullability?;
-
-type_def
+simple_type
 : (INT | INTEGER) # int
 | BIGINT # bigint
 | FLOAT # float
@@ -51,13 +55,15 @@ type_def
 | DATE # date
 | TIMESTAMP # timestamp
 | INTERVAL # interval
-| array_def # array
-| map_def # map
 ;
 
-array_def: ARRAY LEFT_ANGLE_BRACKET type_def RIGHT_ANGLE_BRACKET;
+complex_type
+: simple_arr # simple_array
+| ARRAY LEFT_ANGLE_BRACKET complex_type RIGHT_ANGLE_BRACKET # complex_array // not sure if we need this one
+| MAP LEFT_ANGLE_BRACKET columns RIGHT_ANGLE_BRACKET # map
+;
 
-map_def: MAP LEFT_ANGLE_BRACKET columns RIGHT_ANGLE_BRACKET;
+simple_arr: ARRAY LEFT_ANGLE_BRACKET simple_type RIGHT_ANGLE_BRACKET;
 
 nullability: NOT NULL;
 

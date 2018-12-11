@@ -125,7 +125,7 @@ public class MapBuilder implements SchemaContainer {
     return tupleBuilder.addRepeatedList(this, name);
   }
 
-  private MapColumnMetadata buildCol() {
+  public MapColumnMetadata buildCol() {
     return new MapColumnMetadata(memberName, mode, tupleBuilder.schema());
   }
 

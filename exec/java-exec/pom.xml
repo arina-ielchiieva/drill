@@ -802,6 +802,7 @@
         <configuration>
           <listener>false</listener>
           <visitor>true</visitor>
+          <outputDirectory>${project.build.directory}/generated-sources</outputDirectory>
         </configuration>
         <executions>
           <execution>

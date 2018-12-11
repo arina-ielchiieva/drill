@@ -60,7 +60,7 @@ public class RepeatedListBuilder implements SchemaContainer {
     return this;
   }
 
-  private RepeatedListColumnMetadata buildCol() {
+  public RepeatedListColumnMetadata buildCol() {
     return MetadataUtils.newRepeatedList(name, child);
   }
 
