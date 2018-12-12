@@ -20,6 +20,8 @@ package org.apache.drill.exec.record.metadata;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.apache.drill.exec.record.BatchSchema;
 import org.apache.drill.exec.record.MaterializedField;
@@ -176,6 +178,13 @@ public class TupleSchema implements TupleMetadata {
   }
 
   public boolean isRoot() { return parentMap == null; }
+
+  @Override
+  public String schemaString() {
+    return StreamSupport.stream(nameSpace.spliterator(), false)
+      .map(ColumnMetadata::columnString)
+      .collect(Collectors.joining(", "));
+  }
 
   @Override
   public String toString() {

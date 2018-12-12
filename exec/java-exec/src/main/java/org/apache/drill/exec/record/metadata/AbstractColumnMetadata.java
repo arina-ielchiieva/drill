@@ -206,4 +206,27 @@ public abstract class AbstractColumnMetadata implements ColumnMetadata {
   }
 
   public abstract AbstractColumnMetadata copy();
+
+  @Override
+  public String typeString() {
+    return majorType().toString();
+  }
+
+  @Override
+  public String columnString() {
+    StringBuilder builder = new StringBuilder();
+    builder.append("`").append(escapeSpecialSymbols(name())).append("`");
+    builder.append(" ");
+    builder.append(typeString());
+
+    if (!isNullable() && !isArray()) {
+      builder.append(" NOT NULL");
+    }
+
+    return builder.toString();
+  }
+
+  private String escapeSpecialSymbols(String value) {
+    return value.replaceAll("(\\\\)|(`)", "\\\\$0");
+  }
 }

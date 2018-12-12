@@ -203,4 +203,8 @@ public interface ColumnMetadata {
 
   int precision();
   int scale();
+
+  String typeString();
+  String columnString();
+
 }

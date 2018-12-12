@@ -29,13 +29,15 @@ schema: (columns | LEFT_PAREN columns RIGHT_PAREN) EOF;
 
 columns: column (COMMA column)*;
 
-column: (primitive_column | map_column | repeated_list);
+column: (primitive_column | simple_array_column | complex_array_column | map_column);
 
-primitive_column: column_id (simple_type | simple_arr) nullability?;
+primitive_column: column_id simple_type nullability?;
 
-map_column: column_id MAP LEFT_ANGLE_BRACKET columns RIGHT_ANGLE_BRACKET nullability?;
+simple_array_column: column_id simple_array_type nullability?;
 
-repeated_list: column_id ARRAY LEFT_ANGLE_BRACKET complex_type RIGHT_ANGLE_BRACKET nullability?;
+map_column: column_id map_type nullability?;
+
+complex_array_column: column_id complex_array_type nullability?;
 
 column_id
 : ID # id
@@ -57,13 +59,13 @@ simple_type
 | INTERVAL # interval
 ;
 
-complex_type
-: simple_arr # simple_array
-| ARRAY LEFT_ANGLE_BRACKET complex_type RIGHT_ANGLE_BRACKET # complex_array // not sure if we need this one
-| MAP LEFT_ANGLE_BRACKET columns RIGHT_ANGLE_BRACKET # map
-;
+simple_array_type: ARRAY LEFT_ANGLE_BRACKET simple_type RIGHT_ANGLE_BRACKET;
 
-simple_arr: ARRAY LEFT_ANGLE_BRACKET simple_type RIGHT_ANGLE_BRACKET;
+complex_array_type:ARRAY LEFT_ANGLE_BRACKET complex_type RIGHT_ANGLE_BRACKET;
+
+map_type: MAP LEFT_ANGLE_BRACKET columns RIGHT_ANGLE_BRACKET;
+
+complex_type: (simple_array_type | complex_array_type | map_type);
 
 nullability: NOT NULL;
 

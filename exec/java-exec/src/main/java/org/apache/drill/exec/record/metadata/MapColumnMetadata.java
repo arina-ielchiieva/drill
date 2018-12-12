@@ -123,4 +123,10 @@ public class MapColumnMetadata extends AbstractColumnMetadata {
           .setMode(mode)
           .build());
   }
+
+  @Override
+  public String typeString() {
+    return "MAP<" + mapSchema.schemaString() + ">";
+  }
+
 }

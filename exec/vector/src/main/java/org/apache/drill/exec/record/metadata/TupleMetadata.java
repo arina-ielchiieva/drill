@@ -87,4 +87,6 @@ public interface TupleMetadata extends Iterable<ColumnMetadata> {
 
   String fullName(ColumnMetadata column);
   String fullName(int index);
+
+  String schemaString();
 }

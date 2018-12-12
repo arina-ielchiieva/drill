@@ -33,115 +33,76 @@ import org.apache.drill.exec.record.metadata.parser.TupleSchemaLexer;
 import org.apache.drill.exec.record.metadata.parser.TupleSchemaParser;
 import org.apache.drill.exec.record.metadata.parser.TupleSchemaParserBaseVisitor;
 
+import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class TupleSchemaVisitor extends TupleSchemaParserBaseVisitor<TupleSchema> {
 
   @Override
   public TupleSchema visitSchema(TupleSchemaParser.SchemaContext ctx) {
-    TupleSchema schema = new TupleSchema();
-    ctx.columns().accept(new ColumnsVisitor()).forEach(schema::addColumn);
-    return schema;
+    return visitColumns(ctx.columns());
   }
 
-  public static class ColumnsVisitor extends TupleSchemaParserBaseVisitor<List<ColumnMetadata>> {
-
-    @Override
-    public List<ColumnMetadata> visitColumns(TupleSchemaParser.ColumnsContext ctx) {
-      ColumnVisitor columnVisitor = new ColumnVisitor();
-      return ctx.column().stream()
-        .map(c -> c.accept(columnVisitor))
-        .collect(Collectors.toList());
-    }
+  @Override
+  public TupleSchema visitColumns(TupleSchemaParser.ColumnsContext ctx) {
+    TupleSchema schema = new TupleSchema();
+    ColumnVisitor columnVisitor = new ColumnVisitor();
+    ctx.column().forEach(
+      c -> schema.addColumn(c.accept(columnVisitor))
+    );
+    return schema;
   }
 
   public static class ColumnVisitor extends TupleSchemaParserBaseVisitor<ColumnMetadata> {
 
     @Override
     public ColumnMetadata visitPrimitive_column(TupleSchemaParser.Primitive_columnContext ctx) {
-      String name = ctx.column_id().accept(new NameVisitor());
+      String name = ctx.column_id().accept(new IdVisitor());
       boolean nullable = ctx.nullability() == null;
-
-      TypeProtos.MajorType type;
-      if (ctx.simple_type() != null) {
-        type = ctx.simple_type().accept(new SimpleTypeVisitor());
-        type = type.toBuilder()
-          .setMode(nullable ? TypeProtos.DataMode.OPTIONAL : TypeProtos.DataMode.REQUIRED)
-          .build();
-      } else {
-        type = ctx.simple_arr().simple_type().accept(new SimpleTypeVisitor());
-        type = type.toBuilder().setMode(TypeProtos.DataMode.REPEATED).build(); //todo make separate column type?
-      }
+      TypeProtos.MajorType type = ctx.simple_type().accept(new SimpleTypeVisitor());
+      type = type.toBuilder()
+        .setMode(nullable ? TypeProtos.DataMode.OPTIONAL : TypeProtos.DataMode.REQUIRED)
+        .build();
 
       MaterializedField field = MaterializedField.create(name, type);
       return MetadataUtils.fromField(field);
     }
 
     @Override
-    public ColumnMetadata visitMap_column(TupleSchemaParser.Map_columnContext ctx) {
-      String name = ctx.column_id().accept(new NameVisitor());
-      TypeProtos.DataMode mode = ctx.nullability() == null ? TypeProtos.DataMode.OPTIONAL : TypeProtos.DataMode.REQUIRED;
-      MapBuilder builder = new MapBuilder(null, name, mode);
-
-      ColumnVisitor visitor = new ColumnVisitor();
-      ctx.columns().column().forEach(
-        c -> builder.addColumn((AbstractColumnMetadata) c.accept(visitor))
-      );
-
-      return builder.buildCol();
-    }
-
-    @Override
-    public ColumnMetadata visitRepeated_list(TupleSchemaParser.Repeated_listContext ctx) {
-      String name = ctx.column_id().accept(new NameVisitor());
-      RepeatedListBuilder builder = new RepeatedListBuilder(null, name);
-      ColumnMetadata child = ctx.complex_type().accept(new RepeatedListDataType(name, builder));
-      builder.addColumn((AbstractColumnMetadata) child);
-      return builder.buildCol();
-    }
-  }
-
-  public static class RepeatedListDataType extends TupleSchemaParserBaseVisitor<ColumnMetadata> {
-
-    private final String name;
-    private final RepeatedListBuilder builder;
-
-    public RepeatedListDataType(String name, RepeatedListBuilder builder) {
-      this.name = name;
-      this.builder = builder;
-    }
-
-    @Override
-    public ColumnMetadata visitSimple_array(TupleSchemaParser.Simple_arrayContext ctx) {
-      TypeProtos.MajorType type = ctx.simple_arr().simple_type().accept(new SimpleTypeVisitor());
+    public ColumnMetadata visitSimple_array_column(TupleSchemaParser.Simple_array_columnContext ctx) {
+      String name = ctx.column_id().accept(new IdVisitor());
+      TypeProtos.MajorType type = ctx.simple_array_type().simple_type().accept(new SimpleTypeVisitor());
       type = type.toBuilder().setMode(TypeProtos.DataMode.REPEATED).build();
       MaterializedField field = MaterializedField.create(name, type);
       return MetadataUtils.fromField(field);
     }
 
     @Override
-    public ColumnMetadata visitComplex_array(TupleSchemaParser.Complex_arrayContext ctx) {
-      RepeatedListBuilder childBuilder = new RepeatedListBuilder(builder, name);
-      ColumnMetadata child = ctx.complex_type().accept(new RepeatedListDataType(name, childBuilder));
-      builder.addColumn((AbstractColumnMetadata) child);
-      return builder.buildCol();
-    }
-
-    @Override
-    public ColumnMetadata visitMap(TupleSchemaParser.MapContext ctx) {
-      MapBuilder builder = new MapBuilder(null, name, TypeProtos.DataMode.REPEATED);
+    public ColumnMetadata visitMap_column(TupleSchemaParser.Map_columnContext ctx) {
+      String name = ctx.column_id().accept(new IdVisitor());
+      TypeProtos.DataMode mode = ctx.nullability() == null ? TypeProtos.DataMode.OPTIONAL : TypeProtos.DataMode.REQUIRED;
+      MapBuilder builder = new MapBuilder(null, name, mode);
 
       ColumnVisitor visitor = new ColumnVisitor();
-      ctx.columns().column().forEach(
+      ctx.map_type().columns().column().forEach(
         c -> builder.addColumn((AbstractColumnMetadata) c.accept(visitor))
       );
 
       return builder.buildCol();
     }
+
+    @Override
+    public ColumnMetadata visitComplex_array_column(TupleSchemaParser.Complex_array_columnContext ctx) {
+      String name = ctx.column_id().accept(new IdVisitor());
+      RepeatedListBuilder builder = new RepeatedListBuilder(null, name);
+      ColumnMetadata child = ctx.complex_array_type().complex_type().accept(new ComplexTypeVisitor(name, builder));
+      builder.addColumn((AbstractColumnMetadata) child);
+      return builder.buildCol();
+    }
+
   }
 
-  public static class SimpleTypeVisitor extends TupleSchemaParserBaseVisitor<TypeProtos.MajorType> {
+  private static class SimpleTypeVisitor extends TupleSchemaParserBaseVisitor<TypeProtos.MajorType> {
 
     @Override
     public TypeProtos.MajorType visitInt(TupleSchemaParser.IntContext ctx) {
@@ -227,7 +188,7 @@ public class TupleSchemaVisitor extends TupleSchemaParserBaseVisitor<TupleSchema
     }
   }
 
-  public static class NameVisitor extends TupleSchemaParserBaseVisitor<String> {
+  private static class IdVisitor extends TupleSchemaParserBaseVisitor<String> {
 
     @Override
     public String visitId(TupleSchemaParser.IdContext ctx) {
@@ -243,24 +204,74 @@ public class TupleSchemaVisitor extends TupleSchemaParserBaseVisitor<TupleSchema
     }
   }
 
-  public static void main(String[] args) {
-    // String schemaString = "col1 array<int>, col2 int not null, " + "col3 map<m1 int, m2 array<int>, m3 map<mm1 int not null>> not null";
-    //String schemaString = "col1 array<array<int>>";
-    //String schemaString = "col1 array<map<m1 int>>";
-    String schemaString = "col1 array<array<array<decimal(5, 2)>>>";
-    //String schemaString = "col1 array<array<map<m1 int not null>>>";
+  private static class ComplexTypeVisitor extends TupleSchemaParserBaseVisitor<ColumnMetadata> {
 
-    CodePointCharStream stream = CharStreams.fromString(schemaString);
-    CaseChangingCharStream upperCaseStream = new CaseChangingCharStream(stream, true);
-    TupleSchemaLexer lexer = new TupleSchemaLexer(upperCaseStream);
+    private final String name;
+    private final RepeatedListBuilder builder;
 
-    CommonTokenStream tokens = new CommonTokenStream(lexer);
-    TupleSchemaParser parser = new TupleSchemaParser(tokens);
-    TupleSchemaVisitor visitor = new TupleSchemaVisitor();
-    TupleSchema schema = visitor.visitSchema(parser.schema());
-    System.out.println(schema);
+    ComplexTypeVisitor(String name, RepeatedListBuilder builder) {
+      this.name = name;
+      this.builder = builder;
+    }
+
+    @Override
+    public ColumnMetadata visitSimple_array_type(TupleSchemaParser.Simple_array_typeContext ctx) {
+      TypeProtos.MajorType type = ctx.simple_type().accept(new SimpleTypeVisitor());
+      type = type.toBuilder().setMode(TypeProtos.DataMode.REPEATED).build();
+      MaterializedField field = MaterializedField.create(name, type);
+      return MetadataUtils.fromField(field);
+    }
+
+    @Override
+    public ColumnMetadata visitComplex_array_type(TupleSchemaParser.Complex_array_typeContext ctx) {
+      RepeatedListBuilder childBuilder = new RepeatedListBuilder(builder, name);
+      ColumnMetadata child = ctx.complex_type().accept(new ComplexTypeVisitor(name, childBuilder));
+      builder.addColumn((AbstractColumnMetadata) child);
+      return builder.buildCol();
+    }
+
+    @Override
+    public ColumnMetadata visitMap_type(TupleSchemaParser.Map_typeContext ctx) {
+      MapBuilder builder = new MapBuilder(null, name, TypeProtos.DataMode.REPEATED);
+
+      ColumnVisitor visitor = new ColumnVisitor();
+      ctx.columns().column().forEach(
+        c -> builder.addColumn((AbstractColumnMetadata) c.accept(visitor))
+      );
+
+      return builder.buildCol();
+    }
   }
 
-  // todo we need to produce schema string from TupleMetadata
+  public static void main(String[] args) {
+
+    List<String> schemas = Arrays.asList(
+      "col1 array<int>, col2 int not null, " + "col3 map<m1 int, m2 array<int>, m3 map<mm1 int not null>> not null",
+      "col1 array<array<int>>",
+      "col1 array<map<m1 int>>",
+      "col1 array<array<array<decimal(5, 2)>>>",
+      "col1 array<array<map<m1 int not null>>>",
+      "col1 array<int>"
+    );
+
+    schemas.forEach(
+      s -> {
+        CodePointCharStream stream = CharStreams.fromString(s);
+        CaseChangingCharStream upperCaseStream = new CaseChangingCharStream(stream, true);
+        TupleSchemaLexer lexer = new TupleSchemaLexer(upperCaseStream);
+
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        TupleSchemaParser parser = new TupleSchemaParser(tokens);
+        TupleSchemaVisitor visitor = new TupleSchemaVisitor();
+        TupleSchema schema = visitor.visitSchema(parser.schema());
+
+        System.out.println(s);
+        System.out.println(schema);
+        System.out.println(schema.schemaString());
+        System.out.println("--------------------------------");
+      }
+    );
+
+  }
 
 }
