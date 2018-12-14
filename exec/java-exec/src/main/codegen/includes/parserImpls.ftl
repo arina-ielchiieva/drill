@@ -361,6 +361,67 @@ SqlNode SqlDropFunction() :
    }
 }
 
+/**
+* Parse create schema statement
+*
+* CREATE SCHEMA
+* FOR TABLE dfs.my_table
+* AS 'my_schema_file_name'
+* (
+*   col1 int,
+*   col2 varchar(10) not null
+* )
+* PATH 'file:///path/to/schema'
+* PROPERTIES ('prop1'='val1', 'prop2'='val2')
+*/
+SqlNode SqlCreateSchema() :
+{
+   SqlParserPos pos;
+   SqlIdentifier table = null;
+   SqlNode schemaName = null;
+   SqlCharStringLiteral schemaString;
+   SqlNode path = null;
+   SqlNodeList properties = null;
+}
+{
+  <CREATE> { pos = getPos(); }
+  <SCHEMA>
+  [ <FOR> <TABLE> { table = CompoundIdentifier(); } ]
+  [ <AS> { schemaName = StringLiteral(); } ]
+  <PAREN_SCHEMA> { schemaString = SqlLiteral.createCharString(token.image, getPos()); }
+  [ <PATH> { path = StringLiteral(); } ]
+  [
+    <PROPERTIES> <LPAREN>
+    {
+      properties = new SqlNodeList(getPos());
+      addProperty(properties);
+    }
+     (
+       <COMMA>
+       { addProperty(properties); }
+     )*
+    <RPAREN>
+  ]
+  {
+    return new SqlCreateSchema(pos, table, schemaName, schemaString, path, properties);
+  }
+}
+
+void addProperty(SqlNodeList properties) :
+{}
+{
+  { properties.add(StringLiteral()); }
+  <EQ>
+  { properties.add(StringLiteral()); }
+}
+
+// <DEFAULT, DQID, BTID> TOKEN : {
+<S_DEFAULT> TOKEN : {
+   < NUM: <DIGIT> (" " | "\t" | "\n" | "\r")* >
+ //| < PAREN_SCHEMA: <LPAREN> ((~[")"]) | (<NUM> ")") | ("\\)"))+ <RPAREN> >
+ | < PAREN_SCHEMA: <LPAREN> ((~[")"]) | (<NUM> ")") | ("\\)"))+ <RPAREN> >
+}
+
 <#if !parser.includeCompoundIdentifier >
 /**
 * Parses a comma-separated list of simple identifiers.

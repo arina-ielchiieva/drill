@@ -36,7 +36,8 @@
     "REFRESH",
     "METADATA",
     "IF",
-    "JAR"
+    "JAR",
+    "PROPERTIES"
   ]
 
   # List of methods for parsing custom SQL statements.
@@ -53,7 +54,8 @@
     "SqlDropTable()",
     "SqlRefreshMetadata()",
     "SqlCreateFunction()",
-    "SqlDropFunction()"
+    "SqlDropFunction()",
+    "SqlCreateSchema()"
   ]
 
   # List of methods for parsing custom literals.

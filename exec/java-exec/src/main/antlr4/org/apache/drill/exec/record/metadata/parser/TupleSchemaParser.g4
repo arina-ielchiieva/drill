@@ -59,13 +59,13 @@ simple_type
 | INTERVAL # interval
 ;
 
+complex_type: (simple_array_type | complex_array_type | map_type);
+
 simple_array_type: ARRAY LEFT_ANGLE_BRACKET simple_type RIGHT_ANGLE_BRACKET;
 
-complex_array_type:ARRAY LEFT_ANGLE_BRACKET complex_type RIGHT_ANGLE_BRACKET;
+complex_array_type: ARRAY LEFT_ANGLE_BRACKET complex_type RIGHT_ANGLE_BRACKET;
 
 map_type: MAP LEFT_ANGLE_BRACKET columns RIGHT_ANGLE_BRACKET;
-
-complex_type: (simple_array_type | complex_array_type | map_type);
 
 nullability: NOT NULL;
 
