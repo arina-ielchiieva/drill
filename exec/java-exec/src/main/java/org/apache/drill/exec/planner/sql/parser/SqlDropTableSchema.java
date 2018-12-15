@@ -18,52 +18,41 @@
 package org.apache.drill.exec.planner.sql.parser;
 
 import org.apache.calcite.sql.SqlCall;
-import org.apache.calcite.sql.SqlCharStringLiteral;
 import org.apache.calcite.sql.SqlIdentifier;
 import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlLiteral;
 import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.SqlNodeList;
 import org.apache.calcite.sql.SqlOperator;
 import org.apache.calcite.sql.SqlSpecialOperator;
 import org.apache.calcite.sql.SqlWriter;
 import org.apache.calcite.sql.parser.SqlParserPos;
 import org.apache.drill.exec.planner.sql.handlers.AbstractSqlHandler;
-import org.apache.drill.exec.planner.sql.handlers.CreateSchemaHandler;
+import org.apache.drill.exec.planner.sql.handlers.DropTableSchemaHandler;
 import org.apache.drill.exec.planner.sql.handlers.SqlHandlerConfig;
 
 import java.util.Arrays;
 import java.util.List;
 
-public class SqlCreateSchema extends DrillSqlCall {
+public class SqlDropTableSchema extends DrillSqlCall {
 
-   private final SqlIdentifier table;
-   private final SqlNode schemaName;
-   private final SqlCharStringLiteral schemaString;
-   private final SqlNode path;
-   private final SqlNodeList properties;
+  private final SqlNode name;
+  private final SqlIdentifier table;
+  private final SqlNode path;
+  private final SqlLiteral existenceCheck;
 
-
-  public static final SqlSpecialOperator OPERATOR = new SqlSpecialOperator("CREATE_SCHEMA", SqlKind.OTHER_DDL) {
+  public static final SqlSpecialOperator OPERATOR = new SqlSpecialOperator("DROP_TABLE_SCHEMA", SqlKind.OTHER_DDL) {
     @Override
     public SqlCall createCall(SqlLiteral functionQualifier, SqlParserPos pos, SqlNode... operands) {
-      return new SqlCreateSchema(pos, (SqlIdentifier) operands[0], operands[1],
-        (SqlCharStringLiteral) operands[2], operands[3], (SqlNodeList) operands[4]);
+      return new SqlDropTableSchema(pos, operands[0], (SqlIdentifier) operands[1], operands[2], (SqlLiteral) operands[3]);
     }
   };
 
-  public SqlCreateSchema(SqlParserPos pos,
-                         SqlIdentifier table,
-                         SqlNode schemaName,
-                         SqlCharStringLiteral schemaString,
-                         SqlNode path,
-                         SqlNodeList properties) {
+  public SqlDropTableSchema(SqlParserPos pos, SqlNode name, SqlIdentifier table, SqlNode path, SqlLiteral existenceCheck) {
     super(pos);
+    this.name = name;
     this.table = table;
-    this.schemaName = schemaName;
-    this.schemaString = schemaString;
     this.path = path;
-    this.properties = properties;
+    this.existenceCheck = existenceCheck;
   }
 
   @Override
@@ -73,49 +62,41 @@ public class SqlCreateSchema extends DrillSqlCall {
 
   @Override
   public List<SqlNode> getOperandList() {
-    return Arrays.asList(table, schemaName, schemaString, path, properties);
+    return Arrays.asList(name, table, path, existenceCheck);
   }
 
   @Override
   public void unparse(SqlWriter writer, int leftPrec, int rightPrec) {
-    writer.keyword("CREATE");
+    writer.keyword("DROP");
+    writer.keyword("TABLE");
     writer.keyword("SCHEMA");
+
+    if (ifExists()) {
+      writer.keyword("IF");
+      writer.keyword("EXISTS");
+    }
+
+    if (name != null) {
+      writer.keyword("NAME");
+      name.unparse(writer, leftPrec, rightPrec);
+    }
     if (table != null) {
-      writer.keyword("FOR TABLE");
+      writer.keyword("FOR");
       table.unparse(writer, leftPrec, rightPrec);
     }
-    if (schemaName != null) {
-      writer.keyword("AS");
-      schemaName.unparse(writer, leftPrec, rightPrec);
-    }
-    writer.literal(getSchemaString());
     if (path != null) {
       writer.keyword("PATH");
       path.unparse(writer, leftPrec, rightPrec);
-    }
-    if (properties != null) {
-      writer.keyword("PROPERTIES");
-      writer.keyword("(");
-
-      for (int i = 0; i < properties.size(); i++) {
-        if (i != 0) {
-          writer.keyword(",");
-        }
-        properties.get(i).unparse(writer, leftPrec, rightPrec);
-        writer.keyword("=");
-        properties.get(++i).unparse(writer, leftPrec, rightPrec);
-      }
-
-      writer.keyword(")");
     }
   }
 
   @Override
   public AbstractSqlHandler getSqlHandler(SqlHandlerConfig config) {
-    return new CreateSchemaHandler(config);
+    return new DropTableSchemaHandler(config);
   }
 
-  public String getSchemaString() {
-    return schemaString.toValue();
+  public boolean ifExists() {
+    return  existenceCheck.booleanValue();
   }
+
 }

@@ -182,24 +182,24 @@ SqlNodeList ParseRequiredFieldList(String relType) :
  * Parses a create view or replace existing view statement.
  *   CREATE { [OR REPLACE] VIEW | VIEW [IF NOT EXISTS] | VIEW } view_name [ (field1, field2 ...) ] AS select_statement
  */
-SqlNode SqlCreateOrReplaceView() :
+SqlNode SqlCreateView(SqlParserPos pos, String createType) :
 {
-    SqlParserPos pos;
+    //SqlParserPos pos;
     SqlIdentifier viewName;
     SqlNode query;
     SqlNodeList fieldList;
-    String createViewType = "SIMPLE";
+    //String createType = "SIMPLE";
 }
 {
-    <CREATE> { pos = getPos(); }
-    [ <OR> <REPLACE> { createViewType = "OR_REPLACE"; } ]
-    <VIEW>
+    // <CREATE> { pos = getPos(); }
+    // [ <OR> <REPLACE> { createType = "OR_REPLACE"; } ]
+    // <VIEW>
     [
         <IF> <NOT> <EXISTS> {
-            if (createViewType == "OR_REPLACE") {
+            if (createType == "OR_REPLACE") {
                 throw new ParseException("Create view statement cannot have both <OR REPLACE> and <IF NOT EXISTS> clause");
             }
-            createViewType = "IF_NOT_EXISTS";
+            createType = "IF_NOT_EXISTS";
         }
     ]
     viewName = CompoundIdentifier()
@@ -207,7 +207,7 @@ SqlNode SqlCreateOrReplaceView() :
     <AS>
     query = OrderedQueryOrExpr(ExprContext.ACCEPT_QUERY)
     {
-        return new SqlCreateView(pos, viewName, fieldList, query, SqlLiteral.createCharString(createViewType, getPos()));
+        return new SqlCreateView(pos, viewName, fieldList, query, SqlLiteral.createCharString(createType, getPos()));
     }
 }
 
@@ -361,35 +361,72 @@ SqlNode SqlDropFunction() :
    }
 }
 
+SqlNode SqlCreateOrReplace() :
+{
+   SqlParserPos pos;
+   String createType = "SIMPLE";
+}
+{
+  <CREATE> { pos = getPos(); }
+  [<OR> <REPLACE> { createType = "OR_REPLACE"; } ]
+  ( <VIEW>
+      {
+         return SqlCreateView(pos, createType);
+      }
+    |
+    <TABLE_SCHEMA>
+      {
+         return SqlCreateTableSchema(pos, createType);
+      }
+  )
+}
+
 /**
-* Parse create schema statement
+* Parse create table schema statement
 *
-* CREATE SCHEMA
-* FOR TABLE dfs.my_table
-* AS 'my_schema_file_name'
+* CREATE TABLE SCHEMA IF NOT EXISTS
 * (
 *   col1 int,
 *   col2 varchar(10) not null
 * )
+* NAME 'my_schema_file_name'
+* FOR dfs.my_table
 * PATH 'file:///path/to/schema'
 * PROPERTIES ('prop1'='val1', 'prop2'='val2')
 */
-SqlNode SqlCreateSchema() :
+SqlNode SqlCreateTableSchema(SqlParserPos pos, String createType) :
 {
-   SqlParserPos pos;
+   // SqlParserPos pos;
+   SqlCharStringLiteral schema;
+   SqlNode name = null;
    SqlIdentifier table = null;
-   SqlNode schemaName = null;
-   SqlCharStringLiteral schemaString;
    SqlNode path = null;
    SqlNodeList properties = null;
+   // String createType = "SIMPLE";
 }
 {
-  <CREATE> { pos = getPos(); }
-  <SCHEMA>
-  [ <FOR> <TABLE> { table = CompoundIdentifier(); } ]
-  [ <AS> { schemaName = StringLiteral(); } ]
-  <PAREN_SCHEMA> { schemaString = SqlLiteral.createCharString(token.image, getPos()); }
+ // <CREATE> { pos = getPos(); }
+ // [ <OR> <REPLACE> { createType = "OR_REPLACE"; } ]
+ // <TABLE_SCHEMA>
+  [ <TS_IF> <TS_NOT> <TS_EXISTS>
+    {
+      if (createType == "OR_REPLACE") {
+        throw new ParseException("Create table schema statement cannot have both <OR REPLACE> and <IF NOT EXISTS> clauses.");
+      }
+      createType = "IF_NOT_EXISTS";
+    }
+  ]
+  <PAREN_STRING> { schema = SqlLiteral.createCharString(token.image, getPos()); }
+  [ <NAME> { name = StringLiteral(); } ]
+  [ <FOR> { table = CompoundIdentifier(); } ]
   [ <PATH> { path = StringLiteral(); } ]
+
+  {
+    if (table == null && path == null) {
+      throw new ParseException("Create table schema statement should have at least <FOR> or <PATH> defined.");
+     }
+  }
+
   [
     <PROPERTIES> <LPAREN>
     {
@@ -403,7 +440,7 @@ SqlNode SqlCreateSchema() :
     <RPAREN>
   ]
   {
-    return new SqlCreateSchema(pos, table, schemaName, schemaString, path, properties);
+    return new SqlCreateTableSchema(pos, schema, name, table, path, properties, SqlLiteral.createCharString(createType, getPos()));
   }
 }
 
@@ -415,11 +452,59 @@ void addProperty(SqlNodeList properties) :
   { properties.add(StringLiteral()); }
 }
 
-// <DEFAULT, DQID, BTID> TOKEN : {
-<S_DEFAULT> TOKEN : {
+<DEFAULT, DQID, BTID> TOKEN : {
+   < TABLE_SCHEMA: <TABLE> (" " | "\t" | "\n" | "\r")* <SCHEMA> > { pushState(); } : TS
+}
+
+<TS> SKIP :
+{
+    " "
+|   "\t"
+|   "\n"
+|   "\r"
+}
+
+<TS> TOKEN : {
    < NUM: <DIGIT> (" " | "\t" | "\n" | "\r")* >
- //| < PAREN_SCHEMA: <LPAREN> ((~[")"]) | (<NUM> ")") | ("\\)"))+ <RPAREN> >
- | < PAREN_SCHEMA: <LPAREN> ((~[")"]) | (<NUM> ")") | ("\\)"))+ <RPAREN> >
+ | < PAREN_STRING: <LPAREN> ((~[")"]) | (<NUM> ")") | ("\\)"))+ <RPAREN> > { popState(); }
+ | < TS_IF : "IF" >
+ | < TS_NOT : "NOT" >
+ | < TS_EXISTS : "EXISTS" >
+}
+
+/**
+* Parse drop table schema statement
+*
+* DROP TABLE SCHEMA IF EXISTS
+* NAME 'my_schema_file_name'
+* FOR dfs.my_table
+* PATH 'file:///path/to/schema'
+*/
+SqlNode SqlDropTableSchema() :
+{
+   SqlParserPos pos;
+   SqlNode name = null;
+   SqlIdentifier table = null;
+   SqlNode path = null;
+   boolean existenceCheck = false;
+}
+{
+   <DROP> { pos = getPos(); }
+   <TABLE_SCHEMA> { token_source.popState(); }
+  [ <IF> <EXISTS> { existenceCheck = true; } ]
+  [ <NAME> { name = StringLiteral(); } ]
+  [ <FOR> { table = CompoundIdentifier(); } ]
+  [ <PATH> { path = StringLiteral(); } ]
+
+  {
+    if (table == null && path == null) {
+      throw new ParseException("Drop table schema statement should have at least <FOR> or <PATH> defined.");
+     }
+  }
+
+  {
+    return new SqlDropTableSchema(pos, name, table, path, SqlLiteral.createBoolean(existenceCheck, getPos()));
+  }
 }
 
 <#if !parser.includeCompoundIdentifier >

@@ -35,16 +35,25 @@ public class TestCreateSchema extends ClusterTest {
   }
 
   @Test
-  public void t() {
-    queryBuilder().sql("create schema " +
-     // "for table dfs.tmp " +
-      // "as 'my_schema_file' " +
-      "(col1 int " +
+  public void create() {
+    queryBuilder().sql(" create table schema " +
+      "(col1 int, " +
       "col2 varchar( 20 ,  5 ), `col4(x\\)`(500) int) " +
-      //"path '(9)' ").printCsv();
-     "path '(9)' " +
-      "properties ( 'k1'='v1', 'k2'='v2' )").printCsv();
-     // "properties ('k1'='v1', 'k2'='v2')").printCsv();
+      "name 'my_schema_file' " +
+      "for `dfs.tmp` " +
+      "path '(9)' " +
+      "properties ( 'k1'='v1', 'k2'='v2', 'k3'='v3' )").printCsv();
   }
+
+  @Test
+  public void drop() {
+    queryBuilder().sql(" drop table schema if exists " +
+      "name 'my_schema_file' " +
+      "for `dfs.tmp` " +
+      "path '00' ").printCsv();
+  }
+
+  // create or replace schema
+  // create schema if not exists
 
 }

@@ -47,7 +47,8 @@
     "SqlDescribeSchema()"
     "SqlDescribeTable()",
     "SqlUseSchema()",
-    "SqlCreateOrReplaceView()",
+    "SqlCreateOrReplace()",
+    # "SqlCreateOrReplaceView()",
     "SqlDropView()",
     "SqlShowFiles()",
     "SqlCreateTable()",
@@ -55,7 +56,8 @@
     "SqlRefreshMetadata()",
     "SqlCreateFunction()",
     "SqlDropFunction()",
-    "SqlCreateSchema()"
+   # "SqlCreateTableSchema()",
+    "SqlDropTableSchema()"
   ]
 
   # List of methods for parsing custom literals.

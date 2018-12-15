@@ -22,14 +22,14 @@ import org.apache.calcite.tools.RelConversionException;
 import org.apache.calcite.tools.ValidationException;
 import org.apache.drill.exec.physical.PhysicalPlan;
 import org.apache.drill.exec.planner.sql.DirectPlan;
-import org.apache.drill.exec.planner.sql.parser.SqlCreateSchema;
+import org.apache.drill.exec.planner.sql.parser.SqlCreateTableSchema;
 import org.apache.drill.exec.work.foreman.ForemanSetupException;
 
 import java.io.IOException;
 
-public class CreateSchemaHandler extends DefaultSqlHandler {
+public class CreateTableSchemaHandler extends DefaultSqlHandler {
 
-  public CreateSchemaHandler(SqlHandlerConfig config) {
+  public CreateTableSchemaHandler(SqlHandlerConfig config) {
     super(config);
   }
 
@@ -37,7 +37,8 @@ public class CreateSchemaHandler extends DefaultSqlHandler {
   public PhysicalPlan getPlan(SqlNode sqlNode) throws ValidationException, RelConversionException, IOException, ForemanSetupException {
 
     System.out.println(sqlNode.toString());
-    System.out.println(((SqlCreateSchema) sqlNode).getSchemaString());
-    return DirectPlan.createDirectPlan(context, true, "Created schema");
+    System.out.println(((SqlCreateTableSchema) sqlNode).getSchema());
+    System.out.println(((SqlCreateTableSchema) sqlNode).getSqlCreateType());
+    return DirectPlan.createDirectPlan(context, true, "Created table schema");
   }
 }
