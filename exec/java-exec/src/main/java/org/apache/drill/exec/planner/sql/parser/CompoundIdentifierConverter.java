@@ -79,8 +79,8 @@ public class CompoundIdentifierConverter extends SqlShuttle {
         .put(SqlSetOption.class, arrayOf(D, D, D))
         .put(SqlCreateFunction.class, arrayOf(D))
         .put(SqlDropFunction.class, arrayOf(D))
-        .put(SqlCreateTableSchema.class, arrayOf(D, D, E, D, D, D))
-        .put(SqlDropTableSchema.class, arrayOf(D, E, D, D))
+        .put(SqlTableSchema.Create.class, arrayOf(D, D, E, D, D, D))
+        .put(SqlTableSchema.Drop.class, arrayOf(D, E, D, D))
         .build();
   }
 

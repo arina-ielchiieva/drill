@@ -22,7 +22,7 @@ import org.apache.calcite.tools.RelConversionException;
 import org.apache.calcite.tools.ValidationException;
 import org.apache.drill.exec.physical.PhysicalPlan;
 import org.apache.drill.exec.planner.sql.DirectPlan;
-import org.apache.drill.exec.planner.sql.parser.SqlCreateTableSchema;
+import org.apache.drill.exec.planner.sql.parser.SqlTableSchema;
 import org.apache.drill.exec.work.foreman.ForemanSetupException;
 
 import java.io.IOException;
@@ -37,8 +37,13 @@ public class CreateTableSchemaHandler extends DefaultSqlHandler {
   public PhysicalPlan getPlan(SqlNode sqlNode) throws ValidationException, RelConversionException, IOException, ForemanSetupException {
 
     System.out.println(sqlNode.toString());
-    System.out.println(((SqlCreateTableSchema) sqlNode).getSchema());
-    System.out.println(((SqlCreateTableSchema) sqlNode).getSqlCreateType());
+    System.out.println(((SqlTableSchema.Create) sqlNode).getSchema());
+    System.out.println(((SqlTableSchema.Create) sqlNode).getSqlCreateType());
+
+    // new StorageStrategy(context.getOption(ExecConstants.PERSISTENT_TABLE_UMASK).string_val
+    // when creating schema file use the same permission as for persistent tables
+    // we should disallow to create schema for temporary tables
+
     return DirectPlan.createDirectPlan(context, true, "Created table schema");
   }
 }

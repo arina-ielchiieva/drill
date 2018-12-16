@@ -17,8 +17,26 @@
  */
 package org.apache.drill.exec.planner.sql.parser;
 
+/**
+ * Enum which indicates to type CREATE statement.
+ */
 public enum SqlCreateType {
 
-  SIMPLE, OR_REPLACE, IF_NOT_EXISTS;
+  /**
+   * Attempts to execute CREATE command without checking if object to be created exists.
+   * Will fail if object to be created exists.
+   */
+  SIMPLE,
 
+  /**
+   * Before CREATE command execution checks if object to be created exists.
+   * If object to be created exists, will drop it and proceed execution.
+   */
+  OR_REPLACE,
+
+  /**
+   * Before CREATE command execution checks if object to be created exists.
+   * If object to be created exists, does nothing.
+   */
+  IF_NOT_EXISTS
 }

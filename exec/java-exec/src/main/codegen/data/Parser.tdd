@@ -47,16 +47,14 @@
     "SqlDescribeSchema()"
     "SqlDescribeTable()",
     "SqlUseSchema()",
-    "SqlCreateOrReplace()",
-    # "SqlCreateOrReplaceView()",
+    "SqlCreateOrReplace()"
     "SqlDropView()",
     "SqlShowFiles()",
     "SqlCreateTable()",
     "SqlDropTable()",
     "SqlRefreshMetadata()",
     "SqlCreateFunction()",
-    "SqlDropFunction()",
-   # "SqlCreateTableSchema()",
+    "SqlDropFunction()"
     "SqlDropTableSchema()"
   ]
 

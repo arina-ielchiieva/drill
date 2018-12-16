@@ -291,4 +291,21 @@ public class SchemaUtilites {
     }
   }
 
+  /**
+   * If table schema is not indicated in sql call, returns temporary workspace.
+   * If schema is indicated, resolves to mutable table schema.
+   *
+   * @param tableSchema table schema
+   * @param defaultSchema default schema
+   * @param config drill config
+   * @return resolved schema
+   */
+  public static AbstractSchema resolveToTemporarySchema(List<String> tableSchema, SchemaPlus defaultSchema, DrillConfig config) {
+    if (tableSchema.size() == 0) {
+      return SchemaUtilites.getTemporaryWorkspace(defaultSchema, config);
+    } else {
+      return SchemaUtilites.resolveToMutableDrillSchema(defaultSchema, tableSchema);
+    }
+  }
+
 }

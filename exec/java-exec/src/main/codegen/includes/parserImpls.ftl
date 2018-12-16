@@ -179,8 +179,32 @@ SqlNodeList ParseRequiredFieldList(String relType) :
 }
 
 /**
+* Rarses CREATE OR REPLACE command for VIEW or TABLE SCHEMA.
+*/
+SqlNode SqlCreateOrReplace() :
+{
+   SqlParserPos pos;
+   String createType = "SIMPLE";
+}
+{
+  <CREATE> { pos = getPos(); }
+  [<OR> <REPLACE> { createType = "OR_REPLACE"; } ]
+  ( <VIEW>
+      {
+         return SqlCreateView(pos, createType);
+      }
+    |
+    <TABLE_SCHEMA>
+      {
+         return SqlCreateTableSchema(pos, createType);
+      }
+  )
+}
+
+/**
  * Parses a create view or replace existing view statement.
- *   CREATE { [OR REPLACE] VIEW | VIEW [IF NOT EXISTS] | VIEW } view_name [ (field1, field2 ...) ] AS select_statement
+ * after CREATE OR REPLACE VIEW statement which is handled in the SqlCreateOrReplace method.
+ * CREATE { [OR REPLACE] VIEW | VIEW [IF NOT EXISTS] | VIEW } view_name [ (field1, field2 ...) ] AS select_statement
  */
 SqlNode SqlCreateView(SqlParserPos pos, String createType) :
 {
@@ -361,53 +385,29 @@ SqlNode SqlDropFunction() :
    }
 }
 
-SqlNode SqlCreateOrReplace() :
-{
-   SqlParserPos pos;
-   String createType = "SIMPLE";
-}
-{
-  <CREATE> { pos = getPos(); }
-  [<OR> <REPLACE> { createType = "OR_REPLACE"; } ]
-  ( <VIEW>
-      {
-         return SqlCreateView(pos, createType);
-      }
-    |
-    <TABLE_SCHEMA>
-      {
-         return SqlCreateTableSchema(pos, createType);
-      }
-  )
-}
-
 /**
-* Parse create table schema statement
+* Parses create table schema statement after CREATE OR REPLACE TABLE SCHEMA statement
+* which is handled in the SqlCreateOrReplace method.
 *
-* CREATE TABLE SCHEMA IF NOT EXISTS
+* CREATE [OR REPLACE] TABLE SCHEMA [IF NOT EXISTS]
 * (
 *   col1 int,
 *   col2 varchar(10) not null
 * )
-* NAME 'my_schema_file_name'
-* FOR dfs.my_table
-* PATH 'file:///path/to/schema'
-* PROPERTIES ('prop1'='val1', 'prop2'='val2')
+* [NAME 'my_schema_file_name']
+* [FOR dfs.my_table]
+* [PATH 'file:///path/to/schema']
+* [PROPERTIES ('prop1'='val1', 'prop2'='val2')]
 */
 SqlNode SqlCreateTableSchema(SqlParserPos pos, String createType) :
 {
-   // SqlParserPos pos;
    SqlCharStringLiteral schema;
    SqlNode name = null;
    SqlIdentifier table = null;
    SqlNode path = null;
    SqlNodeList properties = null;
-   // String createType = "SIMPLE";
 }
 {
- // <CREATE> { pos = getPos(); }
- // [ <OR> <REPLACE> { createType = "OR_REPLACE"; } ]
- // <TABLE_SCHEMA>
   [ <TS_IF> <TS_NOT> <TS_EXISTS>
     {
       if (createType == "OR_REPLACE") {
@@ -440,10 +440,13 @@ SqlNode SqlCreateTableSchema(SqlParserPos pos, String createType) :
     <RPAREN>
   ]
   {
-    return new SqlCreateTableSchema(pos, schema, name, table, path, properties, SqlLiteral.createCharString(createType, getPos()));
+    return new SqlTableSchema.Create(pos, schema, name, table, path, properties, SqlLiteral.createCharString(createType, getPos()));
   }
 }
 
+/**
+* Helper method to add string literals divided by equals into SqlNodeList.
+*/
 void addProperty(SqlNodeList properties) :
 {}
 {
@@ -453,6 +456,7 @@ void addProperty(SqlNodeList properties) :
 }
 
 <DEFAULT, DQID, BTID> TOKEN : {
+   // TABLE_SCHEMA switches to TS lexical state
    < TABLE_SCHEMA: <TABLE> (" " | "\t" | "\n" | "\r")* <SCHEMA> > { pushState(); } : TS
 }
 
@@ -473,12 +477,12 @@ void addProperty(SqlNodeList properties) :
 }
 
 /**
-* Parse drop table schema statement
+* Parses drop table schema statement
 *
-* DROP TABLE SCHEMA IF EXISTS
-* NAME 'my_schema_file_name'
-* FOR dfs.my_table
-* PATH 'file:///path/to/schema'
+* DROP TABLE SCHEMA [IF EXISTS]
+* [NAME 'my_schema_file_name']
+* [FOR dfs.my_table]
+* [PATH 'file:///path/to/schema']
 */
 SqlNode SqlDropTableSchema() :
 {
@@ -503,7 +507,7 @@ SqlNode SqlDropTableSchema() :
   }
 
   {
-    return new SqlDropTableSchema(pos, name, table, path, SqlLiteral.createBoolean(existenceCheck, getPos()));
+    return new SqlTableSchema.Drop(pos, name, table, path, SqlLiteral.createBoolean(existenceCheck, getPos()));
   }
 }
 
