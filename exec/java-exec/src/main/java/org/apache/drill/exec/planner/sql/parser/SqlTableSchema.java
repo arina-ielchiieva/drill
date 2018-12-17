@@ -45,42 +45,18 @@ public abstract class SqlTableSchema extends DrillSqlCall {
 
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(SqlTableSchema.class);
 
-  protected final SqlNode name;
   protected final SqlIdentifier table;
-  protected final SqlNode path;
 
-  public SqlTableSchema(SqlParserPos pos, SqlNode name, SqlIdentifier table, SqlNode path) {
+  public SqlTableSchema(SqlParserPos pos, SqlIdentifier table) {
     super(pos);
-    this.name = name;
     this.table = table;
-    this.path = path;
   }
 
   @Override
   public void unparse(SqlWriter writer, int leftPrec, int rightPrec) {
-    if (name != null) {
-      writer.keyword("NAME");
-      name.unparse(writer, leftPrec, rightPrec);
-    }
     if (table != null) {
       writer.keyword("FOR");
       table.unparse(writer, leftPrec, rightPrec);
-    }
-    if (path != null) {
-      writer.keyword("PATH");
-      path.unparse(writer, leftPrec, rightPrec);
-    }
-  }
-
-  public String getName() {
-    if (name == null) {
-      return null;
-    }
-    if (name instanceof SqlCharStringLiteral) {
-      return ((SqlCharStringLiteral) name).toValue();
-    } else {
-      logger.warn("Unable to extract name from {}: {}" + name.getClass(), name);
-      return null;
     }
   }
 
@@ -115,44 +91,33 @@ public abstract class SqlTableSchema extends DrillSqlCall {
     return table.names.get(table.names.size() - 1);
   }
 
-  public String getPath() {
-    if (path == null) {
-      return null;
-    }
-    if (path instanceof SqlCharStringLiteral) {
-      return ((SqlCharStringLiteral) path).toValue();
-    } else {
-      logger.warn("Unable to extract path from {}: {}" + path.getClass(), path);
-      return null;
-    }
-  }
-
   /**
    * CREATE TABLE SCHEMA sql call.
    */
   public static class Create extends SqlTableSchema {
 
     private final SqlCharStringLiteral schema;
+    private final SqlNode path;
     private final SqlNodeList properties;
     private final SqlLiteral createType;
 
     public static final SqlSpecialOperator OPERATOR = new SqlSpecialOperator("CREATE_TABLE_SCHEMA", SqlKind.OTHER_DDL) {
       @Override
       public SqlCall createCall(SqlLiteral functionQualifier, SqlParserPos pos, SqlNode... operands) {
-        return new Create(pos, (SqlCharStringLiteral) operands[0], operands[1],
-          (SqlIdentifier) operands[2], operands[3], (SqlNodeList) operands[4], (SqlLiteral) operands[5]);
+        return new Create(pos, (SqlCharStringLiteral) operands[0],
+          (SqlIdentifier) operands[1], operands[2], (SqlNodeList) operands[3], (SqlLiteral) operands[4]);
       }
     };
 
     public Create(SqlParserPos pos,
                                 SqlCharStringLiteral schema,
-                                SqlNode name,
                                 SqlIdentifier table,
                                 SqlNode path,
                                 SqlNodeList properties,
                                 SqlLiteral createType) {
-      super(pos, name, table, path);
+      super(pos, table);
       this.schema = schema;
+      this.path = path;
       this.properties = properties;
       this.createType = createType;
     }
@@ -164,7 +129,7 @@ public abstract class SqlTableSchema extends DrillSqlCall {
 
     @Override
     public List<SqlNode> getOperandList() {
-      return Arrays.asList(schema, name, table, path, properties, createType);
+      return Arrays.asList(schema, table, path, properties, createType);
     }
 
     @Override
@@ -190,6 +155,11 @@ public abstract class SqlTableSchema extends DrillSqlCall {
       writer.literal(getSchema());
 
       super.unparse(writer, leftPrec, rightPrec);
+
+      if (path != null) {
+        writer.keyword("PATH");
+        path.unparse(writer, leftPrec, rightPrec);
+      }
 
       if (properties != null) {
         writer.keyword("PROPERTIES");
@@ -217,6 +187,18 @@ public abstract class SqlTableSchema extends DrillSqlCall {
       return schema.toValue();
     }
 
+    public String getPath() {
+      if (path == null) {
+        return null;
+      }
+      if (path instanceof SqlCharStringLiteral) {
+        return ((SqlCharStringLiteral) path).toValue();
+      } else {
+        logger.warn("Unable to extract path from {}: {}" + path.getClass(), path);
+        return null;
+      }
+    }
+
     public SqlCreateType getSqlCreateType() {
       return SqlCreateType.valueOf(createType.toValue());
     }
@@ -233,12 +215,12 @@ public abstract class SqlTableSchema extends DrillSqlCall {
     public static final SqlSpecialOperator OPERATOR = new SqlSpecialOperator("DROP_TABLE_SCHEMA", SqlKind.OTHER_DDL) {
       @Override
       public SqlCall createCall(SqlLiteral functionQualifier, SqlParserPos pos, SqlNode... operands) {
-        return new Drop(pos, operands[0], (SqlIdentifier) operands[1], operands[2], (SqlLiteral) operands[3]);
+        return new Drop(pos, (SqlIdentifier) operands[1], (SqlLiteral) operands[2]);
       }
     };
 
-    public Drop(SqlParserPos pos, SqlNode name, SqlIdentifier table, SqlNode path, SqlLiteral existenceCheck) {
-      super(pos, name, table, path);
+    public Drop(SqlParserPos pos, SqlIdentifier table, SqlLiteral existenceCheck) {
+      super(pos, table);
       this.existenceCheck = existenceCheck;
     }
 
@@ -249,7 +231,7 @@ public abstract class SqlTableSchema extends DrillSqlCall {
 
     @Override
     public List<SqlNode> getOperandList() {
-      return Arrays.asList(name, table, path, existenceCheck);
+      return Arrays.asList(table, existenceCheck);
     }
 
     @Override

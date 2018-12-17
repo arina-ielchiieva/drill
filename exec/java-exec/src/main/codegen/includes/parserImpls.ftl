@@ -394,7 +394,6 @@ SqlNode SqlDropFunction() :
 *   col1 int,
 *   col2 varchar(10) not null
 * )
-* [NAME 'my_schema_file_name']
 * [FOR dfs.my_table]
 * [PATH 'file:///path/to/schema']
 * [PROPERTIES ('prop1'='val1', 'prop2'='val2')]
@@ -402,7 +401,6 @@ SqlNode SqlDropFunction() :
 SqlNode SqlCreateTableSchema(SqlParserPos pos, String createType) :
 {
    SqlCharStringLiteral schema;
-   SqlNode name = null;
    SqlIdentifier table = null;
    SqlNode path = null;
    SqlNodeList properties = null;
@@ -417,15 +415,16 @@ SqlNode SqlCreateTableSchema(SqlParserPos pos, String createType) :
     }
   ]
   <PAREN_STRING> { schema = SqlLiteral.createCharString(token.image, getPos()); }
-  [ <NAME> { name = StringLiteral(); } ]
-  [ <FOR> { table = CompoundIdentifier(); } ]
-  [ <PATH> { path = StringLiteral(); } ]
-
-  {
-    if (table == null && path == null) {
-      throw new ParseException("Create table schema statement should have at least <FOR> or <PATH> defined.");
-     }
-  }
+  (
+    <FOR> { table = CompoundIdentifier(); }
+    |
+    <PATH>
+    {
+      path = StringLiteral();
+      if (createType == "OR_REPLACE") {
+        throw new ParseException("<OR REPLACE> cannot be used with <PATH> property.");
+      }
+  )
 
   [
     <PROPERTIES> <LPAREN>
@@ -440,7 +439,7 @@ SqlNode SqlCreateTableSchema(SqlParserPos pos, String createType) :
     <RPAREN>
   ]
   {
-    return new SqlTableSchema.Create(pos, schema, name, table, path, properties, SqlLiteral.createCharString(createType, getPos()));
+    return new SqlTableSchema.Create(pos, schema, table, path, properties, SqlLiteral.createCharString(createType, getPos()));
   }
 }
 
@@ -480,9 +479,7 @@ void addProperty(SqlNodeList properties) :
 * Parses drop table schema statement
 *
 * DROP TABLE SCHEMA [IF EXISTS]
-* [NAME 'my_schema_file_name']
-* [FOR dfs.my_table]
-* [PATH 'file:///path/to/schema']
+* FOR dfs.my_table
 */
 SqlNode SqlDropTableSchema() :
 {
@@ -496,16 +493,7 @@ SqlNode SqlDropTableSchema() :
    <DROP> { pos = getPos(); }
    <TABLE_SCHEMA> { token_source.popState(); }
   [ <IF> <EXISTS> { existenceCheck = true; } ]
-  [ <NAME> { name = StringLiteral(); } ]
-  [ <FOR> { table = CompoundIdentifier(); } ]
-  [ <PATH> { path = StringLiteral(); } ]
-
-  {
-    if (table == null && path == null) {
-      throw new ParseException("Drop table schema statement should have at least <FOR> or <PATH> defined.");
-     }
-  }
-
+   <FOR> { table = CompoundIdentifier(); }
   {
     return new SqlTableSchema.Drop(pos, name, table, path, SqlLiteral.createBoolean(existenceCheck, getPos()));
   }
