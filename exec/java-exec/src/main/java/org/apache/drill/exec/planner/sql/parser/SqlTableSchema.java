@@ -19,7 +19,10 @@ package org.apache.drill.exec.planner.sql.parser;
 
 import org.apache.calcite.sql.SqlCall;
 import org.apache.calcite.sql.SqlCharStringLiteral;
+import org.apache.calcite.sql.SqlDataTypeSpec;
+import org.apache.calcite.sql.SqlDynamicParam;
 import org.apache.calcite.sql.SqlIdentifier;
+import org.apache.calcite.sql.SqlIntervalQualifier;
 import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlLiteral;
 import org.apache.calcite.sql.SqlNode;
@@ -28,14 +31,17 @@ import org.apache.calcite.sql.SqlOperator;
 import org.apache.calcite.sql.SqlSpecialOperator;
 import org.apache.calcite.sql.SqlWriter;
 import org.apache.calcite.sql.parser.SqlParserPos;
+import org.apache.calcite.sql.util.SqlBasicVisitor;
+import org.apache.calcite.sql.util.SqlVisitor;
 import org.apache.drill.exec.planner.sql.handlers.AbstractSqlHandler;
-import org.apache.drill.exec.planner.sql.handlers.CreateTableSchemaHandler;
-import org.apache.drill.exec.planner.sql.handlers.DropTableSchemaHandler;
 import org.apache.drill.exec.planner.sql.handlers.SqlHandlerConfig;
+import org.apache.drill.exec.planner.sql.handlers.TableSchemaHandler;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Parent class for CREATE and DROP TABLE SCHEMA commands.
@@ -47,7 +53,7 @@ public abstract class SqlTableSchema extends DrillSqlCall {
 
   protected final SqlIdentifier table;
 
-  public SqlTableSchema(SqlParserPos pos, SqlIdentifier table) {
+  protected SqlTableSchema(SqlParserPos pos, SqlIdentifier table) {
     super(pos);
     this.table = table;
   }
@@ -58,15 +64,6 @@ public abstract class SqlTableSchema extends DrillSqlCall {
       writer.keyword("FOR");
       table.unparse(writer, leftPrec, rightPrec);
     }
-  }
-
-  public String getTable() {
-    if (table == null) {
-      return null;
-    }
-
-    //todo construct string
-    return table.names.toString();
   }
 
   public List<String> getSchemaPath() {
@@ -180,7 +177,7 @@ public abstract class SqlTableSchema extends DrillSqlCall {
 
     @Override
     public AbstractSqlHandler getSqlHandler(SqlHandlerConfig config) {
-      return new CreateTableSchemaHandler(config);
+      return new TableSchemaHandler.Create(config);
     }
 
     public String getSchema() {
@@ -199,9 +196,25 @@ public abstract class SqlTableSchema extends DrillSqlCall {
       }
     }
 
+    public Map<String, String> getProperties() {
+      if (properties == null) {
+        return null;
+      }
+
+      Map<String, String> map = new HashMap<>();
+      for (int i = 1; i < properties.size(); i += 2) {
+        map.put(properties.get(i - 1).toString(), properties.get(i).toString());
+      }
+      return map;
+    }
+
     public SqlCreateType getSqlCreateType() {
       return SqlCreateType.valueOf(createType.toValue());
     }
+
+  }
+
+  public static class StringVisitor extends SqlBasicVisitor<String> {
 
   }
 
@@ -215,7 +228,7 @@ public abstract class SqlTableSchema extends DrillSqlCall {
     public static final SqlSpecialOperator OPERATOR = new SqlSpecialOperator("DROP_TABLE_SCHEMA", SqlKind.OTHER_DDL) {
       @Override
       public SqlCall createCall(SqlLiteral functionQualifier, SqlParserPos pos, SqlNode... operands) {
-        return new Drop(pos, (SqlIdentifier) operands[1], (SqlLiteral) operands[2]);
+        return new Drop(pos, (SqlIdentifier) operands[0], (SqlLiteral) operands[1]);
       }
     };
 
@@ -249,7 +262,7 @@ public abstract class SqlTableSchema extends DrillSqlCall {
 
     @Override
     public AbstractSqlHandler getSqlHandler(SqlHandlerConfig config) {
-      return new DropTableSchemaHandler(config);
+      return new TableSchemaHandler.Drop(config);
     }
 
     public boolean ifExists() {

@@ -424,6 +424,7 @@ SqlNode SqlCreateTableSchema(SqlParserPos pos, String createType) :
       if (createType == "OR_REPLACE") {
         throw new ParseException("<OR REPLACE> cannot be used with <PATH> property.");
       }
+    }
   )
 
   [
@@ -455,7 +456,7 @@ void addProperty(SqlNodeList properties) :
 }
 
 <DEFAULT, DQID, BTID> TOKEN : {
-   // TABLE_SCHEMA switches to TS lexical state
+   // TABLE_SCHEMA switches to Table Schema lexical state
    < TABLE_SCHEMA: <TABLE> (" " | "\t" | "\n" | "\r")* <SCHEMA> > { pushState(); } : TS
 }
 
@@ -469,6 +470,10 @@ void addProperty(SqlNodeList properties) :
 
 <TS> TOKEN : {
    < NUM: <DIGIT> (" " | "\t" | "\n" | "\r")* >
+   // once table schema is found, swich back to initial lexical state
+   // must be enclosed in the parentheses
+   // inside may have left parenthesis only if number precededs (covers cases with varchar(10)),
+   // if left parenthesis is present in column name, it must be escaped with backslash
  | < PAREN_STRING: <LPAREN> ((~[")"]) | (<NUM> ")") | ("\\)"))+ <RPAREN> > { popState(); }
  | < TS_IF : "IF" >
  | < TS_NOT : "NOT" >
@@ -484,9 +489,7 @@ void addProperty(SqlNodeList properties) :
 SqlNode SqlDropTableSchema() :
 {
    SqlParserPos pos;
-   SqlNode name = null;
    SqlIdentifier table = null;
-   SqlNode path = null;
    boolean existenceCheck = false;
 }
 {
@@ -495,7 +498,7 @@ SqlNode SqlDropTableSchema() :
   [ <IF> <EXISTS> { existenceCheck = true; } ]
    <FOR> { table = CompoundIdentifier(); }
   {
-    return new SqlTableSchema.Drop(pos, name, table, path, SqlLiteral.createBoolean(existenceCheck, getPos()));
+    return new SqlTableSchema.Drop(pos, table, SqlLiteral.createBoolean(existenceCheck, getPos()));
   }
 }
 

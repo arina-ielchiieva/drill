@@ -76,6 +76,8 @@ public interface TupleMetadata extends Iterable<ColumnMetadata> {
 
   List<MaterializedField> toFieldList();
 
+  List<ColumnMetadata> toMetadataList();
+
   /**
    * Full name of the column. Note: this name cannot be used to look up
    * the column because of ambiguity. The name "a.b.c" may mean a single

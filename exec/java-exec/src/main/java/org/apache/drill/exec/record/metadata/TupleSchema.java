@@ -147,6 +147,12 @@ public class TupleSchema implements TupleMetadata {
     return cols;
   }
 
+  @Override
+  public List<ColumnMetadata> toMetadataList() {
+    return StreamSupport.stream(nameSpace.spliterator(), false)
+      .collect(Collectors.toList());
+  }
+
   public BatchSchema toBatchSchema(SelectionVectorMode svMode) {
     return new BatchSchema(svMode, toFieldList());
   }

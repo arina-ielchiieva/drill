@@ -25,6 +25,11 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
+import java.util.Arrays;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 @Category(SqlTest.class)
 public class TestCreateSchema extends ClusterTest {
 
@@ -35,25 +40,34 @@ public class TestCreateSchema extends ClusterTest {
   }
 
   @Test
-  public void create() {
+  public void create() throws Exception {
+    queryBuilder().sql("create table dfs.tmp.t as select * from sys.version").run();
     queryBuilder().sql(" create table schema " +
       "(col1 int, " +
       "col2 varchar( 20 ,  5 ), `col4(x\\)`(500) int) " +
-      "name 'my_schema_file' " +
-      "for `dfs.tmp` " +
-      "path '(9)' " +
+      "for dfs.tmp.t " +
+      //"path '(9)' " +
       "properties ( 'k1'='v1', 'k2'='v2', 'k3'='v3' )").printCsv();
   }
 
   @Test
-  public void drop() {
-    queryBuilder().sql(" drop table schema if exists " +
-      "name 'my_schema_file' " +
-      "for `dfs.tmp` " +
-      "path '00' ").printCsv();
+  public void drop() throws Exception {
+    //queryBuilder().sql("create temporary table t as select * from sys.version").run();
+    queryBuilder().sql("create table dfs.tmp.t as select * from sys.version").run();
+    queryBuilder().sql("select * from dfs.tmp.`t/0_0_0.parquet`").printCsv();
+    queryBuilder().sql("drop table schema " +
+      //"if exists " +
+      "for dfs.tmp.`t/0_0_0.parquet`").printCsv();
   }
 
-  // create or replace schema
-  // create schema if not exists
+  @Test
+  public void testWordCount() {
+    String word = "abcdeab";
+    String[] letters = word.split("");
+    Map<String, Long> result =
+      Arrays.stream(letters)
+        .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+    System.out.println(result);
+  }
 
 }
