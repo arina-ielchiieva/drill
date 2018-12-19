@@ -18,8 +18,6 @@
 package org.apache.drill.exec.planner.sql.handlers;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.SerializableString;
-import com.fasterxml.jackson.core.io.CharacterEscapes;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.calcite.schema.Schema;
 import org.apache.calcite.schema.SchemaPlus;
@@ -44,6 +42,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -137,9 +136,13 @@ public abstract class TableSchemaHandler extends DefaultSqlHandler {
         schemaFilePath = new Path(sqlCall.getPath());
         Configuration conf = new Configuration();
         //conf.set(FileSystem.FS_DEFAULT_NAME_KEY, FileSystem.DEFAULT_FS);
-        conf.set(FileSystem.FS_DEFAULT_NAME_KEY, schemaFilePath.toUri().getScheme());
+        String scheme = schemaFilePath.toUri().getScheme();
+        if (scheme != null) {
+          conf.set(FileSystem.FS_DEFAULT_NAME_KEY, scheme);
+        }
         //todo produces IO -> move to try / catch
         fs = schemaFilePath.getFileSystem(conf);
+        //todo should we check if parent directory exists?
       } else {
         String tableName = FileSelection.removeLeadingSlash(sqlCall.getTableName());
         //todo throws IO
@@ -231,7 +234,7 @@ public abstract class TableSchemaHandler extends DefaultSqlHandler {
 
     private String table;
     private List<String> schema = new ArrayList<>();
-    private Map<String, String> properties = new HashMap<>();
+    private Map<String, String> properties = new LinkedHashMap<>();
 
     @JsonCreator
     public TableSchema(@JsonProperty("table") String table,

@@ -19,10 +19,7 @@ package org.apache.drill.exec.planner.sql.parser;
 
 import org.apache.calcite.sql.SqlCall;
 import org.apache.calcite.sql.SqlCharStringLiteral;
-import org.apache.calcite.sql.SqlDataTypeSpec;
-import org.apache.calcite.sql.SqlDynamicParam;
 import org.apache.calcite.sql.SqlIdentifier;
-import org.apache.calcite.sql.SqlIntervalQualifier;
 import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlLiteral;
 import org.apache.calcite.sql.SqlNode;
@@ -32,7 +29,6 @@ import org.apache.calcite.sql.SqlSpecialOperator;
 import org.apache.calcite.sql.SqlWriter;
 import org.apache.calcite.sql.parser.SqlParserPos;
 import org.apache.calcite.sql.util.SqlBasicVisitor;
-import org.apache.calcite.sql.util.SqlVisitor;
 import org.apache.drill.exec.planner.sql.handlers.AbstractSqlHandler;
 import org.apache.drill.exec.planner.sql.handlers.SqlHandlerConfig;
 import org.apache.drill.exec.planner.sql.handlers.TableSchemaHandler;
@@ -48,8 +44,6 @@ import java.util.Map;
  * Holds common optional command properties: name, table and path.
  */
 public abstract class SqlTableSchema extends DrillSqlCall {
-
-  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(SqlTableSchema.class);
 
   protected final SqlIdentifier table;
 
@@ -86,6 +80,20 @@ public abstract class SqlTableSchema extends DrillSqlCall {
     }
 
     return table.names.get(table.names.size() - 1);
+  }
+
+  /**
+   * Visits literal and returns bare value (i.e. single quotes).
+   */
+  public static class LiteralVisitor extends SqlBasicVisitor<String> {
+
+    public static final LiteralVisitor INSTANCE = new LiteralVisitor();
+
+    @Override
+    public String visit(SqlLiteral literal) {
+      return literal.toValue();
+    }
+
   }
 
   /**
@@ -188,12 +196,8 @@ public abstract class SqlTableSchema extends DrillSqlCall {
       if (path == null) {
         return null;
       }
-      if (path instanceof SqlCharStringLiteral) {
-        return ((SqlCharStringLiteral) path).toValue();
-      } else {
-        logger.warn("Unable to extract path from {}: {}" + path.getClass(), path);
-        return null;
-      }
+
+      return path.accept(LiteralVisitor.INSTANCE);
     }
 
     public Map<String, String> getProperties() {
@@ -203,7 +207,8 @@ public abstract class SqlTableSchema extends DrillSqlCall {
 
       Map<String, String> map = new HashMap<>();
       for (int i = 1; i < properties.size(); i += 2) {
-        map.put(properties.get(i - 1).toString(), properties.get(i).toString());
+        map.put(properties.get(i - 1).accept(LiteralVisitor.INSTANCE),
+          properties.get(i).accept(LiteralVisitor.INSTANCE));
       }
       return map;
     }
@@ -214,9 +219,7 @@ public abstract class SqlTableSchema extends DrillSqlCall {
 
   }
 
-  public static class StringVisitor extends SqlBasicVisitor<String> {
-      // for example visit sql literal and get string rather then checking instance of
-  }
+
 
   /**
    * DROP TABLE SCHEMA sql call.

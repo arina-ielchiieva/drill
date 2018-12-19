@@ -45,8 +45,8 @@ public class TestCreateSchema extends ClusterTest {
     queryBuilder().sql(" create table schema " +
       "(col1 int, " +
       "col2 varchar( 20 ,  5 ), `col4(x\\)`(500) int) " +
-      "for dfs.tmp.t " +
-      //"path '(9)' " +
+      //"for dfs.tmp.t " +
+      "path '(9)' " +
       "properties ( 'k1'='v1', 'k2'='v2', 'k3'='v3' )").printCsv();
   }
 
