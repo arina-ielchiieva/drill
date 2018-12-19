@@ -215,7 +215,7 @@ public abstract class SqlTableSchema extends DrillSqlCall {
   }
 
   public static class StringVisitor extends SqlBasicVisitor<String> {
-
+      // for example visit sql literal and get string rather then checking instance of
   }
 
   /**
