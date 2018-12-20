@@ -32,10 +32,11 @@ import org.apache.calcite.sql.util.SqlBasicVisitor;
 import org.apache.drill.exec.planner.sql.handlers.AbstractSqlHandler;
 import org.apache.drill.exec.planner.sql.handlers.SqlHandlerConfig;
 import org.apache.drill.exec.planner.sql.handlers.TableSchemaHandler;
+import org.apache.drill.exec.store.dfs.FileSelection;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -76,10 +77,10 @@ public abstract class SqlTableSchema extends DrillSqlCall {
       return null;
     }
     if (table.isSimple()) {
-      return table.getSimple();
+      return FileSelection.removeLeadingSlash(table.getSimple());
     }
 
-    return table.names.get(table.names.size() - 1);
+    return FileSelection.removeLeadingSlash(table.names.get(table.names.size() - 1));
   }
 
   /**
@@ -200,12 +201,13 @@ public abstract class SqlTableSchema extends DrillSqlCall {
       return path.accept(LiteralVisitor.INSTANCE);
     }
 
-    public Map<String, String> getProperties() {
+    public LinkedHashMap<String, String> getProperties() {
       if (properties == null) {
         return null;
       }
 
-      Map<String, String> map = new HashMap<>();
+      // preserve properties order
+      LinkedHashMap<String, String> map = new LinkedHashMap<>();
       for (int i = 1; i < properties.size(); i += 2) {
         map.put(properties.get(i - 1).accept(LiteralVisitor.INSTANCE),
           properties.get(i).accept(LiteralVisitor.INSTANCE));
