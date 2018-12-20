@@ -217,7 +217,7 @@ public class SchemaUtilites {
     final AbstractSchema drillSchema = unwrapAsDrillSchemaInstance(schema);
     if (!drillSchema.isMutable()) {
       throw UserException.validationError()
-          .message("Unable to create or drop tables/views. Schema [%s] is immutable.", getSchemaPath(schema))
+          .message("Unable to create or drop objects. Schema [%s] is immutable.", getSchemaPath(schema))
           .build(logger);
     }
 

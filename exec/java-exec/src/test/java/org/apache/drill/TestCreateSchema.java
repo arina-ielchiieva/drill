@@ -79,16 +79,38 @@ public class TestCreateSchema extends ClusterTest {
 
   @Test
   public void testCreateForMissingTable() throws Exception {
+    String table = "dfs.tmp.tbl";
+    thrown.expect(UserException.class);
+    thrown.expectMessage("VALIDATION ERROR: Table [tbl] was not found");
 
+    queryBuilder().sql(String.format("create table schema (col1 int, col2 int) for %s", table)).run();
   }
 
   @Test
   public void testCreateForTemporaryTable() throws Exception {
+    String table = "temp_create";
+    try {
+      queryBuilder().sql(String.format("create temporary table %s as select 'a' as c from (values(1))", table)).run();
+      thrown.expect(UserException.class);
+      thrown.expectMessage(String.format("VALIDATION ERROR: Indicated table [%s] is temporary table", table));
 
+      queryBuilder().sql(String.format("create table schema (col1 int, col2 int) for %s", table)).run();
+    } finally {
+      queryBuilder().sql(String.format("drop table if exists %s", table)).run();
+    }
   }
 
   @Test
   public void testCreateForImmutableSchema() throws Exception {
+    String table = "sys.version";
+    thrown.expect(UserException.class);
+    thrown.expectMessage("VALIDATION ERROR: Unable to create or drop objects. Schema [sys] is immutable");
+
+    queryBuilder().sql(String.format("create table schema (col1 int, col2 int) for %s", table)).run();
+  }
+
+  @Test
+  public void testCreateXXX() throws Exception {
 
   }
 
@@ -103,60 +125,64 @@ public class TestCreateSchema extends ClusterTest {
   @Test
   public void testDropForMissingTable() throws Exception {
     thrown.expect(UserException.class);
-    thrown.expectMessage("VALIDATION ERROR: Table [t] was not found.");
+    thrown.expectMessage("VALIDATION ERROR: Table [t] was not found");
 
     queryBuilder().sql("drop table schema for dfs.t").run();
   }
 
   @Test
   public void testDropForTemporaryTable() throws Exception {
-    String tableName = "temp_drop";
+    String table = "temp_drop";
     try {
-      queryBuilder().sql(String.format("create temporary table %s as select 'a' as c from (values(1))", tableName)).run();
+      queryBuilder().sql(String.format("create temporary table %s as select 'a' as c from (values(1))", table)).run();
       thrown.expect(UserException.class);
-      thrown.expectMessage(String.format("VALIDATION ERROR: Indicated table [%s] is temporary table.", tableName));
+      thrown.expectMessage(String.format("VALIDATION ERROR: Indicated table [%s] is temporary table", table));
 
-      queryBuilder().sql(String.format("drop table schema for %s", tableName)).run();
+      queryBuilder().sql(String.format("drop table schema for %s", table)).run();
     } finally {
-      queryBuilder().sql(String.format("drop table if exists %s", tableName)).run();
+      queryBuilder().sql(String.format("drop table if exists %s", table)).run();
     }
   }
 
   @Test
   public void testDropForImmutableSchema() throws Exception {
+    String table = "sys.version";
+    thrown.expect(UserException.class);
+    thrown.expectMessage("VALIDATION ERROR: Unable to create or drop objects. Schema [sys] is immutable");
 
+    queryBuilder().sql(String.format("drop table schema for %s", table)).run();
   }
 
   @Test
   public void testDropForMissingSchema() throws Exception {
-    String tableName = "dfs.tmp.`table_with_missing_schema`";
+    String table = "dfs.tmp.`table_with_missing_schema`";
     try {
-      queryBuilder().sql(String.format("create table %s as select 'a' as c from (values(1))", tableName)).run();
+      queryBuilder().sql(String.format("create table %s as select 'a' as c from (values(1))", table)).run();
       thrown.expect(UserException.class);
       thrown.expectMessage(String.format("VALIDATION ERROR: Schema file [%s] " +
-        "does not exist in table [%s] root directory", TableSchemaHandler.DEFAULT_SCHEMA_NAME, tableName));
+        "does not exist in table [%s] root directory", TableSchemaHandler.DEFAULT_SCHEMA_NAME, table));
 
-      queryBuilder().sql(String.format("drop table schema for %s", tableName)).run();
+      queryBuilder().sql(String.format("drop table schema for %s", table)).run();
     } finally {
-      queryBuilder().sql(String.format("drop table if exists %s", tableName)).run();
+      queryBuilder().sql(String.format("drop table if exists %s", table)).run();
     }
   }
 
   @Test
   public void testDropForMissingSchemaIfExists() throws Exception {
-    String tableName = "dfs.tmp.`table_with_missing_schema_if_exists`";
+    String table = "dfs.tmp.`table_with_missing_schema_if_exists`";
     try {
-      queryBuilder().sql(String.format("create table %s as select 'a' as c from (values(1))", tableName)).run();
+      queryBuilder().sql(String.format("create table %s as select 'a' as c from (values(1))", table)).run();
 
       client.testBuilder()
-        .sqlQuery("drop table schema if exists for %s", tableName)
+        .sqlQuery("drop table schema if exists for %s", table)
         .unOrdered()
         .baselineColumns("ok", "summary")
         .baselineValues(false, String.format("Schema file [%s] does not exist in table [%s] root directory",
-          TableSchemaHandler.DEFAULT_SCHEMA_NAME, tableName))
+          TableSchemaHandler.DEFAULT_SCHEMA_NAME, table))
         .go();
     } finally {
-      queryBuilder().sql(String.format("drop table if exists %s", tableName)).run();
+      queryBuilder().sql(String.format("drop table if exists %s", table)).run();
     }
   }
 

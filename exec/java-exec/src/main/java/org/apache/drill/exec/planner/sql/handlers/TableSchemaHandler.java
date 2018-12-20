@@ -18,6 +18,7 @@
 package org.apache.drill.exec.planner.sql.handlers;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.calcite.schema.Schema;
 import org.apache.calcite.schema.SchemaPlus;
@@ -31,7 +32,6 @@ import org.apache.drill.exec.planner.sql.parser.SqlTableSchema;
 import org.apache.drill.exec.record.metadata.ColumnMetadata;
 import org.apache.drill.exec.record.metadata.TupleSchema;
 import org.apache.drill.exec.store.AbstractSchema;
-import org.apache.drill.exec.store.dfs.FileSelection;
 import org.apache.drill.exec.store.dfs.WorkspaceSchemaFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -49,8 +49,102 @@ import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 
 public abstract class TableSchemaHandler extends DefaultSqlHandler {
 
+
+    /*
+    we can create schema file manager
+
+    who can
+    1. create schema path
+    2. delete
+    3. read
+    4. write
+
+    who will use it
+    create  / drop
+    table function with path
+    when reading for table during select if option is set
+
+    who will create table schema with options and tuple metadata for table function when it's inline
+
+Maybe we'll have table schema manager
+
+but different providers:
+path
+tuple schema
+string (inline)
+
+
+     */
+
+  public static class TableSchemaManager {
+
+    public static final String DEFAULT_SCHEMA_NAME = ".drill.table_schema";
+    private static final ObjectMapper mapper = new ObjectMapper().enable(INDENT_OUTPUT);
+
+    private final FileSystem fs;
+    private final Path schemaFilePath;
+    private final String tableName;
+
+    public TableSchemaManager(String path) throws IOException {
+      this.schemaFilePath = new Path(path);
+      Configuration conf = new Configuration();
+      //conf.set(FileSystem.FS_DEFAULT_NAME_KEY, FileSystem.DEFAULT_FS);
+      //todo check manually how it works on dfs
+      String scheme = schemaFilePath.toUri().getScheme();
+      if (scheme != null) {
+        conf.set(FileSystem.FS_DEFAULT_NAME_KEY, scheme);
+      }
+      this.fs = schemaFilePath.getFileSystem(conf);
+      this.tableName = null;
+    }
+
+    public TableSchemaManager(WorkspaceSchemaFactory.WorkspaceSchema wsSchema, String tableName) throws IOException {
+      this.fs = wsSchema.getFS();
+      Path tablePath = new Path(wsSchema.getDefaultLocation(), tableName);
+      Path schemaParentPath = fs.isFile(tablePath) ? tablePath.getParent() : tablePath;
+      this.schemaFilePath = new Path(schemaParentPath, DEFAULT_SCHEMA_NAME);
+      this.tableName = String.format("%s.`%s`", wsSchema.getFullSchemaName(), tableName);
+    }
+
+    public void createSchemaFile(String schema, LinkedHashMap<String, String> properties) throws IOException {
+      //todo convert schema to TupleSchema
+      createSchemaFile(new TupleSchema(), properties);
+    }
+
+    public void createSchemaFile(TupleSchema schema, LinkedHashMap<String, String> properties) throws IOException {
+      List<String> schemaList = schema.toMetadataList().stream()
+        .map(ColumnMetadata::columnString)
+        .collect(Collectors.toList());
+      TableSchema tableSchema = new TableSchema(tableName, schemaList, properties);
+      String schemaString = mapper.writeValueAsString(tableSchema);
+    }
+
+    public TableSchema readSchemaFile() {
+      return null;
+    }
+
+    public void deleteSchemaFile() throws IOException {
+      try {
+        if (!fs.delete(schemaFilePath, false)) {
+          throw IOException(String.format("Error while deleting schema file - [%s]", schemaFilePath.toUri().getPath());
+        }
+      } catch (IOException e1) {
+        // re-check file existence to cover concurrent deletion case
+        try {
+          if (fs.exists(schemaFilePath)) {
+            throw e1;
+          }
+        } catch (IOException e2) {
+          // ignore new exception and throw original one
+          throw e1;
+        }
+      }
+    }
+
+  }
+
   //todo move to different common location as will be accessed during deserialization
-  public static final String DEFAULT_SCHEMA_NAME = ".drill.table_schema";
+
 
   protected static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TableSchemaHandler.class);
 
@@ -64,19 +158,19 @@ public abstract class TableSchemaHandler extends DefaultSqlHandler {
 
     if (context.getSession().isTemporaryTable(temporarySchema, context.getConfig(), tableName)) {
       throw UserException.validationError()
-        .message("Indicated table [%s] is temporary table.", tableName)
+        .message("Indicated table [%s] is temporary table", tableName)
         .build(logger);
     }
 
     AbstractSchema drillSchema = SchemaUtilites.resolveToMutableDrillSchema(defaultSchema, tableSchema);
     Table table = SqlHandlerUtil.getTableFromSchema(drillSchema, tableName);
     if (table == null || table.getJdbcTableType() != Schema.TableType.TABLE) {
-      throw UserException.validationError().message("Table [%s] was not found.", tableName).build(logger);
+      throw UserException.validationError().message("Table [%s] was not found", tableName).build(logger);
     }
 
     if (!(drillSchema instanceof WorkspaceSchemaFactory.WorkspaceSchema)) {
       throw UserException.validationError()
-        .message("Table [`%s`.`%s`] must belong to file storage plugin.", drillSchema.getFullSchemaName(), tableName)
+        .message("Table [`%s`.`%s`] must belong to file storage plugin", drillSchema.getFullSchemaName(), tableName)
         .build(logger);
     }
 
@@ -88,7 +182,7 @@ public abstract class TableSchemaHandler extends DefaultSqlHandler {
     Path tablePath = new Path(wsSchema.getDefaultLocation(), tableName);
 
     Path schemaParentPath = fs.isFile(tablePath) ? tablePath.getParent() : tablePath;
-    return new Path(schemaParentPath, DEFAULT_SCHEMA_NAME);
+    return new Path(schemaParentPath, TableSchemaManager.DEFAULT_SCHEMA_NAME);
   }
 
   protected PhysicalPlan produceErrorResult(String message, boolean doFail) {
@@ -103,70 +197,85 @@ public abstract class TableSchemaHandler extends DefaultSqlHandler {
     try {
       if (!fs.delete(schemaFilePath, false)) {
         throw UserException.resourceError()
-          //todo for / in distinction when throwing an error
-          .message("Error while deleting schema file - %s", schemaFilePath)
+          .message("Error while deleting schema file: [%s]", schemaFilePath.toUri().getPath())
           .build(logger);
       }
-    } catch (IOException e) {
-      if (fs.exists(schemaFilePath)) {
-        throw UserException.resourceError(e)
-          //todo for / in distinction when throwing an error
-          .message("Error while deleting schema file - %s", schemaFilePath)
-          .build(logger);
+    } catch (IOException e1) {
+      // re-check file existence to cover concurrent deletion case
+      try {
+        if (fs.exists(schemaFilePath)) {
+          throw e1;
+        }
+      } catch (IOException e2) {
+        // ignore new exception and throw original one
+        throw e1;
       }
     }
+  }
+
+  protected String getFullTableName(WorkspaceSchemaFactory.WorkspaceSchema wsSchema, String tableName) {
+    return String.format("%s.`%s`", wsSchema.getFullSchemaName(), tableName);
   }
 
   public static class Create extends TableSchemaHandler {
 
     //todo move mapper with table schema class
-    private static final ObjectMapper mapper = new ObjectMapper().enable(INDENT_OUTPUT);
+
 
     public Create(SqlHandlerConfig config) {
       super(config);
     }
 
     @Override
-    public PhysicalPlan getPlan(SqlNode sqlNode) throws IOException {
+    public PhysicalPlan getPlan(SqlNode sqlNode) {
 
       SqlTableSchema.Create sqlCall = ((SqlTableSchema.Create) sqlNode);
 
-      // construct path
       Path schemaFilePath;
       FileSystem fs;
+      String fullTableName;
 
-      if (sqlCall.getPath() != null) {
-        schemaFilePath = new Path(sqlCall.getPath());
-        Configuration conf = new Configuration();
-        //conf.set(FileSystem.FS_DEFAULT_NAME_KEY, FileSystem.DEFAULT_FS);
-        //todo check manually how it works on dfs
-        String scheme = schemaFilePath.toUri().getScheme();
-        if (scheme != null) {
-          conf.set(FileSystem.FS_DEFAULT_NAME_KEY, scheme);
+      try {
+        if (sqlCall.getPath() != null) {
+          fullTableName = null;
+          schemaFilePath = new Path(sqlCall.getPath());
+          Configuration conf = new Configuration();
+          //conf.set(FileSystem.FS_DEFAULT_NAME_KEY, FileSystem.DEFAULT_FS);
+          //todo check manually how it works on dfs
+          String scheme = schemaFilePath.toUri().getScheme();
+          if (scheme != null) {
+            conf.set(FileSystem.FS_DEFAULT_NAME_KEY, scheme);
+          }
+          fs = schemaFilePath.getFileSystem(conf);
+          if (!fs.exists(schemaFilePath.getParent())) {
+            throw UserException.validationError()
+              .message("Parent directory for schema file [%s] does not exist", schemaFilePath.toUri().getPath())
+              .build(logger);
+          }
+        } else {
+          String tableName = sqlCall.getTableName();
+          WorkspaceSchemaFactory.WorkspaceSchema wsSchema = getWorkspaceSchema(sqlCall.getSchemaPath(), tableName);
+          schemaFilePath = getSchemaFilePath(wsSchema, tableName);
+          fs = wsSchema.getFS();
+          fullTableName = getFullTableName(wsSchema, tableName);
         }
-        //todo produces IO -> move to try / catch
-        fs = schemaFilePath.getFileSystem(conf);
-        //todo should we check if parent directory exists?
-      } else {
-        String tableName = sqlCall.getTableName();
-        WorkspaceSchemaFactory.WorkspaceSchema wsSchema = getWorkspaceSchema(sqlCall.getSchemaPath(), tableName);
-        //todo throws IO
-        schemaFilePath = getSchemaFilePath(wsSchema, tableName);
-        fs = wsSchema.getFS();
-      }
 
-      // validate creation possibility
-      if (fs.exists(schemaFilePath)) {
-        switch (sqlCall.getSqlCreateType()) {
-          case SIMPLE:
-            return produceErrorResult(String.format("Schema file already exists in / for %s", schemaFilePath), true);
-          case OR_REPLACE:
-            //todo produces IO
-            //todo handle the result if needed
-            deleteSchemaFle(fs, schemaFilePath);
-          case IF_NOT_EXISTS:
-            return produceErrorResult(String.format("Schema file already exists in / for %s", schemaFilePath), false);
+        // validate creation possibility
+        if (fs.exists(schemaFilePath)) {
+          switch (sqlCall.getSqlCreateType()) {
+            case SIMPLE:
+              return produceErrorResult(String.format("Schema file already exists in / for %s", schemaFilePath), true);
+            case OR_REPLACE:
+              deleteSchemaFle(fs, schemaFilePath);
+            case IF_NOT_EXISTS:
+              return produceErrorResult(String.format("Schema file already exists in / for %s", schemaFilePath), false);
+          }
         }
+      } catch (IOException e) {
+        throw UserException.resourceError(e)
+          .message("Error while preparing schema file path for [%s]",
+            sqlCall.getTable() != null ? sqlCall.getTable() : sqlCall.getPath())
+          .build(logger);
       }
 
       // transform schema string into TupleSchema
@@ -175,22 +284,28 @@ public abstract class TableSchemaHandler extends DefaultSqlHandler {
         .map(ColumnMetadata::columnString)
         .collect(Collectors.toList());
 
-      // todo construct table name with schema
-      TableSchema tableSchema = new TableSchema("table", schema, sqlCall.getProperties());
+      //todo check how we will transform table name back, look at views
+      TableSchema tableSchema = new TableSchema(fullTableName, schema, sqlCall.getProperties());
 
-      String json = mapper.writeValueAsString(tableSchema);
-      System.out.println(json);
+      try {
+        String json = mapper.writeValueAsString(tableSchema);
+        System.out.println(json);
+      } catch (JsonProcessingException e) {
+        throw UserException.executionError(e)
+          .message("Error while transforming json")
+          .build(logger);
+      }
+
 
       // create file with content
+      // new StorageStrategy(context.getOption(ExecConstants.PERSISTENT_TABLE_UMASK).string_val
+      // when creating schema file use the same permission as for persistent tables
+      //todo check how parquet metadata file is created
 
 
       System.out.println(sqlNode.toString());
       System.out.println(((SqlTableSchema.Create) sqlNode).getSchema());
       System.out.println(((SqlTableSchema.Create) sqlNode).getSqlCreateType());
-
-      // new StorageStrategy(context.getOption(ExecConstants.PERSISTENT_TABLE_UMASK).string_val
-      // when creating schema file use the same permission as for persistent tables
-      // we should disallow to create schema for temporary tables
 
       return DirectPlan.createDirectPlan(context, true, "Created table schema");
     }
@@ -208,7 +323,7 @@ public abstract class TableSchemaHandler extends DefaultSqlHandler {
 
       String tableName = sqlCall.getTableName();
       WorkspaceSchemaFactory.WorkspaceSchema wsSchema = getWorkspaceSchema(sqlCall.getSchemaPath(), tableName);
-      String fullTableName = String.format("%s.`%s`", wsSchema.getFullSchemaName(), tableName);
+      String fullTableName = getFullTableName(wsSchema, tableName);
 
       try {
         Path schemaFilePath = getSchemaFilePath(wsSchema, tableName);
@@ -216,17 +331,17 @@ public abstract class TableSchemaHandler extends DefaultSqlHandler {
 
         if (!fs.exists(schemaFilePath)) {
           return produceErrorResult(String.format("Schema file [%s] does not exist in table [%s] root directory",
-            DEFAULT_SCHEMA_NAME, fullTableName), !sqlCall.ifExists());
+            TableSchemaManager.DEFAULT_SCHEMA_NAME, fullTableName), !sqlCall.ifExists());
         }
 
         deleteSchemaFle(fs, schemaFilePath);
 
         return DirectPlan.createDirectPlan(context, true,
-          String.format("Dropped schema file for table [%s].", fullTableName));
+          String.format("Dropped schema file for table [%s]", fullTableName));
 
       } catch (IOException e) {
         throw UserException.resourceError(e)
-          .message("There was an error while accessing table location or schema file. Table - [%s].", fullTableName)
+          .message("Error while accessing table location or deleting schema file for [%s]", fullTableName)
           .build(logger);
       }
     }

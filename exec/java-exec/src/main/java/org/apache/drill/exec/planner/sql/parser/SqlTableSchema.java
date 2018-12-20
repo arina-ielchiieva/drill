@@ -38,11 +38,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Parent class for CREATE and DROP TABLE SCHEMA commands.
- * Holds common optional command properties: name, table and path.
+ * Holds logic common command property: name.
  */
 public abstract class SqlTableSchema extends DrillSqlCall {
 
@@ -61,26 +60,25 @@ public abstract class SqlTableSchema extends DrillSqlCall {
     }
   }
 
+  public SqlIdentifier getTable() {
+    return table;
+  }
+
   public List<String> getSchemaPath() {
     if (table == null) {
       return null;
     }
-    if (table.isSimple()) {
-      return Collections.emptyList();
-    }
 
-    return table.names.subList(0, table.names.size() - 1);
+    return table.isSimple() ? Collections.emptyList() : table.names.subList(0, table.names.size() - 1);
   }
 
   public String getTableName() {
     if (table == null) {
       return null;
     }
-    if (table.isSimple()) {
-      return FileSelection.removeLeadingSlash(table.getSimple());
-    }
 
-    return FileSelection.removeLeadingSlash(table.names.get(table.names.size() - 1));
+    String tableName = table.isSimple() ? table.getSimple() : table.names.get(table.names.size() - 1);
+    return FileSelection.removeLeadingSlash(tableName);
   }
 
   /**
@@ -194,11 +192,7 @@ public abstract class SqlTableSchema extends DrillSqlCall {
     }
 
     public String getPath() {
-      if (path == null) {
-        return null;
-      }
-
-      return path.accept(LiteralVisitor.INSTANCE);
+      return path == null ? null : path.accept(LiteralVisitor.INSTANCE);
     }
 
     public LinkedHashMap<String, String> getProperties() {
