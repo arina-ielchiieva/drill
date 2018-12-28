@@ -19,7 +19,7 @@ package org.apache.drill;
 
 import org.apache.drill.categories.SqlTest;
 import org.apache.drill.common.exceptions.UserException;
-import org.apache.drill.exec.planner.sql.handlers.TableSchemaHandler;
+import org.apache.drill.exec.record.metadata.schema.TableSchemaProvider;
 import org.apache.drill.test.ClusterFixture;
 import org.apache.drill.test.ClusterFixtureBuilder;
 import org.apache.drill.test.ClusterTest;
@@ -28,6 +28,12 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.ExpectedException;
+
+import java.io.File;
+import java.nio.file.Paths;
+
+import static org.junit.Assert.assertTrue;
+
 
 @Category(SqlTest.class)
 public class TestCreateSchema extends ClusterTest {
@@ -51,6 +57,15 @@ public class TestCreateSchema extends ClusterTest {
       "path '(9)' "
       + "properties ( 'k1'='v1', 'k2'='v2', 'k3'='v3' )"
     ).printCsv();
+  }
+
+  @Test
+  public void createForPath() throws Exception {
+    String query = "create table schema (col1 int, col2 int) path '/tmp/schema.json' " +
+      "properties ('key1' = 'val1', 'key2' = 'val2')";
+    queryBuilder().sql(query).printCsv();
+
+    // why we started the second time? -> because of the registry sync
   }
 
   @Test
@@ -110,8 +125,63 @@ public class TestCreateSchema extends ClusterTest {
   }
 
   @Test
-  public void testCreateXXX() throws Exception {
+  public void testMissingParentDirectory() throws Exception {
+    File tmpDir = dirTestWatcher.getTmpDir();
+    File schema = Paths.get(tmpDir.toURI().getPath(), "missing_parent_directory", "file.schema").toFile();
 
+    thrown.expect(UserException.class);
+    thrown.expectMessage(String.format("RESOURCE ERROR: Error while preparing / creating schema file path for [%s]", schema.toURI().getPath()));
+
+    queryBuilder().sql(String.format("create table schema (col1 int, col2 int) path '%s'", schema.toURI().getPath())).run();
+  }
+
+  @Test
+  public void testCreateSimpleForPathWithExistingSchema() throws Exception {
+    File tmpDir = dirTestWatcher.getTmpDir();
+    File schema = new File(tmpDir, "simple_for_path.schema");
+    assertTrue(schema.createNewFile());
+
+    thrown.expect(UserException.class);
+    thrown.expectMessage(String.format("Schema file already exists for [%s]", schema.toURI().getPath()));
+
+    try {
+      queryBuilder().sql(String.format("create table schema (col1 int, col2 int) path '%s'", schema.toURI().getPath())).run();
+    } finally {
+      assertTrue(schema.delete());
+    }
+  }
+
+  @Test
+  public void testCreateIfNotExistsForPath() throws Exception {
+    File tmpDir = dirTestWatcher.getTmpDir();
+    File schema = new File(tmpDir, "if_not_exists_for_path.schema");
+    assertTrue(schema.createNewFile());
+
+    try {
+      client.testBuilder()
+        .sqlQuery("create table schema if not exists (col1 int, col2 int) path '%s'", schema.toURI().getPath())
+        .unOrdered()
+        .baselineColumns("ok", "summary")
+        .baselineValues(false, String.format("Schema file already exists for [%s]", schema.toURI().getPath()))
+        .go();
+    } finally {
+      assertTrue(schema.delete());
+    }
+  }
+
+  @Test
+  public void testCreateSimpleForTableWithExistingSchema() throws Exception {
+
+  }
+
+  @Test
+  public void testCreateIfNotExistsForTableWithExistingSchema() throws Exception {
+
+  }
+
+  @Test
+  public void testCreateXXX() throws Exception {
+    // or replace
   }
 
   @Test
@@ -155,12 +225,12 @@ public class TestCreateSchema extends ClusterTest {
 
   @Test
   public void testDropForMissingSchema() throws Exception {
-    String table = "dfs.tmp.`table_with_missing_schema`";
+    String table = "dfs.tmp.table_with_missing_schema";
     try {
       queryBuilder().sql(String.format("create table %s as select 'a' as c from (values(1))", table)).run();
       thrown.expect(UserException.class);
       thrown.expectMessage(String.format("VALIDATION ERROR: Schema file [%s] " +
-        "does not exist in table [%s] root directory", TableSchemaHandler.DEFAULT_SCHEMA_NAME, table));
+        "does not exist in table [%s] root directory", TableSchemaProvider.DEFAULT_SCHEMA_NAME, table));
 
       queryBuilder().sql(String.format("drop table schema for %s", table)).run();
     } finally {
@@ -170,7 +240,7 @@ public class TestCreateSchema extends ClusterTest {
 
   @Test
   public void testDropForMissingSchemaIfExists() throws Exception {
-    String table = "dfs.tmp.`table_with_missing_schema_if_exists`";
+    String table = "dfs.tmp.table_with_missing_schema_if_exists";
     try {
       queryBuilder().sql(String.format("create table %s as select 'a' as c from (values(1))", table)).run();
 
@@ -179,7 +249,7 @@ public class TestCreateSchema extends ClusterTest {
         .unOrdered()
         .baselineColumns("ok", "summary")
         .baselineValues(false, String.format("Schema file [%s] does not exist in table [%s] root directory",
-          TableSchemaHandler.DEFAULT_SCHEMA_NAME, table))
+          TableSchemaProvider.DEFAULT_SCHEMA_NAME, table))
         .go();
     } finally {
       queryBuilder().sql(String.format("drop table if exists %s", table)).run();
