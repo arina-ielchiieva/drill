@@ -34,6 +34,7 @@ import java.sql.Struct;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TimeZone;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 
 import org.apache.calcite.avatica.AvaticaConnection;
@@ -52,6 +53,8 @@ import org.apache.drill.exec.client.InvalidConnectionInfoException;
 import org.apache.drill.exec.exception.OutOfMemoryException;
 import org.apache.drill.exec.memory.BufferAllocator;
 import org.apache.drill.exec.memory.RootAllocatorFactory;
+import org.apache.drill.exec.proto.UserBitShared;
+import org.apache.drill.exec.proto.UserProtos;
 import org.apache.drill.exec.rpc.RpcException;
 import org.apache.drill.exec.server.Drillbit;
 import org.apache.drill.exec.server.RemoteServiceSet;
@@ -579,6 +582,23 @@ public class DrillConnectionImpl extends AvaticaConnection
       return super.createStruct(typeName, attributes);
     } catch (UnsupportedOperationException e) {
       throw new SQLFeatureNotSupportedException(e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public String getSchema() throws SQLException {
+    try {
+      UserProtos.GetServerMetaResp resp = client.getServerMeta().get();
+      if (resp.getStatus() != UserProtos.RequestStatus.OK) {
+        UserBitShared.DrillPBError drillError = resp.getError();
+        throw new SQLException("Error when getting server meta: " + drillError.getMessage());
+      }
+      UserProtos.ServerMeta serverMeta = resp.getServerMeta();
+      String currentSchema = serverMeta.getCurrentSchema();
+      return currentSchema.isEmpty() ? null : currentSchema;
+    } catch (InterruptedException | ExecutionException e) {
+      //todo handle exceptions similar to DrillDatabaseMetaDataImpl (maybe common method)
+      throw new SQLException(e);
     }
   }
 

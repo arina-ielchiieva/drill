@@ -45,4 +45,18 @@ public class TestServerMetaProvider extends BaseTestQuery {
 
     assertEquals(Quoting.BACK_TICK.string, serverMeta.getIdentifierQuoteString());
   }
+
+  @Test
+  public void testCurrentSchema() throws Exception {
+    GetServerMetaResp resp = client.getServerMeta().get();
+    String currentSchema = resp.getServerMeta().getCurrentSchema();
+    System.out.println("currentSchema: " + currentSchema);
+
+    test("use dfs.tmp");
+
+    resp = client.getServerMeta().get();
+    currentSchema = resp.getServerMeta().getCurrentSchema();
+    System.out.println("currentSchema: " + currentSchema);
+  }
+
 }
