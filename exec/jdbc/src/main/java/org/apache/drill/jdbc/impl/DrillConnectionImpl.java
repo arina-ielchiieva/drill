@@ -31,6 +31,7 @@ import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Struct;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TimeZone;
@@ -55,7 +56,11 @@ import org.apache.drill.exec.memory.BufferAllocator;
 import org.apache.drill.exec.memory.RootAllocatorFactory;
 import org.apache.drill.exec.proto.UserBitShared;
 import org.apache.drill.exec.proto.UserProtos;
+import org.apache.drill.exec.rpc.ConnectionThrottle;
 import org.apache.drill.exec.rpc.RpcException;
+import org.apache.drill.exec.rpc.user.AwaitableUserResultsListener;
+import org.apache.drill.exec.rpc.user.QueryDataBatch;
+import org.apache.drill.exec.rpc.user.UserResultsListener;
 import org.apache.drill.exec.server.Drillbit;
 import org.apache.drill.exec.server.RemoteServiceSet;
 import org.apache.drill.exec.store.SchemaFactory;
@@ -586,7 +591,19 @@ public class DrillConnectionImpl extends AvaticaConnection
   }
 
   @Override
+  public void setSchema(String schema) throws SQLException {
+    checkOpen();
+    try {
+      client.runQuery(UserBitShared.QueryType.SQL, String.format("use %s", schema));
+    } catch (RpcException e) {
+      // get root cause
+      throw new SQLException(e);
+    }
+  }
+
+  @Override
   public String getSchema() throws SQLException {
+    checkOpen();
     try {
       UserProtos.GetServerMetaResp resp = client.getServerMeta().get();
       if (resp.getStatus() != UserProtos.RequestStatus.OK) {

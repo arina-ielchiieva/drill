@@ -29,7 +29,10 @@ import java.sql.SQLException;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 
 /**
  * Test for Drill's Properties in the JDBC URL connection string
@@ -71,4 +74,31 @@ public class ConnectionInfoTest extends JdbcTestBase {
       reset();
     }
   }
+
+  @Test
+  public void testSchema() throws Exception {
+    try {
+      connection = connect("jdbc:drill:zk=local");
+      assertNull(connection.getSchema());
+
+      connection.setSchema("dfs.tmp");
+      assertEquals("dfs.tmp", connection.getSchema());
+
+      try {
+        connection.setSchema("ABC");
+        fail();
+      } catch (SQLException e) {
+        //todo check root cause
+        System.out.println(e);
+      }
+
+      reset();
+
+      connection = connect("jdbc:drill:zk=local;schema=sys");
+      assertEquals("sys", connection.getSchema());
+    } finally {
+      reset();
+    }
+  }
+
 }
