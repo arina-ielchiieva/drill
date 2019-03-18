@@ -26,9 +26,9 @@ import com.carrotsearch.hppc.cursors.ObjectLongCursor;
  */
 public interface EndpointByteMap extends Iterable<ObjectLongCursor<DrillbitEndpoint>>{
 
-  public boolean isSet(DrillbitEndpoint endpoint);
-  public long get(DrillbitEndpoint endpoint);
-  public boolean isEmpty();
-  public long getMaxBytes();
-  public void add(DrillbitEndpoint endpoint, long bytes);
+  boolean isSet(DrillbitEndpoint endpoint);
+  long get(DrillbitEndpoint endpoint);
+  boolean isEmpty();
+  long getMaxBytes();
+  void add(DrillbitEndpoint endpoint, long bytes);
 }

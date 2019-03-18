@@ -24,15 +24,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.hadoop.fs.Path;
 
 public class CompleteFileWork implements FileWork, CompleteWork {
-  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CompleteFileWork.class);
 
-  private long start;
-  private long length;
-  private Path path;
-  private EndpointByteMap byteMap;
+  private final long start;
+  private final long length;
+  private final Path path;
+  private final EndpointByteMap byteMap;
 
   public CompleteFileWork(EndpointByteMap byteMap, long start, long length, Path path) {
-    super();
     this.start = start;
     this.length = length;
     this.path = path;
@@ -41,14 +39,14 @@ public class CompleteFileWork implements FileWork, CompleteWork {
 
   @Override
   public int compareTo(CompleteWork o) {
-    if(o instanceof CompleteFileWork){
+    if (o instanceof CompleteFileWork) {
       CompleteFileWork c = (CompleteFileWork) o;
       int cmp = path.compareTo(c.getPath());
-      if(cmp != 0){
+      if (cmp != 0) {
         return cmp;
       }
 
-      cmp = Long.compare(start,  c.getStart());
+      cmp = Long.compare(start, c.getStart());
       if(cmp != 0){
         return cmp;
       }
@@ -56,7 +54,6 @@ public class CompleteFileWork implements FileWork, CompleteWork {
     }
 
     return Long.compare(getTotalBytes(), o.getTotalBytes());
-
   }
 
   @Override
