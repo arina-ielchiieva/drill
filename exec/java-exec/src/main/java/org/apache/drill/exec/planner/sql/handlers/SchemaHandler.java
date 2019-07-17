@@ -39,6 +39,9 @@ import org.apache.drill.exec.store.AbstractSchema;
 import org.apache.drill.exec.store.StorageStrategy;
 import org.apache.drill.exec.store.dfs.WorkspaceSchemaFactory;
 import org.apache.drill.exec.util.ImpersonationUtil;
+import org.apache.drill.metastore.MetadataUnit;
+import org.apache.drill.metastore.Metastore;
+import org.apache.drill.metastore.expressions.FilterExpression;
 import org.apache.drill.shaded.guava.com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -104,6 +107,74 @@ public abstract class SchemaHandler extends DefaultSqlHandler {
 
     @Override
     public PhysicalPlan getPlan(SqlNode sqlNode) {
+
+
+      Metastore metastore = context.getMetastore();
+      System.out.println("Metastore version:" + metastore.metadata().version());
+
+      metastore.modify().overwrite(
+        MetadataUnit.builder()
+          .storagePlugin("dfs")
+          .workspace("tmp")
+          .tableName("nation")
+          .metadataKey("general_info")
+          .metadataType("TABLE")
+          .build(),
+        MetadataUnit.builder()
+          .storagePlugin("dfs")
+          .workspace("tmp")
+          .tableName("nation")
+          .metadataKey("dir0")
+          .metadataType("SEGMENT")
+          .build(),
+        MetadataUnit.builder()
+          .storagePlugin("dfs")
+          .workspace("tmp")
+          .tableName("nation")
+          .metadataKey("dir0")
+          .metadataType("FILE")
+          .build(),
+        MetadataUnit.builder()
+          .storagePlugin("dfs")
+          .workspace("tmp")
+          .tableName("nation")
+          .metadataKey("dir1")
+          .metadataType("SEGMENT")
+          .build(),
+        MetadataUnit.builder()
+          .storagePlugin("dfs")
+          .workspace("tmp")
+          .tableName("nation")
+          .metadataKey("dir1")
+          .metadataType("PARTITION")
+          .build())
+        .execute();
+
+      System.out.println("Metastore version:" + metastore.metadata().version());
+
+      List<MetadataUnit>units = metastore.read()
+        .filter(FilterExpression.equal("storagePlugin","dfs"))
+        .execute();
+
+      System.out.println(units.size() + " units: " + units);
+      System.out.println("Metastore version:" + metastore.metadata().version());
+
+      metastore.modify()
+        .delete(FilterExpression.and(FilterExpression.equal("storagePlugin","dfs"),
+          FilterExpression.equal("workspace","tmp"),
+          FilterExpression.equal("tableName","nation"),
+          FilterExpression.equal("metadataKey","dir1")))
+        .execute();
+
+      System.out.println("Metastore version: " + metastore.metadata().version());
+
+      List<MetadataUnit>updatedUnits = metastore.read()
+        .filter(FilterExpression.equal("storagePlugin","dfs"))
+        .execute();
+
+      System.out.println(updatedUnits.size() + "units: " + updatedUnits);
+      System.out.println("Metastore version: " + metastore.metadata().version());
+
 
       SqlSchema.Create sqlCall = ((SqlSchema.Create) sqlNode);
 
