@@ -44,7 +44,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.fs.permission.FsPermission;
 
-import java.io.File;
 import java.io.IOException;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
@@ -251,7 +250,8 @@ public class RemoteFunctionRegistry implements AutoCloseable {
    * @return path to area
    */
   private Path createArea(FileSystem fs, String root, String directory) {
-    Path path = new Path(new File(root, directory).toURI().getPath());
+    //Path path = new Path(new File(root, directory).toURI().getPath());
+    Path path = new Path(root, directory);
     String fullPath = path.toUri().getPath();
     try {
       fs.mkdirs(path);

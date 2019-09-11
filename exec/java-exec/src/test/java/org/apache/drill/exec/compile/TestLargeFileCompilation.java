@@ -61,7 +61,7 @@ public class TestLargeFileCompilation extends BaseTestQuery {
 
   private static final int NUM_GROUPBY_COLUMNS = 225;
 
-  private static final int NUM_FILTER_COLUMNS = 150;
+  private static final int NUM_FILTER_COLUMNS = 50; // 150
 
   private static final int NUM_JOIN_TABLE_COLUMNS = 500;
 
@@ -178,7 +178,7 @@ public class TestLargeFileCompilation extends BaseTestQuery {
     testNoResult(ITERATION_COUNT, LARGE_QUERY_ORDER_BY_WITH_LIMIT);
   }
 
-  @Ignore // TODO DRILL-5997
+  //@Ignore // TODO DRILL-5997
   @Test
   public void testFILTER() throws Exception {
     testNoResult("alter session set `%s`='JDK'", ClassCompilerSelector.JAVA_COMPILER_OPTION);

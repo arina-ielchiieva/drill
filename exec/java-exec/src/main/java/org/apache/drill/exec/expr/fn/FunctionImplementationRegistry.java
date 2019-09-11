@@ -25,6 +25,7 @@ import java.net.JarURLConnection;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.net.URLConnection;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -509,7 +510,7 @@ public class FunctionImplementationRegistry implements FunctionLookupContext, Au
    */
   private Path getLocalUdfDir(DrillConfig config) {
     tmpDir = getTmpDir(config);
-    File udfDir = new File(tmpDir, config.getString(ExecConstants.UDF_DIRECTORY_LOCAL));
+    File udfDir = tmpDir.toPath().resolve(config.getString(ExecConstants.UDF_DIRECTORY_LOCAL)).toFile();
     String udfPath = udfDir.getPath();
     if (udfDir.mkdirs()) {
       logger.debug("Local udf directory [{}] was created", udfPath);
