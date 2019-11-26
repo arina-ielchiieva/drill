@@ -68,7 +68,7 @@ public class AvroTestUtil {
     private final String filePath;
     private final String fileName;
 
-    private AvroTestRecordWriter(Schema schema, File file) {
+    public AvroTestRecordWriter(Schema schema, File file) {
       writer = new DataFileWriter<GenericData.Record>(new GenericDatumWriter<GenericData.Record>(schema));
       try {
         writer.create(schema, file);
@@ -460,9 +460,15 @@ public class AvroTestUtil {
   public static AvroTestRecordWriter generateNestedArraySchema(int numRecords, int numArrayItems) throws IOException {
     final File file = File.createTempFile("avro-nested-test", ".avro", BaseTestQuery.dirTestWatcher.getRootDir());
     final Schema schema = SchemaBuilder.record("AvroRecordReaderTest").namespace("org.apache.drill.exec.store.avro")
-        .fields().name("a_int").type().intType().noDefault().name("b_array").type().array().items()
-        .record("my_record_1").namespace("foo.blah.org").fields().name("nested_1_int").type().optional().intType()
-        .endRecord().arrayDefault(Collections.emptyList()).endRecord();
+        .fields()
+          .name("a_int").type().intType().noDefault()
+          .name("b_array").type().array().items()
+              .record("my_record_1").namespace("foo.blah.org")
+                  .fields()
+                    .name("nested_1_int").type().optional().intType()
+              .endRecord()
+              .arrayDefault(Collections.emptyList())
+        .endRecord();
 
     final Schema arraySchema = schema.getField("b_array").schema();
     final Schema itemSchema = arraySchema.getElementType();

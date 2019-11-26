@@ -89,7 +89,7 @@
     <javassist.version>3.25.0-GA</javassist.version>
     <msgpack.version>0.6.6</msgpack.version>
     <reflections.version>0.9.10</reflections.version>
-    <avro.version>1.9.0</avro.version>
+    <avro.version>1.9.1</avro.version>
     <metrics.version>4.0.2</metrics.version>
     <jetty.version>9.3.25.v20180904</jetty.version>
     <jersey.version>2.25.1</jersey.version>
@@ -108,6 +108,7 @@
     <protobuf.version>3.6.1</protobuf.version>
     <codemodel.version>2.6</codemodel.version>
     <joda.version>2.10.5</joda.version>
+    <commons.compress>1.19</commons.compress>
   </properties>
 
   <scm>
@@ -1817,6 +1818,11 @@
         <groupId>joda-time</groupId>
         <artifactId>joda-time</artifactId>
         <version>${joda.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-compress</artifactId>
+        <version>${commons.compress}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
