@@ -46,7 +46,7 @@ public class TestTextReader extends BaseTestQuery {
   public void ensureFailureOnNewLineDelimiterWithinQuotes() {
     try {
       test("select columns[1] as col1 from cp.`textinput/input2.csv`");
-      fail("Expected exception not thrown.");
+      fail("Expected excepti on not thrown.");
     } catch (Exception e) {
       assertTrue(e.getMessage().contains("Cannot use newline character within quoted string"));
     }

@@ -31,7 +31,6 @@ import org.apache.drill.exec.physical.resultSet.model.MetadataProvider.VectorDes
 import org.apache.drill.exec.physical.resultSet.model.ReaderBuilder;
 import org.apache.drill.exec.physical.resultSet.model.ReaderIndex;
 import org.apache.drill.exec.physical.rowSet.IndirectRowIndex;
-import org.apache.drill.exec.physical.rowSet.RowSet;
 import org.apache.drill.exec.physical.rowSet.RowSetReaderImpl;
 import org.apache.drill.exec.record.VectorContainer;
 import org.apache.drill.exec.record.metadata.TupleMetadata;

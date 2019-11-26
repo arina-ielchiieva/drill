@@ -275,11 +275,11 @@ public class RequestedTupleImpl implements RequestedTuple {
       member.projectAllElements();
       return;
     } else if (member.hasIndex(index)) {
-      throw UserException
-        .validationError()
-        .message("Duplicate array index in project list: %s[%d]",
-            member.fullName(), index)
-        .build(logger);
+//      throw UserException
+//        .validationError()
+//        .message("Duplicate array index in project list: %s[%d]",
+//            member.fullName(), index)
+//        .build(logger);
     }
     member.addIndex(index);
 
