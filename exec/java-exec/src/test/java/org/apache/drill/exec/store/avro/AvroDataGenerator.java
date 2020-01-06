@@ -109,8 +109,8 @@ public class AvroDataGenerator {
     // to make the root behave differently than nested fields for String vs. Text
     private Object convertAvroValToDrill(Object value, boolean root) {
       if (value instanceof ByteBuffer) {
-        ByteBuffer bb = ((ByteBuffer)value);
-        byte[] drillVal = new byte[((ByteBuffer)value).remaining()];
+        ByteBuffer bb = ((ByteBuffer) value);
+        byte[] drillVal = new byte[((ByteBuffer) value).remaining()];
         bb.get(drillVal);
         bb.position(0);
         value = drillVal;

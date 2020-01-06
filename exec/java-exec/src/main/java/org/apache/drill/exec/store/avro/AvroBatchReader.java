@@ -20,7 +20,6 @@ package org.apache.drill.exec.store.avro;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.generic.GenericArray;
-import org.apache.avro.generic.GenericContainer;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericFixed;
 import org.apache.avro.generic.GenericRecord;
@@ -63,19 +62,12 @@ public class AvroBatchReader implements ManagedReader<FileScanFramework.FileSche
 
   private static final Logger logger = LoggerFactory.getLogger(AvroBatchReader.class);
 
-  // currently config is unused but maybe used later
-  private final AvroReaderConfig config;
-
   private Path filePath;
   private long endPosition;
-  private DataFileReader<GenericContainer> reader;
+  private DataFileReader<GenericRecord> reader;
   private ResultSetLoader loader;
   // re-use container instance
-  private GenericContainer container = null;
-
-  public AvroBatchReader(AvroReaderConfig config) {
-    this.config = config;
-  }
+  private GenericRecord record = null;
 
   @Override
   public boolean open(FileScanFramework.FileSchemaNegotiator negotiator) {
@@ -114,6 +106,10 @@ public class AvroBatchReader implements ManagedReader<FileScanFramework.FileSche
 
   @Override
   public void close() {
+    if (reader == null) {
+      return;
+    }
+
     try {
       reader.close();
     } catch (IOException e) {
@@ -148,11 +144,11 @@ public class AvroBatchReader implements ManagedReader<FileScanFramework.FileSche
    * @param queryUserName name of the user who issues the query
    * @return Avro file reader
    */
-  private DataFileReader<GenericContainer> prepareReader(FileSplit fileSplit, FileSystem fs, String opUserName, String queryUserName) {
+  private DataFileReader<GenericRecord> prepareReader(FileSplit fileSplit, FileSystem fs, String opUserName, String queryUserName) {
     try {
       UserGroupInformation ugi = ImpersonationUtil.createProxyUgi(opUserName, queryUserName);
-      DataFileReader<GenericContainer> reader = ugi.doAs((PrivilegedExceptionAction<DataFileReader<GenericContainer>>) () ->
-        new DataFileReader<>(new FsInput(fileSplit.getPath(), fs.getConf()), new GenericDatumReader<GenericContainer>()));
+      DataFileReader<GenericRecord> reader = ugi.doAs((PrivilegedExceptionAction<DataFileReader<GenericRecord>>) () ->
+        new DataFileReader<>(new FsInput(fileSplit.getPath(), fs.getConf()), new GenericDatumReader<GenericRecord>()));
 
       // move to sync point from where to read the file
       reader.sync(fileSplit.getStart());
@@ -170,15 +166,14 @@ public class AvroBatchReader implements ManagedReader<FileScanFramework.FileSche
       if (!reader.hasNext() || reader.pastSync(endPosition)) {
         return false;
       }
-      container = reader.next(container);
+      record = reader.next(record);
     } catch (IOException e) {
       throw UserException.dataReadError(e)
         .addContext("Reader", this)
         .build(logger);
     }
 
-    Schema schema = container.getSchema();
-    GenericRecord record = (GenericRecord) container;
+    Schema schema = record.getSchema();
 
     if (Schema.Type.RECORD != schema.getType()) {
       throw UserException.dataReadError()
@@ -189,13 +184,11 @@ public class AvroBatchReader implements ManagedReader<FileScanFramework.FileSche
 
     rowWriter.start();
     List<Schema.Field> fields = schema.getFields();
-    for (Schema.Field field : fields) {
-      String fieldName = field.name();
-      Object value = record.get(fieldName);
-      ObjectWriter writer = rowWriter.column(fieldName);
-      processRecord(writer, value, field.schema());
+    for (int i = 0; i < rowWriter.size(); i++) {
+      processRecord(rowWriter.column(i), record.get(i), fields.get(i).schema());
     }
     rowWriter.save();
+
     return true;
   }
 
@@ -350,19 +343,6 @@ public class AvroBatchReader implements ManagedReader<FileScanFramework.FileSche
           .addContext("Column", columnMetadata)
           .addContext("Reader", this)
           .build(logger);
-    }
-  }
-
-  public static class AvroReaderConfig {
-
-    private final AvroFormatPlugin plugin;
-
-    public AvroReaderConfig(AvroFormatPlugin plugin) {
-      this.plugin = plugin;
-    }
-
-    public AvroFormatPlugin getPlugin() {
-      return plugin;
     }
   }
 }

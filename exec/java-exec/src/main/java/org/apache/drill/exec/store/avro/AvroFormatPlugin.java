@@ -62,7 +62,7 @@ public class AvroFormatPlugin extends EasyFormatPlugin<AvroFormatConfig> {
   @Override
   protected FileScanFramework.FileScanBuilder frameworkBuilder(OptionManager options, EasySubScan scan) {
     FileScanFramework.FileScanBuilder builder = new FileScanFramework.FileScanBuilder();
-    builder.setReaderFactory(new AvroReaderFactory(new AvroBatchReader.AvroReaderConfig(this)));
+    builder.setReaderFactory(new AvroReaderFactory());
     initScanBuilder(builder, scan);
     builder.setNullType(Types.optional(TypeProtos.MinorType.VARCHAR));
     return builder;
@@ -70,15 +70,9 @@ public class AvroFormatPlugin extends EasyFormatPlugin<AvroFormatConfig> {
 
   private static class AvroReaderFactory extends FileScanFramework.FileReaderFactory {
 
-    private final AvroBatchReader.AvroReaderConfig config;
-
-    public AvroReaderFactory(AvroBatchReader.AvroReaderConfig config) {
-      this.config = config;
-    }
-
     @Override
     public ManagedReader<? extends FileScanFramework.FileSchemaNegotiator> newReader() {
-      return new AvroBatchReader(config);
+      return new AvroBatchReader();
     }
   }
 }
