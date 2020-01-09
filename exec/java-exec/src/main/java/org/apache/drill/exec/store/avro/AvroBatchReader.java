@@ -19,44 +19,27 @@ package org.apache.drill.exec.store.avro;
 
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileReader;
-import org.apache.avro.generic.GenericArray;
 import org.apache.avro.generic.GenericDatumReader;
-import org.apache.avro.generic.GenericFixed;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.mapred.FsInput;
-import org.apache.avro.util.Utf8;
 import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.exec.physical.impl.scan.file.FileScanFramework;
 import org.apache.drill.exec.physical.impl.scan.framework.ManagedReader;
 import org.apache.drill.exec.physical.resultSet.ResultSetLoader;
 import org.apache.drill.exec.physical.resultSet.RowSetLoader;
-import org.apache.drill.exec.record.metadata.ColumnMetadata;
 import org.apache.drill.exec.record.metadata.TupleMetadata;
 import org.apache.drill.exec.util.ImpersonationUtil;
-import org.apache.drill.exec.vector.accessor.ArrayWriter;
-import org.apache.drill.exec.vector.accessor.DictWriter;
-import org.apache.drill.exec.vector.accessor.ObjectWriter;
-import org.apache.drill.exec.vector.accessor.ScalarWriter;
-import org.apache.drill.exec.vector.accessor.TupleWriter;
-import org.apache.drill.shaded.guava.com.google.common.base.Charsets;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.joda.time.DateTimeConstants;
-import org.joda.time.Period;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.IntBuffer;
 import java.security.PrivilegedExceptionAction;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.IntStream;
 
 public class AvroBatchReader implements ManagedReader<FileScanFramework.FileSchemaNegotiator> {
 
@@ -66,6 +49,7 @@ public class AvroBatchReader implements ManagedReader<FileScanFramework.FileSche
   private long endPosition;
   private DataFileReader<GenericRecord> reader;
   private ResultSetLoader loader;
+  private List<Converter> converters;
   // re-use container instance
   private GenericRecord record = null;
 
@@ -89,6 +73,8 @@ public class AvroBatchReader implements ManagedReader<FileScanFramework.FileSche
     logger.debug("Avro file converted schema: {}", schema);
     negotiator.setTableSchema(schema, true);
     loader = negotiator.build();
+
+    converters = ConvertersUtil.initConverters(schema, loader.writer());
 
     return true;
   }
@@ -183,166 +169,10 @@ public class AvroBatchReader implements ManagedReader<FileScanFramework.FileSche
     }
 
     rowWriter.start();
-    List<Schema.Field> fields = schema.getFields();
-    for (int i = 0; i < rowWriter.size(); i++) {
-      processRecord(rowWriter.column(i), record.get(i), fields.get(i).schema());
-    }
+    IntStream.range(0, rowWriter.size())
+      .forEach(i -> converters.get(i).convert(record.get(i)));
     rowWriter.save();
 
     return true;
-  }
-
-  private void processRecord(ObjectWriter writer, Object value, Schema schema) {
-    // skip processing record if it is null or is not projected
-    if (value == null || !writer.isProjected()) {
-      return;
-    }
-
-    switch (schema.getType()) {
-      case UNION:
-        processRecord(writer, value, AvroSchemaUtil.extractSchemaFromNullable(schema, writer.schema().name()));
-        break;
-      case RECORD:
-        TupleWriter tupleWriter = writer.tuple();
-
-        if (tupleWriter.tupleSchema().isEmpty()) {
-          // fill in tuple schema for cases when there recursive named record types are present
-          TupleMetadata recordSchema = AvroSchemaUtil.convert(schema);
-          recordSchema.toMetadataList().forEach(tupleWriter::addColumn);
-        }
-
-        GenericRecord genericRecord = (GenericRecord) value;
-        schema.getFields().forEach(
-          field -> processRecord(tupleWriter.column(field.name()), genericRecord.get(field.name()), field.schema())
-        );
-        break;
-      case ARRAY:
-        ArrayWriter arrayWriter = writer.array();
-        GenericArray<?> array = (GenericArray<?>) value;
-        ObjectWriter entryWriter = arrayWriter.entry();
-        for (Object arrayValue : array) {
-          processRecord(entryWriter, arrayValue, array.getSchema().getElementType());
-          arrayWriter.save();
-        }
-        break;
-      case MAP:
-        @SuppressWarnings("unchecked")
-        Map<Object, Object> map = (Map<Object, Object>) value;
-        Schema valueSchema = schema.getValueType();
-
-        DictWriter dictWriter = writer.dict();
-        ScalarWriter keyWriter = dictWriter.keyWriter();
-        ObjectWriter valueWriter = dictWriter.valueWriter();
-
-        for (Map.Entry<Object, Object> mapEntry : map.entrySet()) {
-          processScalar(keyWriter, mapEntry.getKey());
-          processRecord(valueWriter, mapEntry.getValue(), valueSchema);
-          dictWriter.save();
-        }
-        break;
-      default:
-        try {
-          ScalarWriter scalarWriter = writer.scalar();
-          processScalar(scalarWriter, value);
-        } catch (UnsupportedOperationException e) {
-          throw UserException.dataReadError(e)
-            .message("Unexpected writer type '%s', expected scalar", writer.type())
-            .addContext("Reader", this)
-            .build(logger);
-        }
-    }
-  }
-
-  private void processScalar(ScalarWriter scalarWriter, Object value) {
-    ColumnMetadata columnMetadata = scalarWriter.schema();
-    switch (columnMetadata.type()) {
-      case INT:
-        scalarWriter.setInt((int) value);
-        break;
-      case BIGINT:
-        scalarWriter.setLong((long) value);
-        break;
-      case FLOAT4:
-        scalarWriter.setDouble((float) value);
-        break;
-      case FLOAT8:
-        scalarWriter.setDouble((double) value);
-        break;
-      case VARDECIMAL:
-        BigInteger bigInteger;
-        if (value instanceof ByteBuffer) {
-          ByteBuffer decBuf = (ByteBuffer) value;
-          bigInteger = new BigInteger(decBuf.array());
-        } else {
-          GenericFixed genericFixed = (GenericFixed) value;
-          bigInteger = new BigInteger(genericFixed.bytes());
-        }
-        BigDecimal decimalValue = new BigDecimal(bigInteger, columnMetadata.scale());
-        scalarWriter.setDecimal(decimalValue);
-        break;
-      case BIT:
-        scalarWriter.setBoolean((boolean) value);
-        break;
-      case VARCHAR:
-        byte[] binary;
-        int length;
-        if (value instanceof Utf8) {
-          Utf8 utf8 = (Utf8) value;
-          binary = utf8.getBytes();
-          length = utf8.getByteLength();
-        } else {
-          binary = value.toString().getBytes(Charsets.UTF_8);
-          length = binary.length;
-        }
-        scalarWriter.setBytes(binary, length);
-        break;
-      case VARBINARY:
-        if (value instanceof ByteBuffer) {
-          ByteBuffer buf = (ByteBuffer) value;
-          scalarWriter.setBytes(buf.array(), buf.remaining());
-        } else {
-          byte[] bytes = ((GenericFixed) value).bytes();
-          scalarWriter.setBytes(bytes, bytes.length);
-        }
-        break;
-      case TIMESTAMP:
-        String avroLogicalType = columnMetadata.property(AvroSchemaUtil.AVRO_LOGICAL_TYPE_PROPERTY);
-        if (AvroSchemaUtil.TIMESTAMP_MILLIS_LOGICAL_TYPE.equals(avroLogicalType)) {
-          scalarWriter.setLong((long) value);
-        } else {
-          scalarWriter.setLong((long) value / 1000);
-        }
-        break;
-      case DATE:
-        scalarWriter.setLong((int) value * (long) DateTimeConstants.MILLIS_PER_DAY);
-        break;
-      case TIME:
-        if (value instanceof Long) {
-          scalarWriter.setInt((int) ((long) value / 1000));
-        } else {
-          scalarWriter.setInt((int) value);
-        }
-        break;
-      case INTERVAL:
-        GenericFixed genericFixed = (GenericFixed) value;
-        IntBuffer intBuf = ByteBuffer
-          .wrap(genericFixed.bytes())
-          .order(ByteOrder.LITTLE_ENDIAN)
-          .asIntBuffer();
-
-        Period period = Period
-          .months(intBuf.get(0))
-          .withDays(intBuf.get(1))
-          .withMillis(intBuf.get(2));
-
-        scalarWriter.setPeriod(period);
-        break;
-      default:
-        throw UserException.dataReadError()
-          .message("Unexpected scalar schema type: ", columnMetadata.type())
-          .addContext("Column", columnMetadata)
-          .addContext("Reader", this)
-          .build(logger);
-    }
   }
 }

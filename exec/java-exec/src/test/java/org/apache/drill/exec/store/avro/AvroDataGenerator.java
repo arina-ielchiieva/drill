@@ -816,4 +816,67 @@ public class AvroDataGenerator {
     }
     return file.getName();
   }
+
+  public String generateMultiDimensionalArray() throws Exception {
+    File file = File.createTempFile("avro-array-of-array-test", ".avro", dirTestWatcher.getRootDir());
+
+    Schema schema = SchemaBuilder.record("rec")
+      .fields()
+      .name("col_nested_array").type().array().items()
+        .array().items().intType()
+      .noDefault()
+      .name("col_nested_3_array").type().array().items()
+        .array().items().array().items().intType().noDefault()
+      .endRecord();
+
+    try (DataFileWriter<GenericRecord> writer = new DataFileWriter<>(new GenericDatumWriter<>(schema))) {
+      writer.create(schema, file);
+      GenericRecord record = new GenericData.Record(schema);
+
+      GenericArray<GenericArray<Integer>> array = new GenericData.Array<>(2,
+        schema.getField("col_nested_array").schema());
+
+      GenericArray<Integer> nestedArray_1 = new GenericData.Array<>(2,
+        schema.getField("col_nested_array").schema().getElementType());
+      nestedArray_1.add(1);
+      nestedArray_1.add(2);
+
+      GenericArray<Integer> nestedArray_2 = new GenericData.Array<>(2,
+        schema.getField("col_nested_array").schema().getElementType());
+      nestedArray_2.add(3);
+      nestedArray_2.add(4);
+
+      array.add(nestedArray_1);
+      array.add(nestedArray_2);
+
+      record.put("col_nested_array", array);
+
+      GenericArray<GenericArray<GenericArray<Integer>>> array_3 = new GenericData.Array<>(2,
+        schema.getField("col_nested_3_array").schema());
+
+      GenericArray<GenericArray<Integer>> array_1 = new GenericData.Array<>(2,
+        schema.getField("col_nested_3_array").schema().getElementType());
+
+      GenericArray<Integer> array_2_1 = new GenericData.Array<>(2,
+        schema.getField("col_nested_3_array").schema().getElementType().getElementType());
+      array_2_1.add(1);
+      array_2_1.add(2);
+
+      GenericArray<Integer> array_2_2 = new GenericData.Array<>(2,
+        schema.getField("col_nested_3_array").schema().getElementType().getElementType());
+      array_2_2.add(3);
+      array_2_2.add(4);
+
+      array_1.add(array_2_1);
+      array_1.add(array_2_2);
+
+      array_3.add(array_1);
+
+      record.put("col_nested_3_array", array_3);
+
+      writer.append(record);
+    }
+
+    return file.getName();
+  }
 }

@@ -691,6 +691,12 @@ public class AvroFormatTest extends ClusterTest {
     testBuilder.go();
   }
 
+  @Test
+  public void testMultiDimensionalArray() throws Exception {
+    String fileName = dataGenerator.generateMultiDimensionalArray();
+    queryBuilder().sql("select * from dfs.`%s`", fileName).print();
+  }
+
   private void simpleAvroTestHelper(AvroDataGenerator.AvroTestRecordWriter testSetup) throws Exception {
     testBuilder()
       .sqlQuery("select * from dfs.`%s`", testSetup.getFileName())
