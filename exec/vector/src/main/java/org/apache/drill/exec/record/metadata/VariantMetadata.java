@@ -33,10 +33,11 @@ import org.apache.drill.common.types.TypeProtos.MinorType;
  * This makes the representation simpler
  * and should be a good-enough approximation of reality.
  * <p>
- * Variants can contain three kinds of children:
+ * Variants can contain four kinds of children:
  * <ul>
  * <li>Nullable (optional) scalar vectors.</li>
  * <li>Non-nullable (required) map.</li>
+ * <li>Non-nullable (required) dict.</li>
  * <li>Nullable (optional) list.</li>
  * </ul>
  * <p>
@@ -45,7 +46,7 @@ import org.apache.drill.common.types.TypeProtos.MinorType;
  * so they are required in the union, even though the map is, in effect,
  * optional (the map is effectively null if it is not used for a give
  * row.) Yes, this is confusing, but it is how the vectors are
- * implemented (for now.)
+ * implemented (for now.) The same applies for Dicts.
  * <p>
  * A list type is modeled here as a repeated union type. This is not
  * entirely accurate, but it is another useful fiction. (In actual
@@ -59,14 +60,14 @@ import org.apache.drill.common.types.TypeProtos.MinorType;
  * A union or list can contain a map. Maps have structure. To support this,
  * the metadata allows adding a map column that contains the map structure.
  * Such metadata exist only in this system; it is not easily accessible in
- * the vector implementation.
+ * the vector implementation. The same applies for Dicts.
  * <p>
  * A union or list can contain a list (though not a union.) As described
  * here, lists can have structure, and so, like maps, can be built using
  * a column that provides that structure.
  * <p>
- * Note that the Drill {@link MinorType#UNION UNION} and
- * {@link MinorType#LIST LIST} implementations are considered experimental
+ * Note that the Drill {@link MinorType#UNION} and
+ * {@link MinorType#LIST} implementations are considered experimental
  * and are not generally enabled. As a result, this metadata schema must
  * also be considered experimental and subject to change.
  */

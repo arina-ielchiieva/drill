@@ -28,6 +28,8 @@ import org.apache.drill.exec.record.metadata.MetadataUtils;
 import org.apache.drill.exec.record.metadata.RepeatedListBuilder;
 import org.apache.drill.exec.record.metadata.TupleMetadata;
 import org.apache.drill.exec.record.metadata.TupleSchema;
+import org.apache.drill.exec.record.metadata.VariantColumnMetadata;
+import org.apache.drill.exec.record.metadata.VariantSchema;
 import org.apache.drill.exec.vector.complex.DictVector;
 import org.apache.drill.shaded.guava.com.google.common.base.Preconditions;
 
@@ -55,9 +57,9 @@ public class SchemaVisitor extends SchemaParserBaseVisitor<TupleMetadata> {
   public TupleMetadata visitColumns(SchemaParser.ColumnsContext ctx) {
     TupleMetadata schema = new TupleSchema();
     ColumnDefVisitor columnDefVisitor = new ColumnDefVisitor();
-    ctx.column_def().forEach(
-      columnDef -> schema.addColumn(columnDef.accept(columnDefVisitor))
-    );
+    ctx.column_def().stream()
+      .map(columnDef -> columnDef.accept(columnDefVisitor))
+      .forEach(schema::addColumn);
     return schema;
   }
 
@@ -120,9 +122,16 @@ public class SchemaVisitor extends SchemaParserBaseVisitor<TupleMetadata> {
     }
 
     @Override
+    public ColumnMetadata visitUnion_column(SchemaParser.Union_columnContext ctx) {
+      String name = ctx.column_id().accept(new IdVisitor());
+      return ctx.union_type().accept(new UnionTypeVisitor(name));
+    }
+
+    @Override
     public ColumnMetadata visitComplex_array_column(SchemaParser.Complex_array_columnContext ctx) {
       String name = ctx.column_id().accept(new IdVisitor());
-      ColumnMetadata child = ctx.complex_array_type().array_type().accept(new ArrayTypeVisitor(name));
+      ColumnMetadata child = ctx.complex_array_type().complex_array_value_type()
+        .accept(new ComplexArrayValueTypeVisitor(name));
       RepeatedListBuilder builder = new RepeatedListBuilder(null, name);
       builder.addColumn(child);
       return builder.buildColumn();
@@ -169,6 +178,10 @@ public class SchemaVisitor extends SchemaParserBaseVisitor<TupleMetadata> {
 
     private final String name;
     private final TypeProtos.DataMode mode;
+
+    TypeVisitor(TypeProtos.DataMode mode) {
+      this(null, mode);
+    }
 
     TypeVisitor(String name, TypeProtos.DataMode mode) {
       this.name = name;
@@ -281,7 +294,7 @@ public class SchemaVisitor extends SchemaParserBaseVisitor<TupleMetadata> {
     @Override
     public ColumnMetadata visitStruct_type(SchemaParser.Struct_typeContext ctx) {
       // internally Drill refers to structs as maps
-      MapBuilder builder = new MapBuilder(null, name, mode);
+      MapBuilder builder = new MapBuilder(null, name(TypeProtos.MinorType.MAP), mode);
       ColumnDefVisitor visitor = new ColumnDefVisitor();
       ctx.columns().column_def().forEach(
         c -> builder.addColumn(c.accept(visitor))
@@ -292,8 +305,8 @@ public class SchemaVisitor extends SchemaParserBaseVisitor<TupleMetadata> {
     @Override
     public ColumnMetadata visitMap_type(SchemaParser.Map_typeContext ctx) {
       // internally Drill refers to maps as dicts
-      DictBuilder builder = new DictBuilder(null, name, mode);
-      builder.key(ctx.map_key_type_def().map_key_type().accept(MapKeyTypeVisitor.INSTANCE));
+      DictBuilder builder = new DictBuilder(null, name(TypeProtos.MinorType.DICT), mode);
+      builder.key(ctx.map_key_type_def().map_key_type().accept(new MapKeyTypeVisitor()));
 
       SchemaParser.Map_value_type_defContext valueDef = ctx.map_value_type_def();
       TypeProtos.DataMode valueMode = valueDef.nullability() == null ? TypeProtos.DataMode.OPTIONAL : TypeProtos.DataMode.REQUIRED;
@@ -301,8 +314,12 @@ public class SchemaVisitor extends SchemaParserBaseVisitor<TupleMetadata> {
       return builder.buildColumn();
     }
 
+    private String name(TypeProtos.MinorType minorType) {
+      return name == null ? Types.typeKey(minorType) : name;
+    }
+
     private ColumnMetadata constructColumn(TypeProtos.MajorType type) {
-      MaterializedField field = MaterializedField.create(name, type);
+      MaterializedField field = MaterializedField.create(name(type.getMinorType()), type);
       return MetadataUtils.fromField(field);
     }
   }
@@ -312,14 +329,11 @@ public class SchemaVisitor extends SchemaParserBaseVisitor<TupleMetadata> {
    */
   private static class MapKeyTypeVisitor extends SchemaParserBaseVisitor<TypeProtos.MajorType> {
 
-    // map key is always required
-    private static final TypeVisitor KEY_VISITOR = new TypeVisitor(DictVector.FIELD_KEY_NAME, TypeProtos.DataMode.REQUIRED);
-
-    static final MapKeyTypeVisitor INSTANCE = new MapKeyTypeVisitor();
-
     @Override
     public TypeProtos.MajorType visitMap_key_simple_type_def(SchemaParser.Map_key_simple_type_defContext ctx) {
-      return ctx.simple_type().accept(KEY_VISITOR).majorType();
+      // map key is always required
+      TypeVisitor keyVisitor = new TypeVisitor(DictVector.FIELD_KEY_NAME, TypeProtos.DataMode.REQUIRED);
+      return ctx.simple_type().accept(keyVisitor).majorType();
     }
   }
 
@@ -357,11 +371,65 @@ public class SchemaVisitor extends SchemaParserBaseVisitor<TupleMetadata> {
     public ColumnMetadata visitMap_value_array_type_def(SchemaParser.Map_value_array_type_defContext ctx) {
       return ctx.array_type().accept(new ArrayTypeVisitor(DictVector.FIELD_VALUE_NAME));
     }
+
+    @Override
+    public ColumnMetadata visitMap_value_union_type_def(SchemaParser.Map_value_union_type_defContext ctx) {
+      return ctx.union_type().accept(new UnionTypeVisitor(DictVector.FIELD_VALUE_NAME));
+    }
   }
 
   /**
-   * Visits array type: simple (which has only one nested element: array<int>)
-   * or complex (which has several nested elements: array<int<int>>).
+   * Visits union type and stores its metadata into {@link ColumnMetadata} holder.
+   */
+  private static class UnionTypeVisitor extends SchemaParserBaseVisitor<ColumnMetadata> {
+
+    private final String name;
+
+    UnionTypeVisitor(String name) {
+      this.name = name;
+    }
+
+    @Override
+    public ColumnMetadata visitUnion_type(SchemaParser.Union_typeContext ctx) {
+      VariantSchema variantSchema = new VariantSchema();
+      UnionMemberTypeVisitor unionMemberTypeVisitor = new UnionMemberTypeVisitor();
+      ctx.union_members().union_member_type().stream()
+        .map(subType -> subType.accept(unionMemberTypeVisitor))
+        .forEach(variantSchema::addType);
+      return new VariantColumnMetadata(name, TypeProtos.MinorType.UNION, variantSchema);
+    }
+  }
+
+  /**
+   * Visits union member type and stores its metadata into {@link ColumnMetadata} holder.
+   */
+  private static class UnionMemberTypeVisitor extends SchemaParserBaseVisitor<ColumnMetadata> {
+
+    @Override
+    public ColumnMetadata visitUnion_member_simple_type_def(SchemaParser.Union_member_simple_type_defContext ctx) {
+      return ctx.simple_type().accept(new TypeVisitor(TypeProtos.DataMode.OPTIONAL));
+    }
+
+    @Override
+    public ColumnMetadata visitUnion_member_struct_type_def(SchemaParser.Union_member_struct_type_defContext ctx) {
+      return ctx.struct_type().accept(new TypeVisitor(TypeProtos.DataMode.OPTIONAL));
+    }
+
+    @Override
+    public ColumnMetadata visitUnion_member_map_type_def(SchemaParser.Union_member_map_type_defContext ctx) {
+      return ctx.map_type().accept(new TypeVisitor(TypeProtos.DataMode.OPTIONAL));
+    }
+
+    @Override
+    public ColumnMetadata visitUnion_member_array_type_def(SchemaParser.Union_member_array_type_defContext ctx) {
+      return ctx.array_type().accept(new ArrayTypeVisitor(Types.typeKey(TypeProtos.MinorType.LIST)));
+    }
+  }
+
+  /**
+   * Visits array type:
+   * simple (which has only one nested element: array<int>) or
+   * complex (which has several nested elements (array<int<int>>) or union (array<union<int, varchar>>)).
    */
   private static class ArrayTypeVisitor extends SchemaParserBaseVisitor<ColumnMetadata> {
 
@@ -380,9 +448,31 @@ public class SchemaVisitor extends SchemaParserBaseVisitor<TupleMetadata> {
     @Override
     public ColumnMetadata visitComplex_array_type(SchemaParser.Complex_array_typeContext ctx) {
       RepeatedListBuilder childBuilder = new RepeatedListBuilder(null, name);
-      ColumnMetadata child = ctx.array_type().accept(new ArrayTypeVisitor(name));
-      childBuilder.addColumn(child);
+      ColumnMetadata columnMetadata = ctx.complex_array_value_type().accept(new ComplexArrayValueTypeVisitor(name));
+      childBuilder.addColumn(columnMetadata);
       return childBuilder.buildColumn();
+    }
+  }
+
+  /**
+   * Visits complex array value type and stores its metadata into {@link ColumnMetadata} holder.
+   */
+  private static class ComplexArrayValueTypeVisitor extends SchemaParserBaseVisitor<ColumnMetadata> {
+
+    private final String name;
+
+    ComplexArrayValueTypeVisitor(String name) {
+      this.name = name;
+    }
+
+    @Override
+    public ColumnMetadata visitArray_nested_type_def(SchemaParser.Array_nested_type_defContext ctx) {
+      return ctx.array_type().accept(new ArrayTypeVisitor(name));
+    }
+
+    @Override
+    public ColumnMetadata visitArray_union_type_def(SchemaParser.Array_union_type_defContext ctx) {
+      return ctx.union_type().accept(new UnionTypeVisitor(name));
     }
   }
 
@@ -410,6 +500,11 @@ public class SchemaVisitor extends SchemaParserBaseVisitor<TupleMetadata> {
     @Override
     public ColumnMetadata visitArray_map_type_def(SchemaParser.Array_map_type_defContext ctx) {
       return ctx.map_type().accept(typeVisitor);
+    }
+
+    private void t() {
+      VariantColumnMetadata metadata = new VariantColumnMetadata("name",
+        TypeProtos.MinorType.LIST, null);
     }
   }
 

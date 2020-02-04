@@ -18,10 +18,12 @@
 package org.apache.drill.exec.record.metadata.schema.parser;
 
 import org.apache.drill.common.types.TypeProtos;
+import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.record.metadata.ColumnMetadata;
 import org.apache.drill.exec.record.metadata.DictColumnMetadata;
 import org.apache.drill.exec.record.metadata.SchemaBuilder;
 import org.apache.drill.exec.record.metadata.TupleMetadata;
+import org.apache.drill.shaded.guava.com.google.common.base.Preconditions;
 import org.apache.drill.test.BaseTest;
 import org.joda.time.LocalDate;
 import org.junit.Test;
@@ -217,7 +219,8 @@ public class TestSchemaParser extends BaseTest {
         + ", struct_array array<struct<s1 int, s2 varchar>>"
         + ", nested_array_struct array<array<struct<ns1 int, ns2 varchar>>>"
         + ", map_array array<map<varchar, int>>"
-        + ", nested_map_array array<array<map<varchar, int>>>",
+        + ", nested_map_array array<array<map<varchar, int>>>"
+        + ", union_array array<union<varchar, int>>",
       schema);
   }
 
@@ -288,6 +291,24 @@ public class TestSchemaParser extends BaseTest {
       + ", dict_col_dict map<varchar, map<int, boolean>>"
       + ", dict_col_array map<bigint, array<map<date, double>>>",
       schema);
+  }
+
+  @Test
+  public void testUnion() throws Exception {
+    TupleMetadata schema = new SchemaBuilder()
+      .addUnion("union_col")
+        .addType(TypeProtos.MinorType.INT)
+        .addType(TypeProtos.MinorType.VARCHAR)
+        .resumeSchema()
+      .buildSchema();
+
+    System.out.println(schema.metadata(0).columnString());
+
+    String schemaString = "union_col union<int, varchar>";
+    TupleMetadata actualSchema = SchemaExprParser.parseSchema(schemaString);
+    System.out.println(actualSchema);
+
+    System.out.println(actualSchema.metadata(0).columnString());
   }
 
   @Test

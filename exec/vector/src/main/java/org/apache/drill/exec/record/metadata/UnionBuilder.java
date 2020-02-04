@@ -117,4 +117,9 @@ public class UnionBuilder implements SchemaContainer {
     build();
     return (DictBuilder) parent;
   }
+
+  public RepeatedListBuilder resumeList() {
+    build();
+    return (RepeatedListBuilder) parent;
+  }
 }

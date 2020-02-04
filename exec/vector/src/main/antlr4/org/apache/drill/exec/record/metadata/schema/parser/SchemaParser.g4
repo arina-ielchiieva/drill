@@ -31,7 +31,7 @@ columns: column_def (COMMA column_def)*;
 
 column_def: column property_values?;
 
-column: (primitive_column | struct_column | map_column | simple_array_column | complex_array_column);
+column: (primitive_column | struct_column | map_column | union_column | simple_array_column | complex_array_column);
 
 primitive_column: column_id simple_type nullability? format_value? default_value?;
 
@@ -40,6 +40,8 @@ simple_array_column: column_id simple_array_type nullability?;
 struct_column: column_id struct_type nullability?;
 
 map_column: column_id map_type nullability?;
+
+union_column: column_id union_type nullability?;
 
 complex_array_column: column_id complex_array_type nullability?;
 
@@ -75,7 +77,12 @@ simple_array_value_type
 | map_type # array_map_type_def
 ;
 
-complex_array_type: ARRAY LEFT_ANGLE_BRACKET array_type RIGHT_ANGLE_BRACKET;
+complex_array_type: ARRAY LEFT_ANGLE_BRACKET complex_array_value_type RIGHT_ANGLE_BRACKET;
+
+complex_array_value_type
+: array_type # array_nested_type_def
+| union_type # array_union_type_def
+;
 
 struct_type: STRUCT LEFT_ANGLE_BRACKET columns RIGHT_ANGLE_BRACKET;
 
@@ -94,6 +101,18 @@ map_value_type
 | struct_type # map_value_struct_type_def
 | map_type # map_value_map_type_def
 | array_type # map_value_array_type_def
+| union_type # map_value_union_type_def
+;
+
+union_type: UNION LEFT_ANGLE_BRACKET union_members RIGHT_ANGLE_BRACKET;
+
+union_members: union_member_type (COMMA union_member_type)*;
+
+union_member_type
+: simple_type # union_member_simple_type_def
+| struct_type # union_member_struct_type_def
+| map_type # union_member_map_type_def
+| array_type # union_member_array_type_def
 ;
 
 nullability: NOT NULL;

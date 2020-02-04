@@ -20,6 +20,7 @@ package org.apache.drill.exec.record.metadata;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.drill.common.types.Types;
 import org.apache.drill.common.types.TypeProtos.DataMode;
@@ -30,9 +31,23 @@ import org.apache.drill.shaded.guava.com.google.common.base.Preconditions;
 
 public class VariantSchema implements VariantMetadata {
 
-  private final Map<MinorType, ColumnMetadata> types = new HashMap<>();
+  private final Map<MinorType, ColumnMetadata> types;
   private VariantColumnMetadata parent;
   private boolean isSimple;
+
+  public VariantSchema() {
+    this.types = new HashMap<>();
+  }
+
+  public VariantSchema(VariantSchema from) {
+    this.types = from.types.entrySet().stream()
+      .collect(Collectors.toMap(
+        Map.Entry::getKey,
+        entry -> entry.getValue().copy(),
+        (o, n) -> n));
+    this.parent = from.parent == null ? null : (VariantColumnMetadata) from.parent.copy();
+    this.isSimple = from.isSimple;
+  }
 
   protected void bind(VariantColumnMetadata parent) {
     this.parent = parent;
@@ -41,23 +56,25 @@ public class VariantSchema implements VariantMetadata {
   public static ColumnMetadata memberMetadata(MinorType type) {
     String name = Types.typeKey(type);
     switch (type) {
-    case LIST:
-      return new VariantColumnMetadata(name, type, null);
-    case MAP:
-      // Although maps do not have a bits vector, when used in a
-      // union the map must be marked as optional since the union as a
-      // whole can be null, implying that the map is null by implication.
-      // (In fact, the readers have a special mechanism to work out the
-      // null state in this case.
+      case LIST:
+        return new VariantColumnMetadata(name, type, null);
+      case MAP:
+        // Although maps do not have a bits vector, when used in a
+        // union the map must be marked as optional since the union as a
+        // whole can be null, implying that the map is null by implication.
+        // (In fact, the readers have a special mechanism to work out the
+        // null state in this case.
 
-      return new MapColumnMetadata(name, DataMode.OPTIONAL, null);
-    case UNION:
-      throw new IllegalArgumentException("Cannot add a union to a union");
-    default:
-      return new PrimitiveColumnMetadata(
-          MaterializedField.create(
-              name,
-              Types.optional(type)));
+        return new MapColumnMetadata(name, DataMode.OPTIONAL, null);
+      case DICT:
+        return new DictColumnMetadata(name, DataMode.OPTIONAL, null);
+      case UNION:
+        throw new IllegalArgumentException("Cannot add a union to a union");
+      default:
+        return new PrimitiveColumnMetadata(
+            MaterializedField.create(
+                name,
+                Types.optional(type)));
     }
   }
 
@@ -129,6 +146,13 @@ public class VariantSchema implements VariantMetadata {
     types.put(MinorType.MAP, mapCol);
   }
 
+  public void addDict(DictColumnMetadata dictCol) {
+    Preconditions.checkArgument(! dictCol.isArray());
+    Preconditions.checkState(! isSimple);
+    checkType(MinorType.DICT);
+    types.put(MinorType.DICT, dictCol);
+  }
+
   public void addList(VariantColumnMetadata listCol) {
     Preconditions.checkArgument(listCol.isArray());
     Preconditions.checkState(! isSimple);
@@ -147,6 +171,9 @@ public class VariantSchema implements VariantMetadata {
       break;
     case MAP:
       col = new MapColumnMetadata(field);
+      break;
+    case DICT:
+      col = new DictColumnMetadata(field);
       break;
     case UNION:
       throw new IllegalArgumentException("Cannot add a union to a union");
@@ -206,5 +233,9 @@ public class VariantSchema implements VariantMetadata {
     VariantSchema copy = new VariantSchema();
     copy.isSimple = isSimple;
     return copy;
+  }
+
+  public VariantSchema copy() {
+    return new VariantSchema(this);
   }
 }

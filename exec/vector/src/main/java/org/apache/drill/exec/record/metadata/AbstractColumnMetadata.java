@@ -294,9 +294,7 @@ public abstract class AbstractColumnMetadata extends AbstractPropertied implemen
 
   @JsonProperty("type")
   @Override
-  public String typeString() {
-    return majorType().toString();
-  }
+  public abstract String typeString();
 
   @Override
   public String columnString() {

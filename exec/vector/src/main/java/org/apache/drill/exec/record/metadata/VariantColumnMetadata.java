@@ -18,6 +18,7 @@
 package org.apache.drill.exec.record.metadata;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.drill.common.types.TypeProtos.DataMode;
 import org.apache.drill.common.types.TypeProtos.MajorType;
@@ -46,31 +47,30 @@ public class VariantColumnMetadata extends AbstractColumnMetadata {
         child = schema.getChildren().iterator().next();
         childType = child.getType().getMinorType();
       }
+
       switch (childType) {
-      case UNION:
+        case UNION:
 
-        // List contains a union.
+          // List contains a union.
 
-        types = child.getType().getSubTypeList();
-        break;
+          types = child.getType().getSubTypeList();
+          break;
 
-      case LATE:
+        case LATE:
 
-        // List has no type.
+          // List has no type.
 
-        return;
+          return;
 
-      default:
+        default:
 
-        // List contains a single non-null type.
+          // List contains a single non-null type.
 
-        variantSchema.addType(MetadataUtils.fromField(child));
-        return;
+          variantSchema.addType(MetadataUtils.fromField(child));
+          return;
       }
     }
-    if (types == null) {
-      return;
-    }
+
     for (MinorType type : types) {
       variantSchema.addType(type);
     }
@@ -85,6 +85,11 @@ public class VariantColumnMetadata extends AbstractColumnMetadata {
     super(name, type, DataMode.OPTIONAL);
     this.variantSchema = variantSchema == null ? new VariantSchema() : variantSchema;
     this.variantSchema.bind(this);
+  }
+
+  public VariantColumnMetadata(VariantColumnMetadata from) {
+    super(from);
+    this.variantSchema = from.variantSchema.copy();
   }
 
   @Override
@@ -105,9 +110,7 @@ public class VariantColumnMetadata extends AbstractColumnMetadata {
 
   @Override
   public ColumnMetadata copy() {
-    // TODO Auto-generated method stub
-    assert false;
-    return null;
+    return new VariantColumnMetadata(this);
   }
 
   @Override
@@ -132,5 +135,14 @@ public class VariantColumnMetadata extends AbstractColumnMetadata {
           .setMinorType(type)
           .setMode(DataMode.OPTIONAL)
           .build());
+  }
+
+  @Override
+  public String typeString() {
+    return "UNION<"
+      + variantSchema.members().stream()
+         .map(ColumnMetadata::typeString)
+         .collect(Collectors.joining(", "))
+      + ">";
   }
 }

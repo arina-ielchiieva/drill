@@ -57,6 +57,7 @@ SECOND: 'SECOND';
 MAP: 'MAP';
 STRUCT: 'STRUCT';
 ARRAY: 'ARRAY';
+UNION: 'UNION';
 
 // symbols
 COMMA: ',';
