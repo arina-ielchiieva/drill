@@ -21,12 +21,17 @@ import java.io.IOException;
 import java.util.List;
 import java.util.NavigableMap;
 
+import com.fasterxml.jackson.annotation.JacksonInject;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.record.metadata.TupleMetadata;
 import org.apache.drill.exec.metastore.FileSystemMetadataProviderManager;
+import org.apache.drill.exec.store.StoragePluginRegistry;
+import org.apache.drill.exec.store.dfs.FileSystemConfig;
+import org.apache.drill.exec.store.mapr.db.MapRDBFormatPluginConfig;
 import org.apache.drill.shaded.guava.com.google.common.base.Preconditions;
 import org.apache.drill.shaded.guava.com.google.common.collect.Lists;
 
@@ -54,16 +59,26 @@ import org.apache.drill.exec.store.mapr.db.TabletFragmentInfo;
 @JsonTypeName("restricted-json-scan")
 public class RestrictedJsonTableGroupScan extends JsonTableGroupScan {
 
+  public RestrictedJsonTableGroupScan(String userName,
+                                      FileSystemPlugin storagePlugin,
+                                      MapRDBFormatPlugin formatPlugin,
+                                      JsonScanSpec scanSpec, /* scan spec of the original table */
+                                      List<SchemaPath> columns,
+                                      MapRDBStatistics statistics,
+                                      TupleMetadata schema) throws IOException {
+    super(userName, storagePlugin, formatPlugin, scanSpec, columns,
+      statistics, FileSystemMetadataProviderManager.getMetadataProviderForSchema(schema));
+  }
+
   @JsonCreator
   public RestrictedJsonTableGroupScan(@JsonProperty("userName") String userName,
-                                      @JsonProperty("storage") FileSystemPlugin storagePlugin,
-                                      @JsonProperty("format") MapRDBFormatPlugin formatPlugin,
-                                      @JsonProperty("scanSpec") JsonScanSpec scanSpec, /* scan spec of the original table */
+                                      @JsonProperty("scanSpec") JsonScanSpec scanSpec,
+                                      @JsonProperty("storage") FileSystemConfig storagePluginConfig,
+                                      @JsonProperty("format") MapRDBFormatPluginConfig formatPluginConfig,
                                       @JsonProperty("columns") List<SchemaPath> columns,
-                                      @JsonProperty("") MapRDBStatistics statistics,
-                                      @JsonProperty("schema") TupleMetadata schema) throws IOException {
-    super(userName, storagePlugin, formatPlugin, scanSpec, columns,
-        statistics, FileSystemMetadataProviderManager.getMetadataProviderForSchema(schema));
+                                      @JsonProperty("schema") TupleMetadata schema,
+                                      @JacksonInject StoragePluginRegistry pluginRegistry) throws ExecutionSetupException, IOException {
+    super(userName, scanSpec, storagePluginConfig, formatPluginConfig, columns, schema, pluginRegistry);
   }
 
   // TODO:  this method needs to be fully implemented

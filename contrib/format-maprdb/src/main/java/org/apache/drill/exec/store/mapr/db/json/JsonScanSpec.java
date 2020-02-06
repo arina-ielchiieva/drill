@@ -20,6 +20,7 @@ package org.apache.drill.exec.store.mapr.db.json;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import com.mapr.org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HConstants;
 import org.ojai.store.QueryCondition;
@@ -36,13 +37,12 @@ public class JsonScanSpec {
   protected String tableName;
   protected IndexDesc indexDesc;
   protected QueryCondition condition;
+
   protected byte[] startRow;
   protected byte[] stopRow;
+  protected byte[] serializedFilter;
 
-  @JsonCreator
-  public JsonScanSpec(@JsonProperty("tableName") String tableName,
-                      @JsonProperty("indexDesc") IndexDesc indexDesc,
-                      @JsonProperty("condition") QueryCondition condition) {
+  public JsonScanSpec(String tableName, IndexDesc indexDesc, QueryCondition condition) {
     this.tableName = tableName;
     this.indexDesc = indexDesc;
     this.condition = condition;
@@ -56,6 +56,19 @@ public class JsonScanSpec {
         stopRow  = HConstants.EMPTY_END_ROW;
       }
     }
+  }
+
+  @JsonCreator
+  public JsonScanSpec(@JsonProperty("tableName") String tableName,
+                      @JsonProperty("indexDesc") IndexDesc indexDesc,
+                      @JsonProperty("serializedFilter") byte[] serializedFilter,
+                      @JsonProperty("startRow") byte[] startRow,
+                      @JsonProperty("stopRow") byte[] stopRow) {
+    this.tableName = tableName;
+    this.indexDesc = indexDesc;
+    this.serializedFilter = serializedFilter;
+    this.startRow = startRow;
+    this.stopRow = stopRow;
   }
 
   public String getTableName() {
@@ -89,7 +102,7 @@ public class JsonScanSpec {
       bbuf.get(serFilter);
       return serFilter;
     }
-    return null;
+    return serializedFilter;
   }
 
   public void setCondition(QueryCondition condition) {
@@ -101,6 +114,7 @@ public class JsonScanSpec {
     return this.condition;
   }
 
+  @JsonIgnore
   public boolean isSecondaryIndex() {
     return (this.indexDesc != null);
   }
@@ -119,14 +133,14 @@ public class JsonScanSpec {
     if (this.condition != null && scanSpec.getCondition() != null) {
       QueryCondition newCond = MapRDBImpl.newCondition();
       switch (functionName) {
-      case "booleanAnd":
-        newCond.and();
-        break;
-      case "booleanOr":
-        newCond.or();
-        break;
-      default:
-          assert(false);
+        case "booleanAnd":
+          newCond.and();
+          break;
+        case "booleanOr":
+          newCond.or();
+          break;
+        default:
+            assert(false);
       }
 
       newCond.condition(this.condition)
@@ -142,11 +156,17 @@ public class JsonScanSpec {
 
   @Override
   public String toString() {
-    String fidInfo = (getIndexDesc() != null)? ", indexName=" + getIndexName() : "";
-    return "JsonScanSpec [tableName=" + tableName
-        + ", condition=" + (condition == null ? null : condition.toString())
-        + fidInfo
-        + "]";
-  }
+    StringBuilder builder = new StringBuilder();
+    builder.append("JsonScanSpec [tableName=").append(tableName);
+    if (condition != null) {
+      builder.append(", condition=").append(condition.toString());
+    } else {
+      builder.append(", serializedFilter=").append(serializedFilter == null ? "" : Bytes.toBase64(serializedFilter));
+      builder.append(", startRow=").append(startRow == null ? "" : Bytes.toStringBinary(startRow));
+      builder.append(", stopRow=").append(stopRow == null ? "" : Bytes.toStringBinary(stopRow));
+    }
 
+    builder.append(", indexName=").append(indexDesc == null ? "" : getIndexName());
+    return builder.toString();
+  }
 }

@@ -41,7 +41,7 @@ public class MapRDBSubScanSpec implements Comparable<MapRDBSubScanSpec> {
                            @JsonProperty("stopRow") byte[] stopRow,
                            @JsonProperty("serializedFilter") byte[] serializedFilter,
                            @JsonProperty("filterString") String filterString,
-                           @JsonProperty("username") String userName) {
+                           @JsonProperty("userName") String userName) {
     if (serializedFilter != null && filterString != null) {
       throw new IllegalArgumentException("The parameters 'serializedFilter' or 'filterString' cannot be specified at the same time.");
     }

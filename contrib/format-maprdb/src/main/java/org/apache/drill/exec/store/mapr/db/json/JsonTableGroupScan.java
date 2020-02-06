@@ -430,10 +430,12 @@ public class JsonTableGroupScan extends MapRDBGroupScan implements IndexGroupSca
     return scanSpec.getTableName();
   }
 
+  @JsonIgnore
   public IndexDesc getIndexDesc() {
     return scanSpec.getIndexDesc();
   }
 
+  @JsonIgnore
   public boolean isDisablePushdown() {
     return !formatPluginConfig.isEnablePushdown();
   }

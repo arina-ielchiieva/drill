@@ -220,7 +220,7 @@ public class BinaryTableGroupScan extends MapRDBGroupScan implements DrillHBaseC
         + columns + "]";
   }
 
-  @JsonProperty
+  @JsonProperty("hbaseScanSpec")
   public HBaseScanSpec getHBaseScanSpec() {
     return hbaseScanSpec;
   }

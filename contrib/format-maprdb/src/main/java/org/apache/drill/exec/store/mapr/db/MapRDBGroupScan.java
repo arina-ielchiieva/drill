@@ -278,6 +278,11 @@ public abstract class MapRDBGroupScan extends AbstractDbGroupScan {
     return storagePlugin.getConfig();
   }
 
+  @JsonProperty("format")
+  public MapRDBFormatPluginConfig getFormatPluginConfig() {
+    return formatPluginConfig;
+  }
+
   @JsonIgnore
   public AbstractStoragePlugin getStoragePlugin(){
     return storagePlugin;
@@ -332,6 +337,7 @@ public abstract class MapRDBGroupScan extends AbstractDbGroupScan {
     return 0;
   }
 
+  @JsonIgnore
   protected NavigableMap<TabletFragmentInfo, String> getRegionsToScan() {
     return doNotAccessRegionsToScan;
   }
