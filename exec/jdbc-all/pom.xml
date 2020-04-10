@@ -300,6 +300,7 @@
               <include>*:*</include>
             </includes>
             <excludes>
+              <exclude>org.slf4j:jcl-over-slf4j</exclude>
               <exclude>io.protostuff:*</exclude>
               <exclude>${calcite.groupId}:calcite-core</exclude>
               <exclude>${calcite.groupId}:calcite-linq4j</exclude>
@@ -435,6 +436,7 @@
                <exclude>META-INF/services/javax.ws.*</exclude>
                <exclude>META-INF/**/*.properties</exclude>
                <exclude>**/org.codehaus.commons.compiler.properties</exclude>
+               <exclude>module-info.class</exclude>
                <exclude>**/*.SF</exclude>
                <exclude>**/*.RSA</exclude>
                <exclude>**/*.DSA</exclude>
@@ -537,7 +539,7 @@
                   This is likely due to you adding new dependencies to a java-exec and not updating the excludes in this module. This is important as it minimizes the size of the dependency of Drill application users.
 
                   </message>
-                  <maxsize>45000000</maxsize>
+                  <maxsize>46000000</maxsize>
                   <minsize>15000000</minsize>
                   <files>
                    <file>${project.build.directory}/drill-jdbc-all-${project.version}.jar</file>
@@ -765,6 +767,7 @@
                       <exclude>META-INF/services/javax.ws.*</exclude>
                       <exclude>META-INF/**/*.properties</exclude>
                       <exclude>**/org.codehaus.commons.compiler.properties</exclude>
+                      <exclude>module-info.class</exclude>
                       <exclude>**/*.SF</exclude>
                       <exclude>**/*.RSA</exclude>
                       <exclude>**/*.DSA</exclude>
