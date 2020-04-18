@@ -61,8 +61,7 @@
     <avatica.version>1.15.0</avatica.version>
     <janino.version>3.0.11</janino.version>
     <sqlline.version>1.9.0</sqlline.version>
-    <jackson.version>2.9.9</jackson.version>
-    <jackson.databind.version>2.9.9</jackson.databind.version>
+    <jackson.version>2.10.3</jackson.version>
     <zookeeper.version>3.5.7</zookeeper.version>
     <mapr.release.version>6.1.0-mapr</mapr.release.version>
     <ojai.version>3.0-mapr-1808</ojai.version>
@@ -106,6 +105,7 @@
     <commons.validator.version>1.6</commons.validator.version>
     <commons.text.version>1.6</commons.text.version>
     <protobuf.version>3.11.1</protobuf.version>
+    <protostuff.version>1.7.1</protostuff.version>
     <codemodel.version>2.6</codemodel.version>
     <joda.version>2.10.5</joda.version>
     <javax.el.version>3.0.0</javax.el.version>
@@ -1558,7 +1558,7 @@
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-databind</artifactId>
-        <version>${jackson.databind.version}</version>
+        <version>${jackson.version}</version>
       </dependency>
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
@@ -1872,6 +1872,16 @@
         <groupId>com.google.protobuf</groupId>
         <artifactId>protobuf-java</artifactId>
         <version>${protobuf.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.protostuff</groupId>
+        <artifactId>protostuff-core</artifactId>
+        <version>${protostuff.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.protostuff</groupId>
+        <artifactId>protostuff-json</artifactId>
+        <version>${protostuff.version}</version>
       </dependency>
       <dependency>
         <groupId>joda-time</groupId>
