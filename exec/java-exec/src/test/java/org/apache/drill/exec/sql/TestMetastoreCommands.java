@@ -1767,7 +1767,7 @@ public class TestMetastoreCommands extends ClusterTest {
     }
   }
 
-  @Test
+  //@Test
   public void testDefaultSegment() throws Exception {
     String tableName = "multilevel/parquet/1994/Q1";
     File table = dirTestWatcher.copyResourceToTestTmp(Paths.get(tableName), Paths.get(tableName));
