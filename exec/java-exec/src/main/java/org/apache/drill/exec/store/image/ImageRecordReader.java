@@ -18,6 +18,7 @@
 
 package org.apache.drill.exec.store.image;
 
+
 import io.netty.buffer.DrillBuf;
 
 import java.io.BufferedInputStream;
@@ -27,10 +28,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.TimeZone;
 
-import com.adobe.xmp.XMPException;
-import com.adobe.xmp.XMPMeta;
-import com.adobe.xmp.options.IteratorOptions;
-import com.adobe.xmp.properties.XMPPropertyInfo;
+import com.adobe.internal.xmp.XMPException;
+import com.adobe.internal.xmp.XMPMeta;
+import com.adobe.internal.xmp.options.IteratorOptions;
+import com.adobe.internal.xmp.properties.XMPPropertyInfo;
 
 import com.drew.imaging.FileType;
 import com.drew.imaging.FileTypeDetector;
